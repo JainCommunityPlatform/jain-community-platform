@@ -12,9 +12,11 @@ export default [
   ...compat.env({ node: true, jest: true }),
   ...compat.extends('plugin:@typescript-eslint/recommended', 'prettier'),
   {
-    parserOptions: {
-      project: './tsconfig.json',
-      tsconfigRootDir: __dirname,
+    languageOptions: {
+      parserOptions: {
+        project: './tsconfig.json',
+        tsconfigRootDir: __dirname,
+      },
     },
   },
 ];
