@@ -6,10 +6,15 @@ import '../../features/auth/presentation/login_page.dart';
 import '../../features/member/presentation/member_home_page.dart';
 import '../../features/public/presentation/home_page.dart';
 import '../session/app_session.dart';
+import '../tenant/tenant_context.dart';
 import 'app_routes.dart';
 
 class AppRouter {
-  AppRouter({AppSession session = const AppSession()}) : _session = session {
+  AppRouter({
+    AppSession session = const AppSession(),
+    TenantContext? tenant,
+  })  : _session = session,
+        _tenant = tenant {
     router = GoRouter(
       initialLocation: AppRoutes.home,
       redirect: redirect,
@@ -43,6 +48,7 @@ class AppRouter {
   }
 
   final AppSession _session;
+  final TenantContext? _tenant;
   late final GoRouter router;
 
   String? redirect(BuildContext context, GoRouterState state) {
@@ -54,6 +60,10 @@ class AppRouter {
 
     if (!isPrivateRoute) {
       return null;
+    }
+
+    if (_tenant == null) {
+      return AppRoutes.home;
     }
 
     if (!_session.isAuthenticated) {
