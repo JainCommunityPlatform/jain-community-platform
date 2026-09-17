@@ -1,12 +1,20 @@
-import eslint from '@eslint/js';
-import prettier from 'eslint-config-prettier';
-import tseslint from 'typescript-eslint';
+import { FlatCompat } from '@eslint/eslintrc';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-export default tseslint.config(
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const compat = new FlatCompat({ baseDirectory: __dirname });
+
+export default [
   {
     ignores: ['dist/**', 'coverage/**'],
   },
-  eslint.configs.recommended,
-  ...tseslint.configs.recommended,
-  prettier,
-);
+  ...compat.env({ node: true, jest: true }),
+  ...compat.extends('plugin:@typescript-eslint/recommended', 'prettier'),
+  {
+    parserOptions: {
+      project: './tsconfig.json',
+      tsconfigRootDir: __dirname,
+    },
+  },
+];
