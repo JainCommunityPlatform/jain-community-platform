@@ -32,10 +32,10 @@ These rules apply to all human- and AI-assisted work in this public implementati
 
 ## 4. Branch and Pull Request Safety
 
-- **Never commit directly to `main`.**
-- Create a dedicated feature, fix, chore or docs branch from the latest `main` before making changes.
-- All changes must reach `main` through a Pull Request and appropriate CI checks.
-- Before editing, confirm the target branch is not `main`.
+- **Never commit directly to `master`.**
+- Create a dedicated feature, fix, chore or docs branch from the latest `master` before making changes.
+- All changes must reach `master` through a Pull Request and appropriate CI checks.
+- Before editing, confirm the target branch is not `master`.
 - Keep PRs focused and explain the product/roadmap capability, architectural boundary, validation performed and anything deliberately deferred.
 
 ## 5. Implementation and Documentation Contract
@@ -59,16 +59,43 @@ If no documentation update is required, state that the documentation-impact revi
 
 ## 6. Testing Is Part of the Feature
 
-- Add or update automated tests for every new behaviour and bug fix.
-- Test primary user journeys plus important loading, empty, error and regression states where applicable.
-- Test API validation, error handling and business rules.
-- For multi-step workflows, test complete success, failure after each meaningful side effect, user-visible partial outcomes and retry/idempotency behaviour where applicable.
-- Prefer stable behavioural assertions over brittle implementation details.
+Every feature or bug fix must include the appropriate tests across the layers affected by the change. JCP uses four complementary layers:
+
+### Unit tests
+
+- Test pure domain logic, validation, policy decisions, mappers, resolvers and utilities in isolation.
+- Keep unit tests fast and deterministic.
+- Do not use unit tests as a substitute for integration tests when behaviour depends on framework wiring, persistence or external boundaries.
+
+### UI / widget tests
+
+- Test Flutter screens, widgets, routing/guards, validation and user-visible states.
+- Cover important loading, empty, error and success states.
+- Prefer semantic/user-visible assertions over widget implementation details.
+- Add responsive/adaptive coverage when behaviour differs materially by viewport or platform.
+
+### Integration tests
+
+- Test real application wiring across module boundaries, HTTP/API behaviour and persistence boundaries as those dependencies are introduced.
+- Verify authentication, authorization and **tenant isolation** at the backend boundary.
+- Use controlled test fixtures/databases; never depend on production data.
+- Cover transaction, retry and idempotency behaviour for workflows where duplicate or partial processing could matter.
+
+### Functional / E2E tests
+
+- Test complete user journeys from the user's entry point through the relevant application layers.
+- Prioritize critical journeys such as sign-in, tenant selection/resolution, membership, event participation and giving/payment flows as they are implemented.
+- Keep a small, reliable critical-path suite rather than duplicating every unit test at E2E level.
+
+For multi-step workflows, test complete success, meaningful failure points, user-visible partial outcomes and retry/idempotency behaviour where applicable.
+
+A feature is not considered fully tested merely because its unit tests pass. The required layers depend on the behaviour changed, and the PR must explain deliberately omitted layers.
 
 ## 7. Validation and CI Discipline
 
 - Run the repository's documented local validation before committing or opening a PR whenever the required tooling is available.
 - CI is a final confirmation gate, not a substitute for local debugging.
+- CI must run the relevant unit, UI/widget, integration and functional/E2E suites as those suites become available.
 - When CI fails, inspect the actual failing job/log before changing code.
 - Never claim validation passed when it was not executed; explicitly state unavailable checks.
 - Review the final diff for regressions, secrets, debug artifacts and accidental private information before pushing.
@@ -92,6 +119,8 @@ Before opening a PR:
 - [ ] The implementation matches the relevant product intent.
 - [ ] Existing architecture and conventions were inspected.
 - [ ] Tests were added/updated for changed behaviour.
+- [ ] The appropriate testing layers were covered: unit, UI/widget, integration and/or functional/E2E.
+- [ ] Any deliberately omitted testing layer is explained in the PR.
 - [ ] Local validation was run where tooling is available.
 - [ ] No known compilation, analyzer, test or validation failures remain.
 - [ ] Public/private information boundaries were reviewed.
