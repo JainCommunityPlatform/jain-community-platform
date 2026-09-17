@@ -1,19 +1,19 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
 
-import { ConfigTenantResolver } from './config-tenant.resolver';
+import { DatabaseModule } from '../database/database.module';
+import { PrismaTenantResolver } from './prisma-tenant.resolver';
+import { TENANT_RESOLVER, TenantService } from './tenant.service';
 import { TenantController } from './tenant.controller';
-import { TenantService, TENANT_RESOLVER } from './tenant.service';
 
 @Module({
-  imports: [ConfigModule],
+  imports: [DatabaseModule],
   controllers: [TenantController],
   providers: [
-    ConfigTenantResolver,
+    PrismaTenantResolver,
     TenantService,
     {
       provide: TENANT_RESOLVER,
-      useExisting: ConfigTenantResolver,
+      useExisting: PrismaTenantResolver,
     },
   ],
   exports: [TenantService],
