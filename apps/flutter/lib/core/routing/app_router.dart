@@ -9,32 +9,41 @@ import '../session/app_session.dart';
 import 'app_routes.dart';
 
 class AppRouter {
-  AppRouter({AppSession session = const AppSession()})
-      : _session = session,
-        router = GoRouter(
-          initialLocation: AppRoutes.home,
-          routes: [
-            GoRoute(
-              path: AppRoutes.home,
-              builder: (_, __) => const HomePage(),
-            ),
-            GoRoute(
-              path: AppRoutes.login,
-              builder: (_, __) => const LoginPage(),
-            ),
-            GoRoute(
-              path: AppRoutes.member,
-              builder: (_, __) => const MemberHomePage(),
-            ),
-            GoRoute(
-              path: AppRoutes.admin,
-              builder: (_, __) => const AdminHomePage(),
-            ),
-          ],
-        );
+  AppRouter({AppSession session = const AppSession()}) : _session = session {
+    router = GoRouter(
+      initialLocation: AppRoutes.home,
+      redirect: redirect,
+      routes: [
+        GoRoute(
+          path: AppRoutes.home,
+          builder: (_, __) => const HomePage(),
+        ),
+        GoRoute(
+          path: AppRoutes.login,
+          builder: (_, __) => const LoginPage(),
+        ),
+        GoRoute(
+          path: AppRoutes.member,
+          builder: (_, __) => const MemberHomePage(),
+        ),
+        GoRoute(
+          path: AppRoutes.admin,
+          builder: (_, __) => const AdminHomePage(),
+        ),
+        GoRoute(
+          path: AppRoutes.finance,
+          builder: (_, __) => const _PlaceholderPage(title: 'Finance console'),
+        ),
+        GoRoute(
+          path: AppRoutes.library,
+          builder: (_, __) => const _PlaceholderPage(title: 'Digital library'),
+        ),
+      ],
+    );
+  }
 
   final AppSession _session;
-  final GoRouter router;
+  late final GoRouter router;
 
   String? redirect(BuildContext context, GoRouterState state) {
     final location = state.matchedLocation;
@@ -60,5 +69,19 @@ class AppRouter {
     }
 
     return null;
+  }
+}
+
+class _PlaceholderPage extends StatelessWidget {
+  const _PlaceholderPage({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: Center(child: Text(title)),
+    );
   }
 }
