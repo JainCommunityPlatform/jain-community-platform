@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../core/routing/app_routes.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -9,7 +12,7 @@ class LoginPage extends StatelessWidget {
       appBar: AppBar(title: const Text('Sign in')),
       body: Center(
         child: FilledButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => context.go(AppRoutes.home),
           child: const Text('Back to public experience'),
         ),
       ),
