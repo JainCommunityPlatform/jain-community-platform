@@ -29,13 +29,10 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-env:
-  CI_SCOPE: ${{ github.event_name == 'workflow_dispatch' && inputs.scope || 'full' }}
-
 jobs:
   repository:
     name: Repository validation
-    if: ${{ env.CI_SCOPE == 'full' || env.CI_SCOPE == 'repository' }}
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.scope == 'full' || inputs.scope == 'repository' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -52,7 +49,7 @@ jobs:
 
   frontend:
     name: Frontend - Flutter analyze and test
-    if: ${{ env.CI_SCOPE == 'full' || env.CI_SCOPE == 'frontend' }}
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.scope == 'full' || inputs.scope == 'frontend' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -94,7 +91,7 @@ jobs:
 
   backend:
     name: Backend - NestJS lint, test and build
-    if: ${{ env.CI_SCOPE == 'full' || env.CI_SCOPE == 'backend' }}
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.scope == 'full' || inputs.scope == 'backend' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
