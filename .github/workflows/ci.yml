@@ -133,6 +133,11 @@ jobs:
         working-directory: apps/api
         run: npm install --no-audit --no-fund
 
+      - name: Generate Prisma client
+        if: steps.backend.outputs.available == 'true'
+        working-directory: apps/api
+        run: npm run prisma:generate --if-present
+
       - name: Apply database migrations
         if: steps.backend.outputs.available == 'true'
         working-directory: apps/api
