@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { TenantController } from './tenant.controller';
@@ -22,7 +23,9 @@ describe('TenantController', () => {
   it('delegates hostname resolution to the tenant service', async () => {
     tenantService.resolve.mockResolvedValue(null);
 
-    await expect(controller.resolve('example.com')).resolves.toBeNull();
+    await expect(controller.resolve('example.com')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
     expect(tenantService.resolve).toHaveBeenCalledWith('example.com');
   });
 });
