@@ -2,12 +2,24 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:jain_community_platform/core/routing/app_router.dart';
 import 'package:jain_community_platform/core/session/app_session.dart';
+import 'package:jain_community_platform/core/tenant/tenant_context.dart';
 import 'package:jain_community_platform/main.dart';
+
+const badeBabaKharadiTenant = TenantContext(
+  id: 'bade-baba-kharadi',
+  name: 'Bade Baba Kharadi',
+  hostname: 'badebabakharadi.com',
+);
 
 void main() {
   testWidgets('renders the public home route', (tester) async {
-    final router = AppRouter();
-    await tester.pumpWidget(JainCommunityPlatformApp(router: router));
+    final router = AppRouter(tenant: badeBabaKharadiTenant);
+    await tester.pumpWidget(
+      JainCommunityPlatformApp(
+        router: router,
+        tenant: badeBabaKharadiTenant,
+      ),
+    );
 
     expect(find.text('Jain Community Platform'), findsOneWidget);
     expect(
@@ -18,8 +30,13 @@ void main() {
 
   testWidgets('redirects unauthenticated users from admin to login',
       (tester) async {
-    final router = AppRouter();
-    await tester.pumpWidget(JainCommunityPlatformApp(router: router));
+    final router = AppRouter(tenant: badeBabaKharadiTenant);
+    await tester.pumpWidget(
+      JainCommunityPlatformApp(
+        router: router,
+        tenant: badeBabaKharadiTenant,
+      ),
+    );
 
     router.router.go('/admin');
     await tester.pumpAndSettle();
@@ -34,8 +51,14 @@ void main() {
         isAuthenticated: true,
         roles: {AppRole.admin},
       ),
+      tenant: badeBabaKharadiTenant,
     );
-    await tester.pumpWidget(JainCommunityPlatformApp(router: router));
+    await tester.pumpWidget(
+      JainCommunityPlatformApp(
+        router: router,
+        tenant: badeBabaKharadiTenant,
+      ),
+    );
 
     router.router.go('/admin');
     await tester.pumpAndSettle();
