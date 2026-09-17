@@ -1,0 +1,140 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - master
+  merge_group:
+    types: [checks_requested]
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: What should CI validate?
+        required: true
+        type: choice
+        default: full
+        options:
+          - full
+          - frontend
+          - backend
+          - repository
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI_SCOPE: ${{ github.event_name == 'workflow_dispatch' && inputs.scope || 'full' }}
+
+jobs:
+  repository:
+    name: Repository validation
+    if: ${{ env.CI_SCOPE == 'full' || env.CI_SCOPE == 'repository' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate public repository boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .github/copilot-instructions.md
+          test -f README.md
+          test -d apps
+          test -d .github/workflows
+
+  frontend:
+    name: Frontend - Flutter analyze and test
+    if: ${{ env.CI_SCOPE == 'full' || env.CI_SCOPE == 'frontend' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check frontend availability
+        id: frontend
+        shell: bash
+        run: |
+          if [ -f apps/flutter/pubspec.yaml ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "Flutter frontend is not present yet; skipping frontend validation."
+          fi
+
+      - name: Set up Flutter
+        if: steps.frontend.outputs.available == 'true'
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.0'
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        if: steps.frontend.outputs.available == 'true'
+        working-directory: apps/flutter
+        run: flutter pub get
+
+      - name: Analyze
+        if: steps.frontend.outputs.available == 'true'
+        working-directory: apps/flutter
+        run: flutter analyze
+
+      - name: Run tests
+        if: steps.frontend.outputs.available == 'true'
+        working-directory: apps/flutter
+        run: flutter test
+
+  backend:
+    name: Backend - NestJS lint, test and build
+    if: ${{ env.CI_SCOPE == 'full' || env.CI_SCOPE == 'backend' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check backend availability
+        id: backend
+        shell: bash
+        run: |
+          if [ -f apps/api/package.json ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "NestJS backend is not present yet; skipping backend validation."
+          fi
+
+      - name: Set up Node.js
+        if: steps.backend.outputs.available == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+
+      - name: Install dependencies
+        if: steps.backend.outputs.available == 'true'
+        working-directory: apps/api
+        run: npm ci
+
+      - name: Lint
+        if: steps.backend.outputs.available == 'true'
+        working-directory: apps/api
+        run: npm run lint --if-present
+
+      - name: Test
+        if: steps.backend.outputs.available == 'true'
+        working-directory: apps/api
+        run: npm test --if-present
+
+      - name: Build
+        if: steps.backend.outputs.available == 'true'
+        working-directory: apps/api
+        run: npm run build --if-present
