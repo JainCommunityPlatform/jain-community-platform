@@ -50,11 +50,15 @@ describe('API endpoints (integration)', () => {
       });
   });
 
-  it('GET /api/tenant/resolve returns null for an unknown tenant', async () => {
+  it('GET /api/tenant/resolve returns 404 for an unknown tenant', async () => {
     await request(app.getHttpServer())
       .get('/api/tenant/resolve')
       .query({ hostname: 'example.com' })
-      .expect(200)
-      .expect('null');
+      .expect(404)
+      .expect({
+        statusCode: 404,
+        message: 'Tenant not found',
+        error: 'Not Found',
+      });
   });
 });
