@@ -116,23 +116,26 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-          cache-dependency-path: apps/api/package-lock.json
 
       - name: Install dependencies
         if: steps.backend.outputs.available == 'true'
         working-directory: apps/api
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Lint
         if: steps.backend.outputs.available == 'true'
         working-directory: apps/api
         run: npm run lint --if-present
 
-      - name: Test
+      - name: Unit tests
         if: steps.backend.outputs.available == 'true'
         working-directory: apps/api
         run: npm test --if-present
+
+      - name: Integration tests
+        if: steps.backend.outputs.available == 'true'
+        working-directory: apps/api
+        run: npm run test:integration --if-present
 
       - name: Build
         if: steps.backend.outputs.available == 'true'
