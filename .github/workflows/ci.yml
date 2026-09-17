@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - master
+  merge_group:
+    types: [checks_requested]
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository:
+    name: Repository validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate public repository boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .github/copilot-instructions.md
+          test -f README.md
+          test -d apps
+          test -d .github/workflows
+
+  flutter:
+    name: Flutter analyze and test
+    runs-on: ubuntu-latest
+    needs: repository
+    defaults:
+      run:
+        working-directory: apps/flutter
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.0'
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
