@@ -8,8 +8,10 @@ export class ConfigTenantResolver implements TenantResolver {
   constructor(private readonly config: ConfigService) {}
 
   async resolve(hostname: string): Promise<TenantContext | null> {
-    const normalized = hostname.trim().toLowerCase();
-    const configuredHost = this.config.get<string>('TENANT_HOSTNAME');
+    const normalized = normalizeHostname(hostname);
+    const configuredHost = normalizeHostname(
+      this.config.get<string>('TENANT_HOSTNAME'),
+    );
     const tenantId = this.config.get<string>('TENANT_ID');
     const tenantName = this.config.get<string>('TENANT_NAME');
 
@@ -17,7 +19,7 @@ export class ConfigTenantResolver implements TenantResolver {
       !configuredHost ||
       !tenantId ||
       !tenantName ||
-      normalized !== configuredHost.trim().toLowerCase()
+      normalized !== configuredHost
     ) {
       return null;
     }
@@ -25,7 +27,14 @@ export class ConfigTenantResolver implements TenantResolver {
     return {
       id: tenantId,
       name: tenantName,
-      hostname: configuredHost.trim().toLowerCase(),
+      hostname: configuredHost,
     };
   }
+}
+
+function normalizeHostname(hostname: string | undefined): string | null {
+  if (!hostname) return null;
+
+  const normalized = hostname.trim().toLowerCase().replace(/^www\./, '');
+  return normalized || null;
 }
