@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../../../lib/core/api/api_client.dart';
 import '../../../../lib/features/admin/data/tenant_member.dart';
 import '../../../../lib/features/admin/data/tenant_member_repository.dart';
 import '../../../../lib/features/admin/presentation/admin_members_page.dart';
 
 class FakeRepository extends TenantMemberRepository {
-  FakeRepository(this.current) : super(_unusedApi);
-  static final _unusedApi = throw UnimplementedError();
+  FakeRepository(this.current) : super(ApiClient(baseUrl: Uri.parse('https://example.test/')));
   List<TenantMember> current;
   bool fail = false;
   @override Future<List<TenantMember>> list() async {
