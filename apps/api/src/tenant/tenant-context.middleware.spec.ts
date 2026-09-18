@@ -1,3 +1,4 @@
+import { TenantService } from './tenant.service';
 import { TenantContextMiddleware } from './tenant-context.middleware';
 
 describe('TenantContextMiddleware', () => {
