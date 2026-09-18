@@ -35,7 +35,7 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
                       value == null || value.trim().isEmpty ? 'User ID is required' : null,
                 ),
                 DropdownButtonFormField<String>(
-                  initialValue: role == 'MEMBER' ? 'CONTENT_MANAGER' : role,
+                  value: role == 'MEMBER' ? 'CONTENT_MANAGER' : role,
                   decoration: const InputDecoration(labelText: 'Role'),
                   items: _roles
                       .map((r) => DropdownMenuItem(value: r, child: Text(_roleLabel(r))))
@@ -118,7 +118,7 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
         builder: (context, setDialogState) => AlertDialog(
           title: const Text('Change role'),
           content: DropdownButtonFormField<String>(
-            initialValue: role,
+            value: role,
             items: _roles
                 .map((r) => DropdownMenuItem(value: r, child: Text(_roleLabel(r))))
                 .toList(),
