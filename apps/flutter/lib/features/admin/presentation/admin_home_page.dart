@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/api/api_client.dart';
+import '../data/tenant_member_repository.dart';
 import 'admin_members_page.dart';
 
 class AdminHomePage extends StatelessWidget {
@@ -7,6 +9,10 @@ class AdminHomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final api = ApiClient(
+      baseUrl: Uri.parse(const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:3000/')),
+    );
+    final repository = TenantMemberRepository(api);
     return Scaffold(
       appBar: AppBar(title: const Text('Admin console')),
       body: ListView(
@@ -19,7 +25,7 @@ class AdminHomePage extends StatelessWidget {
               subtitle: const Text('Manage tenant members and roles'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AdminMembersPage()),
+                MaterialPageRoute(builder: (_) => AdminMembersPage(repository: repository)),
               ),
             ),
           ),
