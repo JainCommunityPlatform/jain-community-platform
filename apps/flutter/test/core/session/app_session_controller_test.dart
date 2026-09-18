@@ -128,6 +128,31 @@ void main() {
     await auth.dispose();
   });
 
+  test('starts Google sign-in through the Firebase provider', () async {
+    final auth = FakeFirebaseAuthProvider();
+    final service = FakeAuthSessionService(
+      () async => const AppSession(
+        isAuthenticated: true,
+        userId: 'user-123',
+      ),
+    );
+    final controller = AppSessionController(
+      auth: auth,
+      sessionService: service,
+    );
+
+    await controller.initialize();
+    await controller.signInWithGoogle();
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.status, AppSessionStatus.authenticated);
+    expect(controller.session.isAuthenticated, isTrue);
+
+    controller.dispose();
+    await auth.dispose();
+  });
+
   test('signs out through the Firebase provider', () async {
     final auth = FakeFirebaseAuthProvider();
     final service = FakeAuthSessionService(
