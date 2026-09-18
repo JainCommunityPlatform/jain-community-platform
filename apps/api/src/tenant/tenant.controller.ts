@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 
 import { AuthorizationGuard } from '../authorization/authorization.guard';
+import { AuthenticationGuard } from '../auth/authentication.guard';
 import { RequirePermission } from '../authorization/require-permission.decorator';
 import { TenantContextStore } from './tenant-context.store';
 import { TenantService } from './tenant.service';
@@ -31,7 +32,7 @@ export class TenantController {
   }
 
   @Get('context')
-  @UseGuards(AuthorizationGuard)
+  @UseGuards(AuthenticationGuard, AuthorizationGuard)
   @RequirePermission('tenant.read')
   getContext(): TenantContext {
     const tenant = this.tenantContextStore.get();
