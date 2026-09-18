@@ -1,5 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common';
 
+import { AuthenticatedRequest } from './authenticated-request';
 import { AuthenticationGuard } from './authentication.guard';
 import { JwtAuthenticationService } from './jwt-authentication.service';
 
@@ -9,9 +10,9 @@ describe('AuthenticationGuard', () => {
       verify: jest.fn(),
     } as unknown as JwtAuthenticationService;
     const guard = new AuthenticationGuard(authentication);
-    const request = {
+    const request: AuthenticatedRequest = {
       header: jest.fn().mockReturnValue(undefined),
-    };
+    } as unknown as AuthenticatedRequest;
 
     await expect(
       guard.canActivate({
@@ -28,9 +29,9 @@ describe('AuthenticationGuard', () => {
       verify: jest.fn().mockResolvedValue(user),
     } as unknown as JwtAuthenticationService;
     const guard = new AuthenticationGuard(authentication);
-    const request = {
+    const request: AuthenticatedRequest = {
       header: jest.fn().mockReturnValue('Bearer token-value'),
-    };
+    } as unknown as AuthenticatedRequest;
 
     await expect(
       guard.canActivate({
