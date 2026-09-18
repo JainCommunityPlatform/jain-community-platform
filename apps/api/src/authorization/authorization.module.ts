@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module';
 import { DatabaseModule } from '../database/database.module';
@@ -8,6 +8,7 @@ import { MembershipContextInterceptor } from './membership-context.interceptor';
 import { MembershipContextStore } from './membership-context.store';
 import { MembershipService } from './membership.service';
 
+@Global()
 @Module({
   imports: [AuthModule, DatabaseModule, IdentityModule, TenantModule],
   providers: [
