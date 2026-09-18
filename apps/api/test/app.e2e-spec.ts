@@ -28,6 +28,17 @@ describe('API endpoints (integration)', () => {
       .expect({ status: 'ok' });
   });
 
+  it('GET /api/auth/me rejects requests without authentication', async () => {
+    await request(app.getHttpServer())
+      .get('/api/auth/me')
+      .expect(401)
+      .expect({
+        statusCode: 401,
+        message: 'Bearer authentication is required',
+        error: 'Unauthorized',
+      });
+  });
+
   it('GET /api/tenant/resolve resolves the persisted tenant', async () => {
     await request(app.getHttpServer())
       .get('/api/tenant/resolve')
