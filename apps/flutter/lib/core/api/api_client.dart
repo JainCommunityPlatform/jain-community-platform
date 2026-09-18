@@ -5,16 +5,19 @@ import 'package:http/http.dart' as http;
 import 'api_exception.dart';
 
 typedef AccessTokenProvider = Future<String?> Function();
+typedef UnauthorizedHandler = Future<void> Function();
 
 class ApiClient {
   ApiClient({
     required this.baseUrl,
     this.accessTokenProvider,
+    this.onUnauthorized,
     http.Client? client,
   }) : _client = client ?? http.Client();
 
   final Uri baseUrl;
   final AccessTokenProvider? accessTokenProvider;
+  final UnauthorizedHandler? onUnauthorized;
   final http.Client _client;
 
   Future<List<dynamic>> getList(String path) async {
@@ -77,6 +80,9 @@ class ApiClient {
       _ => throw ArgumentError('Unsupported HTTP method: $method'),
     };
 
+    if (response.statusCode == 401) {
+      await onUnauthorized?.call();
+    }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException(
         statusCode: response.statusCode,

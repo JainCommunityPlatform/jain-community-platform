@@ -49,7 +49,7 @@ void main() {
     final router = AppRouter(
       session: const AppSession(
         isAuthenticated: true,
-        roles: {AppRole.admin},
+        role: 'TENANT_ADMIN',
       ),
       tenant: badeBabaKharadiTenant,
     );
