@@ -4,8 +4,8 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { Request } from 'express';
 
+import { AuthenticatedRequest } from './authenticated-request';
 import { JwtAuthenticationService } from './jwt-authentication.service';
 
 @Injectable()
@@ -15,7 +15,8 @@ export class AuthenticationGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest<Request>();
+    const request =
+      context.switchToHttp().getRequest<AuthenticatedRequest>();
     const authorization = request.header('authorization');
 
     if (!authorization?.startsWith('Bearer ')) {
