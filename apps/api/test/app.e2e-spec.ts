@@ -2,6 +2,11 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
+jest.mock('jose', () => ({
+  createRemoteJWKSet: jest.fn(),
+  jwtVerify: jest.fn(),
+}));
+
 import { AppModule } from '../src/app.module';
 
 describe('API endpoints (integration)', () => {
@@ -26,6 +31,17 @@ describe('API endpoints (integration)', () => {
       .get('/api/health')
       .expect(200)
       .expect({ status: 'ok' });
+  });
+
+  it('GET /api/auth/me rejects requests without authentication', async () => {
+    await request(app.getHttpServer())
+      .get('/api/auth/me')
+      .expect(401)
+      .expect({
+        statusCode: 401,
+        message: 'Bearer authentication is required',
+        error: 'Unauthorized',
+      });
   });
 
   it('GET /api/tenant/resolve resolves the persisted tenant', async () => {
