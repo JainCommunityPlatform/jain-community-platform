@@ -6,7 +6,6 @@ import {
 
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../database/prisma.service';
-import { MembershipContextStore } from '../authorization/membership-context.store';
 import { TenantContextStore } from './tenant-context.store';
 import { MembershipRole } from '../authorization/authorization.types';
 
@@ -24,7 +23,6 @@ export class TenantMemberService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tenantContext: TenantContextStore,
-    private readonly membershipContext: MembershipContextStore,
     private readonly audit: AuditService,
   ) {}
 
