@@ -1,5 +1,10 @@
 import { ConfigService } from '@nestjs/config';
 
+jest.mock('jose', () => ({
+  createRemoteJWKSet: jest.fn(),
+  jwtVerify: jest.fn(),
+}));
+
 import { JwtAuthenticationService } from './jwt-authentication.service';
 
 describe('JwtAuthenticationService', () => {
