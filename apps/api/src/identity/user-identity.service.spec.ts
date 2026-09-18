@@ -2,18 +2,17 @@ import { UserIdentityService } from './user-identity.service';
 
 describe('UserIdentityService', () => {
   it('creates a global user from the stable authentication subject', async () => {
+    const upsert = jest.fn().mockResolvedValue({
+      id: 'user-a',
+      authSubject: 'provider|123',
+      email: 'person@example.com',
+      displayName: 'Person',
+    });
     const prisma = {
-      user: {
-        upsert: jest.fn().mockResolvedValue({
-          id: 'user-a',
-          authSubject: 'provider|123',
-          email: 'person@example.com',
-          displayName: 'Person',
-        }),
-      },
-    } as never;
+      user: { upsert },
+    };
 
-    const service = new UserIdentityService(prisma);
+    const service = new UserIdentityService(prisma as never);
 
     await expect(
       service.resolve({
@@ -28,7 +27,7 @@ describe('UserIdentityService', () => {
       displayName: 'Person',
     });
 
-    expect(prisma.user.upsert).toHaveBeenCalledWith({
+    expect(upsert).toHaveBeenCalledWith({
       where: { authSubject: 'provider|123' },
       create: {
         authSubject: 'provider|123',
@@ -43,18 +42,17 @@ describe('UserIdentityService', () => {
   });
 
   it('supports authenticated identities without email or display name', async () => {
+    const upsert = jest.fn().mockResolvedValue({
+      id: 'user-a',
+      authSubject: 'provider|123',
+      email: null,
+      displayName: null,
+    });
     const prisma = {
-      user: {
-        upsert: jest.fn().mockResolvedValue({
-          id: 'user-a',
-          authSubject: 'provider|123',
-          email: null,
-          displayName: null,
-        }),
-      },
-    } as never;
+      user: { upsert },
+    };
 
-    const service = new UserIdentityService(prisma);
+    const service = new UserIdentityService(prisma as never);
 
     await expect(
       service.resolve({ subject: 'provider|123' }),
