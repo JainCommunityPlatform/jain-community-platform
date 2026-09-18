@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  UnauthorizedException,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
@@ -21,7 +22,7 @@ export class AuthController {
     const user = this.authContext.get();
 
     if (!user) {
-      throw new Error('Authenticated user context is missing');
+      throw new UnauthorizedException('Authenticated user context is missing');
     }
 
     return user;
