@@ -13,19 +13,10 @@ describe('AuthorizationGuard', () => {
     getClass: () => controller,
   } as unknown as ExecutionContext;
 
-  function guard(\n    permission: string | undefined,\n    authorization: Parameters<AuthorizationPolicy['assertPermission']>[0] | null,\n  ) {
-    const reflector = {
-      getAllAndOverride: jest.fn().mockReturnValue(permission),
-    } as unknown as Reflector;
-    const membershipContext = {
-      get: jest.fn().mockReturnValue(authorization),
-    } as unknown as MembershipContextStore;
-    return new AuthorizationGuard(
-      reflector,
-      membershipContext,
-      new AuthorizationPolicy(),
-    );
-  }
+  function guard(
+    permission: string | undefined,
+    authorization: Parameters<AuthorizationPolicy['assertPermission']>[0] | null,
+  ) {
 
   const member = {
     userId: 'user-a',
