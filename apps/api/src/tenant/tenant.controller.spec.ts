@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { AuthorizationGuard } from '../authorization/authorization.guard';
 import { TenantContextStore } from './tenant-context.store';
 import { TenantController } from './tenant.controller';
 import { TenantService } from './tenant.service';
@@ -13,6 +14,9 @@ describe('TenantController', () => {
   const tenantContextStore = {
     get: jest.fn(),
   };
+  const authorizationGuard = {
+    canActivate: jest.fn().mockReturnValue(true),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -20,12 +24,15 @@ describe('TenantController', () => {
       providers: [
         { provide: TenantService, useValue: tenantService },
         { provide: TenantContextStore, useValue: tenantContextStore },
+        { provide: AuthorizationGuard, useValue: authorizationGuard },
       ],
     }).compile();
 
     controller = module.get(TenantController);
     tenantService.resolve.mockReset();
     tenantContextStore.get.mockReset();
+    authorizationGuard.canActivate.mockReset();
+    authorizationGuard.canActivate.mockReturnValue(true);
   });
 
   it('delegates hostname resolution to the tenant service', async () => {
