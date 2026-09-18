@@ -5,7 +5,7 @@ import {
   NestInterceptor,
   UnauthorizedException,
 } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import { Observable, defer } from 'rxjs';
 
 import { AuthContextStore } from './auth-context.store';
 import { AuthenticatedRequest } from './authenticated-request';
@@ -27,6 +27,6 @@ export class AuthenticationContextInterceptor implements NestInterceptor {
       throw new UnauthorizedException('Authenticated user context is missing');
     }
 
-    return this.authContext.run(user, () => next.handle());
+    return defer(() => this.authContext.run(user, () => next.handle()));
   }
 }
