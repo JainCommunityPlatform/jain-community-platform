@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
 import { AuthModule } from './auth/auth.module';
+import { AuditModule } from './audit/audit.module';
 import { configuration } from './config/configuration';
 import { AuthorizationModule } from './authorization/authorization.module';
 import { DatabaseModule } from './database/database.module';
@@ -18,6 +19,7 @@ import { IdentityModule } from './identity/identity.module';
       load: [configuration],
     }),
     AuthModule,
+    AuditModule,
     AuthorizationModule,
     DatabaseModule,
     HealthModule,
