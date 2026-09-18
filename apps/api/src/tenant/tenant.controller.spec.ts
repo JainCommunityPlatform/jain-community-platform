@@ -2,6 +2,8 @@ import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { AuthorizationGuard } from '../authorization/authorization.guard';
+import { AuthorizationPolicy } from '../authorization/authorization.policy';
+import { MembershipContextStore } from '../authorization/membership-context.store';
 import { TenantContextStore } from './tenant-context.store';
 import { TenantController } from './tenant.controller';
 import { TenantService } from './tenant.service';
@@ -17,6 +19,12 @@ describe('TenantController', () => {
   const authorizationGuard = {
     canActivate: jest.fn().mockReturnValue(true),
   };
+  const membershipContextStore = {
+    get: jest.fn(),
+  };
+  const authorizationPolicy = {
+    assertPermission: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -25,6 +33,8 @@ describe('TenantController', () => {
         { provide: TenantService, useValue: tenantService },
         { provide: TenantContextStore, useValue: tenantContextStore },
         { provide: AuthorizationGuard, useValue: authorizationGuard },
+        { provide: MembershipContextStore, useValue: membershipContextStore },
+        { provide: AuthorizationPolicy, useValue: authorizationPolicy },
       ],
     }).compile();
 
@@ -33,6 +43,8 @@ describe('TenantController', () => {
     tenantContextStore.get.mockReset();
     authorizationGuard.canActivate.mockReset();
     authorizationGuard.canActivate.mockReturnValue(true);
+    membershipContextStore.get.mockReset();
+    authorizationPolicy.assertPermission.mockReset();
   });
 
   it('delegates hostname resolution to the tenant service', async () => {
