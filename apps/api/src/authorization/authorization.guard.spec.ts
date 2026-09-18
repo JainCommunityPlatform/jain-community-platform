@@ -1,0 +1,69 @@
+import { ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+
+import { AuthorizationGuard } from './authorization.guard';
+import { AuthorizationPolicy } from './authorization.policy';
+import { MembershipContextStore } from './membership-context.store';
+
+describe('AuthorizationGuard', () => {
+  const handler = jest.fn();
+  const controller = class TestController {};
+  const executionContext = {
+    getHandler: () => handler,
+    getClass: () => controller,
+  } as unknown as ExecutionContext;
+
+  function guard(permission: string | undefined, authorization: any) {
+    const reflector = {
+      getAllAndOverride: jest.fn().mockReturnValue(permission),
+    } as unknown as Reflector;
+    const membershipContext = {
+      get: jest.fn().mockReturnValue(authorization),
+    } as unknown as MembershipContextStore;
+    return new AuthorizationGuard(
+      reflector,
+      membershipContext,
+      new AuthorizationPolicy(),
+    );
+  }
+
+  const member = {
+    userId: 'user-a',
+    tenantId: 'tenant-a',
+    membership: {
+      userId: 'user-a',
+      tenantId: 'tenant-a',
+      role: 'FINANCE_VIEWER',
+    },
+  };
+
+  it('allows routes without a permission requirement', () => {
+    expect(guard(undefined, null).canActivate(executionContext)).toBe(true);
+  });
+
+  it('denies a protected route without authorization context', () => {
+    expect(() => guard('finance.read', null).canActivate(executionContext)).toThrow(
+      new ForbiddenException('Tenant authorization context is required'),
+    );
+  });
+
+  it('allows a role with the required permission', () => {
+    expect(guard('finance.read', member).canActivate(executionContext)).toBe(true);
+  });
+
+  it('denies a role without the required permission', () => {
+    expect(() => guard('finance.write', member).canActivate(executionContext)).toThrow(
+      new ForbiddenException('Permission denied'),
+    );
+  });
+
+  it('denies a membership whose tenant differs from the resolved tenant', () => {
+    const crossTenant = {
+      ...member,
+      tenantId: 'tenant-b',
+    };
+    expect(() => guard('finance.read', crossTenant).canActivate(executionContext)).toThrow(
+      new ForbiddenException('Tenant access denied'),
+    );
+  });
+});
