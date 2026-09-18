@@ -25,6 +25,34 @@ void main() {
     expect(await api.getObject('/api/health'), {'status': 'ok'});
   });
 
+  test('invokes the unauthorized handler before surfacing a 401', () async {
+    var unauthorizedCalls = 0;
+    final client = MockClient((_) async {
+      return http.Response(
+        jsonEncode({'statusCode': 401, 'message': 'Unauthorized'}),
+        401,
+      );
+    });
+
+    final api = ApiClient(
+      baseUrl: Uri.parse('https://example.test/'),
+      onUnauthorized: () async {
+        unauthorizedCalls++;
+      },
+      client: client,
+    );
+
+    await expectLater(
+      api.getObject('/api/protected'),
+      throwsA(
+        isA<ApiException>()
+            .having((error) => error.statusCode, 'statusCode', 401)
+            .having((error) => error.message, 'message', 'Unauthorized'),
+      ),
+    );
+    expect(unauthorizedCalls, 1);
+  });
+
   test('surfaces API errors with status and message', () async {
     final client = MockClient((_) async {
       return http.Response(
