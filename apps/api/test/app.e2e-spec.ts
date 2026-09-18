@@ -54,7 +54,7 @@ describe('API endpoints (integration)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-      .overrideProvider(AuthenticationGuard)
+      .overrideGuard(AuthenticationGuard)
       .useValue(authenticationGuard)
       .overrideProvider(UserIdentityService)
       .useValue(identity)
