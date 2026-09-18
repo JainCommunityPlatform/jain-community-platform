@@ -57,7 +57,7 @@ void main() {
     );
 
     expect(
-      service.loadCurrentSession,
+      service.loadCurrentSession(),
       throwsA(
         isA<ApiException>()
             .having((error) => error.statusCode, 'statusCode', 401)
