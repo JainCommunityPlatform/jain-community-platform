@@ -4,6 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthorizationGuard } from '../authorization/authorization.guard';
 import { AuthorizationPolicy } from '../authorization/authorization.policy';
 import { MembershipContextStore } from '../authorization/membership-context.store';
+import { UserIdentityService } from '../identity/user-identity.service';
 import { TenantContextStore } from './tenant-context.store';
 import { TenantController } from './tenant.controller';
 import { TenantService } from './tenant.service';
@@ -25,6 +26,9 @@ describe('TenantController', () => {
   const authorizationPolicy = {
     assertPermission: jest.fn(),
   };
+  const userIdentityService = {
+    resolve: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -35,6 +39,7 @@ describe('TenantController', () => {
         { provide: AuthorizationGuard, useValue: authorizationGuard },
         { provide: MembershipContextStore, useValue: membershipContextStore },
         { provide: AuthorizationPolicy, useValue: authorizationPolicy },
+        { provide: UserIdentityService, useValue: userIdentityService },
       ],
     }).compile();
 
@@ -45,6 +50,7 @@ describe('TenantController', () => {
     authorizationGuard.canActivate.mockReturnValue(true);
     membershipContextStore.get.mockReset();
     authorizationPolicy.assertPermission.mockReset();
+    userIdentityService.resolve.mockReset();
   });
 
   it('delegates hostname resolution to the tenant service', async () => {
