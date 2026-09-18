@@ -1,8 +1,10 @@
+import { Prisma } from '@prisma/client';
+
 export interface AuditEvent {
   action: string;
   entity: string;
   entityId?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Prisma.InputJsonValue;
 }
 
 export interface AuditRecord extends AuditEvent {
