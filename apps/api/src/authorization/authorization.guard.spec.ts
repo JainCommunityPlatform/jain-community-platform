@@ -17,9 +17,20 @@ describe('AuthorizationGuard', () => {
   const handler = jest.fn();
   const controller = class TestController {};
 
-  function guard(
+  function createContext(
+    user: AuthenticatedRequest['user'],
+  ): ExecutionContext {
+    return {
+      getHandler: () => handler,
+      getClass: () => controller,
+      switchToHttp: () => ({
+        getRequest: () => ({ user }),
+      }),
+    } as unknown as ExecutionContext;
+  }
+
+  function createGuard(
     permission: Permission | undefined,
-    requestUser: AuthenticatedRequest['user'],
     tenant: { id: string } | null,
     membership: AuthorizationContext['membership'],
   ): AuthorizationGuard {
@@ -40,28 +51,14 @@ describe('AuthorizationGuard', () => {
     const tenantContext = {
       get: jest.fn().mockReturnValue(tenant),
     } as unknown as TenantContextStore;
-    const policy = new AuthorizationPolicy();
 
-    const authorizationGuard = new AuthorizationGuard(
+    return new AuthorizationGuard(
       reflector,
       identity,
       membershipService,
       tenantContext,
-      policy,
+      new AuthorizationPolicy(),
     );
-
-    const executionContext = {
-      getHandler: () => handler,
-      getClass: () => controller,
-      switchToHttp: () => ({
-        getRequest: () => ({ user: requestUser }),
-      }),
-    } as unknown as ExecutionContext;
-
-    return {
-      ...authorizationGuard,
-      canActivate: authorizationGuard.canActivate.bind(authorizationGuard),
-    } as AuthorizationGuard;
   }
 
   const member: AuthorizationContext['membership'] = {
@@ -71,70 +68,46 @@ describe('AuthorizationGuard', () => {
   };
 
   it('allows routes without a permission requirement', async () => {
-    expect(await guard(undefined, undefined, null, null).canActivate(
-      {} as ExecutionContext,
-    )).toBe(true);
+    const guard = createGuard(undefined, null, null);
+
+    await expect(guard.canActivate(createContext(undefined))).resolves.toBe(
+      true,
+    );
   });
 
   it('denies a protected route without authentication', async () => {
-    await expect(
-      guard('finance.read', undefined, { id: 'tenant-a' }, member).canActivate(
-        {} as ExecutionContext,
-      ),
-    ).rejects.toThrow(
+    const guard = createGuard('finance.read', { id: 'tenant-a' }, member);
+
+    await expect(guard.canActivate(createContext(undefined))).rejects.toThrow(
       new UnauthorizedException('Authenticated user context is missing'),
     );
   });
 
   it('allows a role with the required permission', async () => {
-    const authorizationGuard = guard(
-      'finance.read',
-      { subject: 'user-a' },
-      { id: 'tenant-a' },
-      member,
-    );
-    const context = {
-      getHandler: () => handler,
-      getClass: () => controller,
-      switchToHttp: () => ({ getRequest: () => ({ user: { subject: 'user-a' } }) }),
-    } as unknown as ExecutionContext;
+    const guard = createGuard('finance.read', { id: 'tenant-a' }, member);
 
-    await expect(authorizationGuard.canActivate(context)).resolves.toBe(true);
+    await expect(
+      guard.canActivate(createContext({ subject: 'user-a' })),
+    ).resolves.toBe(true);
   });
 
   it('denies a role without the required permission', async () => {
-    const authorizationGuard = guard(
-      'finance.write',
-      { subject: 'user-a' },
-      { id: 'tenant-a' },
-      member,
-    );
-    const context = {
-      getHandler: () => handler,
-      getClass: () => controller,
-      switchToHttp: () => ({ getRequest: () => ({ user: { subject: 'user-a' } }) }),
-    } as unknown as ExecutionContext;
+    const guard = createGuard('finance.write', { id: 'tenant-a' }, member);
 
-    await expect(authorizationGuard.canActivate(context)).rejects.toThrow(
-      new ForbiddenException('Permission denied'),
-    );
+    await expect(
+      guard.canActivate(createContext({ subject: 'user-a' })),
+    ).rejects.toThrow(new ForbiddenException('Permission denied'));
   });
 
   it('denies a membership whose tenant differs from the resolved tenant', async () => {
-    const authorizationGuard = guard(
+    const guard = createGuard(
       'finance.read',
-      { subject: 'user-a' },
       { id: 'tenant-a' },
       { ...member, tenantId: 'tenant-b' },
     );
-    const context = {
-      getHandler: () => handler,
-      getClass: () => controller,
-      switchToHttp: () => ({ getRequest: () => ({ user: { subject: 'user-a' } }) }),
-    } as unknown as ExecutionContext;
 
-    await expect(authorizationGuard.canActivate(context)).rejects.toThrow(
-      new ForbiddenException('Tenant access denied'),
-    );
+    await expect(
+      guard.canActivate(createContext({ subject: 'user-a' })),
+    ).rejects.toThrow(new ForbiddenException('Tenant access denied'));
   });
 });
