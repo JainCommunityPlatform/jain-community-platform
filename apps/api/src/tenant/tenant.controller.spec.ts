@@ -1,5 +1,10 @@
 import { NotFoundException } from '@nestjs/common';
 
+jest.mock('jose', () => ({
+  createRemoteJWKSet: jest.fn(),
+  jwtVerify: jest.fn(),
+}));
+
 import { TenantContextStore } from './tenant-context.store';
 import { TenantController } from './tenant.controller';
 import { TenantService } from './tenant.service';
