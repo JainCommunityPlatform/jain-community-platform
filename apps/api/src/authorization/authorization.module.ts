@@ -1,6 +1,5 @@
 import { Global, Module } from '@nestjs/common';
 
-import { AuthModule } from '../auth/auth.module';
 import { DatabaseModule } from '../database/database.module';
 import { IdentityModule } from '../identity/identity.module';
 import { TenantModule } from '../tenant/tenant.module';
@@ -10,7 +9,7 @@ import { MembershipService } from './membership.service';
 
 @Global()
 @Module({
-  imports: [AuthModule, DatabaseModule, IdentityModule, TenantModule],
+  imports: [DatabaseModule, IdentityModule, TenantModule],
   providers: [
     MembershipContextInterceptor,
     MembershipContextStore,
