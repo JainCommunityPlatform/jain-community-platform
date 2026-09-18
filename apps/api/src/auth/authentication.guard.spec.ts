@@ -1,5 +1,10 @@
 import { UnauthorizedException } from '@nestjs/common';
 
+jest.mock('jose', () => ({
+  createRemoteJWKSet: jest.fn(),
+  jwtVerify: jest.fn(),
+}));
+
 import { AuthenticatedRequest } from './authenticated-request';
 import { AuthenticationGuard } from './authentication.guard';
 import { JwtAuthenticationService } from './jwt-authentication.service';
