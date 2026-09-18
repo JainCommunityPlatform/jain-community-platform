@@ -1,6 +1,5 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 
-import { AuthorizationModule } from '../authorization/authorization.module';
 import { DatabaseModule } from '../database/database.module';
 import { PrismaTenantResolver } from './prisma-tenant.resolver';
 import { TenantContextMiddleware } from './tenant-context.middleware';
@@ -9,7 +8,7 @@ import { TENANT_RESOLVER, TenantService } from './tenant.service';
 import { TenantController } from './tenant.controller';
 
 @Module({
-  imports: [DatabaseModule, TenantContextModule, AuthorizationModule],
+  imports: [DatabaseModule, TenantContextModule],
   controllers: [TenantController],
   providers: [
     PrismaTenantResolver,
