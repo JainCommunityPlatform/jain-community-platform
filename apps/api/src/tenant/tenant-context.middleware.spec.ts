@@ -15,7 +15,7 @@ describe('TenantContextMiddleware', () => {
       run: jest.fn((context, callback) => callback()),
     };
     const middleware = new TenantContextMiddleware(
-      tenantService,
+      tenantService as unknown as TenantService,
       tenantContextStore,
     );
     const next = jest.fn();
@@ -39,7 +39,7 @@ describe('TenantContextMiddleware', () => {
       run: jest.fn((context, callback) => callback()),
     };
     const middleware = new TenantContextMiddleware(
-      tenantService,
+      tenantService as unknown as TenantService,
       tenantContextStore,
     );
 
