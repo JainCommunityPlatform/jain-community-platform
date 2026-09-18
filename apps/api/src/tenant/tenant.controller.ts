@@ -1,5 +1,14 @@
-import { Controller, Get, NotFoundException, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 
+import { AuthorizationGuard } from '../authorization/authorization.guard';
+import { AuthenticationGuard } from '../auth/authentication.guard';
+import { RequirePermission } from '../authorization/require-permission.decorator';
 import { TenantContextStore } from './tenant-context.store';
 import { TenantService } from './tenant.service';
 import { TenantContext } from './tenant.types';
@@ -23,6 +32,8 @@ export class TenantController {
   }
 
   @Get('context')
+  @UseGuards(AuthenticationGuard, AuthorizationGuard)
+  @RequirePermission('tenant.read')
   getContext(): TenantContext {
     const tenant = this.tenantContextStore.get();
 

@@ -1,26 +1,26 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 
 import { DatabaseModule } from '../database/database.module';
+import { IdentityModule } from '../identity/identity.module';
 import { PrismaTenantResolver } from './prisma-tenant.resolver';
 import { TenantContextMiddleware } from './tenant-context.middleware';
-import { TenantContextStore } from './tenant-context.store';
+import { TenantContextModule } from './tenant-context.module';
 import { TENANT_RESOLVER, TenantService } from './tenant.service';
 import { TenantController } from './tenant.controller';
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule, IdentityModule, TenantContextModule],
   controllers: [TenantController],
   providers: [
     PrismaTenantResolver,
     TenantContextMiddleware,
-    TenantContextStore,
     TenantService,
     {
       provide: TENANT_RESOLVER,
       useExisting: PrismaTenantResolver,
     },
   ],
-  exports: [TenantService, TenantContextStore],
+  exports: [TenantService, TenantContextModule],
 })
 export class TenantModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

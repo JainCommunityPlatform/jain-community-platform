@@ -1,12 +1,15 @@
 import { NotFoundException } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
+
+jest.mock('jose', () => ({
+  createRemoteJWKSet: jest.fn(),
+  jwtVerify: jest.fn(),
+}));
 
 import { TenantContextStore } from './tenant-context.store';
 import { TenantController } from './tenant.controller';
 import { TenantService } from './tenant.service';
 
 describe('TenantController', () => {
-  let controller: TenantController;
   const tenantService = {
     resolve: jest.fn(),
   };
@@ -14,16 +17,12 @@ describe('TenantController', () => {
     get: jest.fn(),
   };
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [TenantController],
-      providers: [
-        { provide: TenantService, useValue: tenantService },
-        { provide: TenantContextStore, useValue: tenantContextStore },
-      ],
-    }).compile();
+  const controller = new TenantController(
+    tenantService as unknown as TenantService,
+    tenantContextStore as unknown as TenantContextStore,
+  );
 
-    controller = module.get(TenantController);
+  beforeEach(() => {
     tenantService.resolve.mockReset();
     tenantContextStore.get.mockReset();
   });
