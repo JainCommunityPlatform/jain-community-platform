@@ -5,10 +5,10 @@ import {
   NestInterceptor,
   UnauthorizedException,
 } from '@nestjs/common';
-import { Request } from 'express';
 import { Observable } from 'rxjs';
 
 import { AuthContextStore } from './auth-context.store';
+import { AuthenticatedRequest } from './authenticated-request';
 import { AuthenticatedUser } from './auth.types';
 
 @Injectable()
@@ -19,7 +19,8 @@ export class AuthenticationContextInterceptor implements NestInterceptor {
     context: ExecutionContext,
     next: CallHandler,
   ): Observable<unknown> {
-    const request = context.switchToHttp().getRequest<Request>();
+    const request =
+      context.switchToHttp().getRequest<AuthenticatedRequest>();
     const user = request.user as AuthenticatedUser | undefined;
 
     if (!user) {
