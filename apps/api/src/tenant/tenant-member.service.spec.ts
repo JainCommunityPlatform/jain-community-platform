@@ -14,7 +14,6 @@ describe('TenantMemberService', () => {
     },
   };
   const tenantContext = { get: jest.fn() };
-  const membershipContext = { get: jest.fn() };
   const audit = { record: jest.fn() };
 
   let service: TenantMemberService;
@@ -26,15 +25,9 @@ describe('TenantMemberService', () => {
       name: 'Test Tenant',
       hostname: 'test.example',
     });
-    membershipContext.get.mockReturnValue({
-      userId: '00000000-0000-0000-0000-000000000002',
-      tenantId: '00000000-0000-0000-0000-000000000001',
-      membership: { role: 'TENANT_ADMIN' },
-    });
     service = new TenantMemberService(
       prisma as never,
       tenantContext as never,
-      membershipContext as never,
       audit as never,
     );
   });
