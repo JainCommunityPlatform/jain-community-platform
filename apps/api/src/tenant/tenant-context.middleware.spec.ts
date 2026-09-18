@@ -1,3 +1,4 @@
+import { TenantContextStore } from './tenant-context.store';
 import { TenantService } from './tenant.service';
 import { TenantContextMiddleware } from './tenant-context.middleware';
 
@@ -16,7 +17,7 @@ describe('TenantContextMiddleware', () => {
     };
     const middleware = new TenantContextMiddleware(
       tenantService as unknown as TenantService,
-      tenantContextStore,
+      tenantContextStore as unknown as TenantContextStore,
     );
     const next = jest.fn();
 
@@ -40,7 +41,7 @@ describe('TenantContextMiddleware', () => {
     };
     const middleware = new TenantContextMiddleware(
       tenantService as unknown as TenantService,
-      tenantContextStore,
+      tenantContextStore as unknown as TenantContextStore,
     );
 
     await middleware.use(
