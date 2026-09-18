@@ -80,6 +80,18 @@ class AppSessionController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> signInWithGoogle() async {
+    _status = AppSessionStatus.initializing;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _auth.signInWithGoogle();
+    } catch (error) {
+      _setError(error);
+    }
+  }
+
   Future<void> signOut() async {
     await _auth.signOut();
   }
