@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../../lib/core/api/api_client.dart';
 import '../../../lib/core/auth/firebase_auth_provider.dart';
 import '../../../lib/core/session/app_session.dart';
 import '../../../lib/core/session/app_session_controller.dart';
@@ -30,9 +31,7 @@ class FakeFirebaseAuthProvider implements FirebaseAuthProvider {
 
 class FakeAuthSessionService extends AuthSessionService {
   FakeAuthSessionService(this.loader)
-      : super(
-          throw UnimplementedError(),
-        );
+      : super(ApiClient(baseUrl: Uri.parse('https://example.test/')));
 
   final Future<AppSession> Function() loader;
 
