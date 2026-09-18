@@ -14,6 +14,10 @@ import { JwtAuthenticationService } from './jwt-authentication.service';
     AuthenticationGuard,
     JwtAuthenticationService,
   ],
-  exports: [AuthContextStore, JwtAuthenticationService, AuthenticationGuard],
+  exports: [
+    AuthContextStore,
+    JwtAuthenticationService,
+    AuthenticationGuard,
+  ],
 })
 export class AuthModule {}
