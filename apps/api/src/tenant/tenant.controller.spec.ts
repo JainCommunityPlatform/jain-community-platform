@@ -2,9 +2,6 @@ import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { AuthorizationGuard } from '../authorization/authorization.guard';
-import { AuthorizationPolicy } from '../authorization/authorization.policy';
-import { MembershipContextStore } from '../authorization/membership-context.store';
-import { UserIdentityService } from '../identity/user-identity.service';
 import { TenantContextStore } from './tenant-context.store';
 import { TenantController } from './tenant.controller';
 import { TenantService } from './tenant.service';
@@ -20,15 +17,6 @@ describe('TenantController', () => {
   const authorizationGuard = {
     canActivate: jest.fn().mockReturnValue(true),
   };
-  const membershipContextStore = {
-    get: jest.fn(),
-  };
-  const authorizationPolicy = {
-    assertPermission: jest.fn(),
-  };
-  const userIdentityService = {
-    resolve: jest.fn(),
-  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -36,21 +24,17 @@ describe('TenantController', () => {
       providers: [
         { provide: TenantService, useValue: tenantService },
         { provide: TenantContextStore, useValue: tenantContextStore },
-        { provide: AuthorizationGuard, useValue: authorizationGuard },
-        { provide: MembershipContextStore, useValue: membershipContextStore },
-        { provide: AuthorizationPolicy, useValue: authorizationPolicy },
-        { provide: UserIdentityService, useValue: userIdentityService },
       ],
-    }).compile();
+    })
+      .overrideGuard(AuthorizationGuard)
+      .useValue(authorizationGuard)
+      .compile();
 
     controller = module.get(TenantController);
     tenantService.resolve.mockReset();
     tenantContextStore.get.mockReset();
     authorizationGuard.canActivate.mockReset();
     authorizationGuard.canActivate.mockReturnValue(true);
-    membershipContextStore.get.mockReset();
-    authorizationPolicy.assertPermission.mockReset();
-    userIdentityService.resolve.mockReset();
   });
 
   it('delegates hostname resolution to the tenant service', async () => {
