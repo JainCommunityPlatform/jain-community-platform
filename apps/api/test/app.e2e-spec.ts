@@ -40,6 +40,30 @@ describe('API endpoints (integration)', () => {
       });
   });
 
+  it('GET /api/tenant/context returns the tenant resolved from the request host', async () => {
+    await request(app.getHttpServer())
+      .get('/api/tenant/context')
+      .set('Host', 'WWW.BADEBABAKHARADI.COM')
+      .expect(200)
+      .expect({
+        id: '00000000-0000-0000-0000-000000000001',
+        name: 'Bade Baba Kharadi',
+        hostname: 'badebabakharadi.com',
+      });
+  });
+
+  it('GET /api/tenant/context returns 404 when the request host has no tenant', async () => {
+    await request(app.getHttpServer())
+      .get('/api/tenant/context')
+      .set('Host', 'example.com')
+      .expect(404)
+      .expect({
+        statusCode: 404,
+        message: 'Tenant context not found',
+        error: 'Not Found',
+      });
+  });
+
   it('GET /api/tenant/resolve returns 404 for an unknown tenant', async () => {
     await request(app.getHttpServer())
       .get('/api/tenant/resolve')

@@ -1,11 +1,15 @@
 import { Controller, Get, NotFoundException, Query } from '@nestjs/common';
 
+import { TenantContextStore } from './tenant-context.store';
 import { TenantService } from './tenant.service';
 import { TenantContext } from './tenant.types';
 
 @Controller('tenant')
 export class TenantController {
-  constructor(private readonly tenantService: TenantService) {}
+  constructor(
+    private readonly tenantService: TenantService,
+    private readonly tenantContextStore: TenantContextStore,
+  ) {}
 
   @Get('resolve')
   async resolve(@Query('hostname') hostname?: string): Promise<TenantContext> {
@@ -13,6 +17,17 @@ export class TenantController {
 
     if (!tenant) {
       throw new NotFoundException('Tenant not found');
+    }
+
+    return tenant;
+  }
+
+  @Get('context')
+  getContext(): TenantContext {
+    const tenant = this.tenantContextStore.get();
+
+    if (!tenant) {
+      throw new NotFoundException('Tenant context not found');
     }
 
     return tenant;
