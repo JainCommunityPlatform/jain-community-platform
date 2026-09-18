@@ -35,6 +35,19 @@ describe('PrismaTenantResolver', () => {
     });
   });
 
+  it('normalizes whitespace around a hostname', async () => {
+    prisma.tenantDomain.findUnique = jest.fn().mockResolvedValue({
+      hostname: 'badebabakharadi.com',
+      tenant: { id: 'tenant-1', name: 'Bade Baba Kharadi' },
+    });
+
+    await expect(resolver.resolve('  badebabakharadi.com  ')).resolves.toEqual({
+      id: 'tenant-1',
+      name: 'Bade Baba Kharadi',
+      hostname: 'badebabakharadi.com',
+    });
+  });
+
   it('returns null for an unknown hostname', async () => {
     prisma.tenantDomain.findUnique = jest.fn().mockResolvedValue(null);
 
