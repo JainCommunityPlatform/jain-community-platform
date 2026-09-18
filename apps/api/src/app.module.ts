@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
-import { configuration } from './config/configuration';
 import { AuthModule } from './auth/auth.module';
+import { configuration } from './config/configuration';
+import { AuthorizationModule } from './authorization/authorization.module';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { TenantModule } from './tenant/tenant.module';
+import { IdentityModule } from './identity/identity.module';
 
 @Module({
   imports: [
@@ -16,8 +18,10 @@ import { TenantModule } from './tenant/tenant.module';
       load: [configuration],
     }),
     AuthModule,
+    AuthorizationModule,
     DatabaseModule,
     HealthModule,
+    IdentityModule,
     TenantModule,
   ],
 })
