@@ -93,6 +93,20 @@ jobs:
     name: Backend - NestJS lint, test and build
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.scope == 'full' || inputs.scope == 'backend' }}
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: jcp
+          POSTGRES_PASSWORD: jcp
+          POSTGRES_DB: jain_community_platform
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U jcp -d jain_community_platform"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -119,6 +133,18 @@ jobs:
         working-directory: apps/api
         run: npm install --no-audit --no-fund
 
+      - name: Generate Prisma client
+        if: steps.backend.outputs.available == 'true'
+        working-directory: apps/api
+        run: npm run prisma:generate --if-present
+
+      - name: Apply database migrations
+        if: steps.backend.outputs.available == 'true'
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://jcp:jcp@localhost:5432/jain_community_platform
+        run: npm run prisma:migrate:deploy --if-present
+
       - name: Lint
         if: steps.backend.outputs.available == 'true'
         working-directory: apps/api
@@ -127,14 +153,20 @@ jobs:
       - name: Unit tests
         if: steps.backend.outputs.available == 'true'
         working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://jcp:jcp@localhost:5432/jain_community_platform
         run: npm test --if-present
 
       - name: Integration tests
         if: steps.backend.outputs.available == 'true'
         working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://jcp:jcp@localhost:5432/jain_community_platform
         run: npm run test:integration --if-present
 
       - name: Build
         if: steps.backend.outputs.available == 'true'
         working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://jcp:jcp@localhost:5432/jain_community_platform
         run: npm run build --if-present
