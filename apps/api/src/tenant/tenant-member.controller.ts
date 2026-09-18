@@ -15,7 +15,6 @@ import { AuthenticationGuard } from '../auth/authentication.guard';
 import { AuthorizationGuard } from '../authorization/authorization.guard';
 import { RequirePermission } from '../authorization/require-permission.decorator';
 import { MembershipContextInterceptor } from '../authorization/membership-context.interceptor';
-import { MembershipRole } from '../authorization/authorization.types';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
 import { TenantMemberService } from './tenant-member.service';
