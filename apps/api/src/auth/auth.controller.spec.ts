@@ -1,5 +1,10 @@
 import { UnauthorizedException } from '@nestjs/common';
 
+jest.mock('jose', () => ({
+  createRemoteJWKSet: jest.fn(),
+  jwtVerify: jest.fn(),
+}));
+
 import { AuthContextStore } from './auth-context.store';
 import { AuthController } from './auth.controller';
 
