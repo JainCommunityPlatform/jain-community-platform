@@ -18,6 +18,11 @@ class FakeFirebaseAuthProvider implements FirebaseAuthProvider {
   Future<String?> getIdToken() async => 'test-token';
 
   @override
+  Future<void> signInWithGoogle() async {
+    controller.add(const FirebaseAuthUser(uid: 'firebase-uid'));
+  }
+
+  @override
   Future<void> signOut() async {
     controller.add(null);
   }
