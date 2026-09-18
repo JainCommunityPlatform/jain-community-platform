@@ -13,7 +13,7 @@ describe('AuthorizationGuard', () => {
     getClass: () => controller,
   } as unknown as ExecutionContext;
 
-  function guard(permission: string | undefined, authorization: any) {
+  function guard(\n    permission: string | undefined,\n    authorization: Parameters<AuthorizationPolicy['assertPermission']>[0] | null,\n  ) {
     const reflector = {
       getAllAndOverride: jest.fn().mockReturnValue(permission),
     } as unknown as Reflector;
