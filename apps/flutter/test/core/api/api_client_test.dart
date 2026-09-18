@@ -42,7 +42,7 @@ void main() {
       client: client,
     );
 
-    expect(
+    await expectLater(
       api.getObject('/api/protected'),
       throwsA(
         isA<ApiException>()
