@@ -1,67 +1,145 @@
+# ============================================================
 # Flutter / Dart
+# ============================================================
+
 .dart_tool/
 .packages
 .pub/
 .pub-cache/
 build/
 coverage/
+
+# Flutter generated files
 .flutter-plugins
 .flutter-plugins-dependencies
 .metadata
 
-# IDE
-.idea/
-*.iml
+# Generated Flutter configuration
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Flutter/ephemeral/
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/app.flx
+ios/Flutter/app.zip
+ios/Flutter/flutter_assets/
 
+# Generated plugin registration
+ios/Runner/GeneratedPluginRegistrant.*
+
+
+# ============================================================
 # Android
+# ============================================================
+android/app/google-services.json
+# Gradle
 android/.gradle/
-android/local.properties
+android/.kotlin/
 android/**/build/
-android/captures/
+
+# Local Android configuration
+android/local.properties
+
+# Native build artifacts
 android/.cxx/
+android/captures/
+
+# Generated APK/AAB outputs
 android/app/debug/
 android/app/profile/
 android/app/release/
+
+# Android signing / credentials
 android/key.properties
-android/app/google-services.json
 *.jks
 *.keystore
 
+
+# ============================================================
 # iOS / macOS
+# ============================================================
+
+# CocoaPods
 **/Pods/
 **/.symlinks/
+
+# Xcode
 **/DerivedData/
 **/xcuserdata/
 *.xcuserstate
-ios/Flutter/ephemeral/
-ios/Flutter/Generated.xcconfig
-ios/Flutter/flutter_export_environment.sh
-ios/Runner/GeneratedPluginRegistrant.*
-macos/Pods/
-macos/.symlinks/
-macos/Flutter/ephemeral/
 
-# Xcode / generated
+# Xcode user-specific files
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.moved-aside
+
+# Xcode generated files
 **/.generated/
+
+# macOS
+.DS_Store
+
+
+# ============================================================
+# Xcode / Flutter generated files
+# ============================================================
+
 Icon?
 ServiceDefinitions.json
 
+
+# ============================================================
+# IDE
+# ============================================================
+
+.idea/
+*.iml
+
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+
+# ============================================================
 # Environment / local configuration
+# ============================================================
+
 .env
 .env.*
 !.env.example
 
-# Firebase local/emulator files
+
+# ============================================================
+# Firebase emulator / local files
+# ============================================================
+
 .firebase/
 firebase-debug.log
 firebase-debug.*.log
 
-# Signing / credentials
+
+# ============================================================
+# Secrets / credentials
+# ============================================================
+
 *.pem
 *.p12
 *.mobileprovision
 *.cer
 
-# OS
-.DS_Store
+
+# ============================================================
+# OS / temporary files
+# ============================================================
+
 Thumbs.db
+*.tmp
+*.temp
+*.swp
+*.swo
+*~

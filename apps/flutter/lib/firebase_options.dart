@@ -69,6 +69,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '817235117988',
     projectId: 'jain-community-platform',
     storageBucket: 'jain-community-platform.firebasestorage.app',
+    androidClientId: '817235117988-21c9cgg36kfhffps4vlhtg6haj0h3kso.apps.googleusercontent.com',
+    iosClientId: '817235117988-8aue6a3grtu1f3t6eoaaj9tjde05pufh.apps.googleusercontent.com',
     iosBundleId: 'com.nipun.jcp',
   );
 }

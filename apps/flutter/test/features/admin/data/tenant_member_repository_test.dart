@@ -4,8 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
-import '../../../../lib/core/api/api_client.dart';
-import '../../../../lib/features/admin/data/tenant_member_repository.dart';
+import 'package:jain_community_platform/core/api/api_client.dart';
+import 'package:jain_community_platform/features/admin/data/tenant_member_repository.dart';
 
 void main() {
   test('lists tenant members from the API', () async {
