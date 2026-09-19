@@ -1,6 +1,8 @@
-# Jain Community Platform Flutter App
+# MyJinalay Flutter App
 
-This is the shared Flutter frontend for the Jain Community Platform.
+This is the shared Flutter application for **MyJinalay** across Web, Android and iOS.
+
+The Flutter package identifier remains `jain_community_platform` as an engineering identifier. The user-facing product name is **MyJinalay**.
 
 ## Targets
 
@@ -8,7 +10,7 @@ This is the shared Flutter frontend for the Jain Community Platform.
 - Android
 - iOS
 
-The project is intentionally small at this stage. Feature modules, shared domain contracts, authentication, tenant-aware navigation and API integration will be introduced incrementally.
+The application is tenant-aware. The same codebase supports the MyJinalay mobile experience, tenant public websites and shared management experiences.
 
 ## Architecture direction
 
