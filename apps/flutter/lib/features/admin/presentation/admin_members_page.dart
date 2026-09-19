@@ -119,7 +119,7 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
         content: Form(key: key, child: Column(mainAxisSize: MainAxisSize.min, children: [
           TextFormField(controller: controller, decoration: const InputDecoration(labelText: 'User ID'),
             validator: (value) => value == null || value.trim().isEmpty ? 'User ID is required' : null),
-          DropdownButtonFormField<String>(initialValue: role, decoration: const InputDecoration(labelText: 'Role'),
+          DropdownButtonFormField<String>(value: role, decoration: const InputDecoration(labelText: 'Role'),
             items: roles.map((r) => DropdownMenuItem(value: r, child: Text(roleLabel(r)))).toList(),
             onChanged: (value) => setDialogState(() => role = value!)),
         ])),
@@ -138,7 +138,7 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(builder: (_, setDialogState) => AlertDialog(
         title: const Text('Change role'),
-        content: DropdownButtonFormField<String>(initialValue: role,
+        content: DropdownButtonFormField<String>(value: role,
           items: roles.map((r) => DropdownMenuItem(value: r, child: Text(roleLabel(r)))).toList(),
           onChanged: (value) => setDialogState(() => role = value!)),
         actions: [
