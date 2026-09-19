@@ -6,6 +6,7 @@ import '../../features/auth/presentation/login_page.dart';
 import '../../features/member/presentation/member_home_page.dart';
 import '../../features/public/presentation/home_page.dart';
 import '../session/app_session.dart';
+import '../session/app_session_controller.dart';
 import '../tenant/tenant_context.dart';
 import 'app_routes.dart';
 
@@ -13,10 +14,13 @@ class AppRouter {
   AppRouter({
     AppSession session = const AppSession(),
     TenantContext? tenant,
+    AppSessionController? sessionController,
   })  : _session = session,
-        _tenant = tenant {
+        _tenant = tenant,
+        _sessionController = sessionController {
     router = GoRouter(
       initialLocation: AppRoutes.home,
+      refreshListenable: sessionController,
       redirect: redirect,
       routes: [
         GoRoute(
@@ -25,7 +29,12 @@ class AppRouter {
         ),
         GoRoute(
           path: AppRoutes.login,
-          builder: (_, __) => const LoginPage(),
+          builder: (_, __) => LoginPage(
+            onSignInWithGoogle: sessionController?.signInWithGoogle,
+            isLoading: sessionController?.status ==
+                AppSessionStatus.initializing,
+            error: sessionController?.error,
+          ),
         ),
         GoRoute(
           path: AppRoutes.member,
@@ -49,14 +58,22 @@ class AppRouter {
 
   final AppSession _session;
   final TenantContext? _tenant;
+  final AppSessionController? _sessionController;
   late final GoRouter router;
+
+  AppSession get currentSession => _sessionController?.session ?? _session;
 
   String? redirect(BuildContext context, GoRouterState state) {
     final location = state.matchedLocation;
+    final session = currentSession;
     final isPrivateRoute = location == AppRoutes.member ||
         location == AppRoutes.admin ||
         location == AppRoutes.finance ||
         location == AppRoutes.library;
+
+    if (location == AppRoutes.login && session.isAuthenticated) {
+      return AppRoutes.member;
+    }
 
     if (!isPrivateRoute) {
       return null;
@@ -66,15 +83,15 @@ class AppRouter {
       return AppRoutes.home;
     }
 
-    if (!_session.isAuthenticated) {
+    if (!session.isAuthenticated) {
       return AppRoutes.login;
     }
 
-    if (location == AppRoutes.admin && !_session.isAdmin) {
+    if (location == AppRoutes.admin && !session.isAdmin) {
       return AppRoutes.member;
     }
 
-    if (location == AppRoutes.finance && !_session.isFinance) {
+    if (location == AppRoutes.finance && !session.isFinance) {
       return AppRoutes.member;
     }
 
