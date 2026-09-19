@@ -4,8 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
-import '../../../lib/core/api/api_client.dart';
-import '../../../lib/core/api/api_exception.dart';
+import 'package:jain_community_platform/core/api/api_client.dart';
+import 'package:jain_community_platform/core/api/api_exception.dart';
 
 void main() {
   test('adds bearer token and decodes JSON', () async {

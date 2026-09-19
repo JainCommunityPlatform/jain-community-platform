@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../../lib/core/api/api_client.dart';
-import '../../../lib/core/auth/firebase_auth_provider.dart';
-import '../../../lib/core/session/app_session.dart';
-import '../../../lib/core/session/app_session_controller.dart';
-import '../../../lib/core/session/auth_session_service.dart';
+import 'package:jain_community_platform/core/api/api_client.dart';
+import 'package:jain_community_platform/core/auth/firebase_auth_provider.dart';
+import 'package:jain_community_platform/core/session/app_session.dart';
+import 'package:jain_community_platform/core/session/app_session_controller.dart';
+import 'package:jain_community_platform/core/session/auth_session_service.dart';
 
 class FakeFirebaseAuthProvider implements FirebaseAuthProvider {
   final controller = StreamController<FirebaseAuthUser?>.broadcast();

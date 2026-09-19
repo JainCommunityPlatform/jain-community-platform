@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../../lib/core/session/app_session.dart';
+import 'package:jain_community_platform/core/session/app_session.dart';
 
 void main() {
   test('maps authenticated auth/me response to an authenticated session', () {

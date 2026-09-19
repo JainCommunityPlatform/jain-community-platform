@@ -1,7 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../../lib/core/firebase/firebase_bootstrap.dart';
+import 'package:jain_community_platform/core/firebase/firebase_bootstrap.dart';
 
 void main() {
   test('passes the generated Firebase options to the initializer', () async {
