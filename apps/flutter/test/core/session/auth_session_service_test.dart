@@ -4,9 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
-import '../../../lib/core/api/api_client.dart';
-import '../../../lib/core/api/api_exception.dart';
-import '../../../lib/core/session/auth_session_service.dart';
+import 'package:jain_community_platform/core/api/api_client.dart';
+import 'package:jain_community_platform/core/api/api_exception.dart';
+import 'package:jain_community_platform/core/session/auth_session_service.dart';
 
 void main() {
   test('loads the current session from auth/me', () async {
