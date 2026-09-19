@@ -54,8 +54,8 @@ class FirebaseAuthService implements FirebaseAuthProvider {
   }
 
   @override
-  Future<String?> getIdToken() {
-    return _auth.currentUser?.getIdToken();
+  Future<String?> getIdToken() async {
+    return await _auth.currentUser?.getIdToken();
   }
 
   @override
