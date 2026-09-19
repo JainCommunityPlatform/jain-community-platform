@@ -1,8 +1,10 @@
-# Jain Community Platform
+# MyJinalay
 
-Public implementation repository for the Jain Community Platform.
+Public implementation repository for the **MyJinalay** multi-tenant platform.
 
-The platform is a multi-tenant Community OS for Jain temples, trusts and community organizations.
+MyJinalay provides shared experiences for Jain temples, trusts and community organizations, including the MyJinalay mobile app, tenant public websites and tenant management experiences.
+
+The GitHub repository intentionally remains `JainCommunityPlatform/jain-community-platform`; this is the implementation repository, not the product name.
 
 ## Repository boundary
 
