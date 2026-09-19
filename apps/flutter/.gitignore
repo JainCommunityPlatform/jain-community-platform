@@ -35,6 +35,7 @@ ios/Runner/GeneratedPluginRegistrant.*
 android/app/google-services.json
 # Gradle
 android/.gradle/
+android/.kotlin/
 android/**/build/
 
 # Local Android configuration
