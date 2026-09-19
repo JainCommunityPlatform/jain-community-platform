@@ -53,7 +53,7 @@ class JainCommunityPlatformApp extends StatelessWidget {
     return TenantScope(
       tenant: tenant,
       child: MaterialApp.router(
-        title: tenant?.name ?? 'Jain Community Platform',
+        title: tenant?.name ?? 'MyJinalay',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light(),
         routerConfig: router.router,
