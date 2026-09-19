@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../../../lib/core/api/api_client.dart';
-import '../../../../lib/features/admin/data/tenant_member.dart';
-import '../../../../lib/features/admin/data/tenant_member_repository.dart';
-import '../../../../lib/features/admin/presentation/admin_members_page.dart';
+import 'package:jain_community_platform/core/api/api_client.dart';
+import 'package:jain_community_platform/features/admin/data/tenant_member.dart';
+import 'package:jain_community_platform/features/admin/data/tenant_member_repository.dart';
+import 'package:jain_community_platform/features/admin/presentation/admin_members_page.dart';
 
 class FakeRepository extends TenantMemberRepository {
   FakeRepository(this.current) : super(ApiClient(baseUrl: Uri.parse('https://example.test/')));
