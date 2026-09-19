@@ -1,7 +1,7 @@
 name: jain_community_platform
 description: Jain Community Platform shared Flutter application for Web, Android and iOS.
 publish_to: "none"
-version: 0.1.0+1
+version: 1.0.0+1
 
 environment:
   sdk: ">=3.8.0 <4.0.0"
