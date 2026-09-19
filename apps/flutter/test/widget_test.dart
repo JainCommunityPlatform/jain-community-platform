@@ -87,7 +87,7 @@ void main() {
     router.router.go('/login');
     await tester.pumpAndSettle();
 
-    expect(find.text('Member home'), findsOneWidget);
+    expect(find.text('Member experience'), findsOneWidget);
   });
 
   testWidgets('login page invokes the Google sign-in callback',
