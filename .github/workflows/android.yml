@@ -1,0 +1,152 @@
+name: Android Pipeline
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Android - Analyze, Test and Release AAB
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ vars.JAVA_VERSION }}
+          cache: gradle
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ vars.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Verify toolchain
+        working-directory: apps/flutter
+        run: |
+          flutter --version
+          java -version
+          echo "Application ID: ${{ vars.ANDROID_APPLICATION_ID }}"
+          echo "Firebase project: ${{ vars.FIREBASE_PROJECT_ID }}"
+
+      - name: Get Flutter dependencies
+        working-directory: apps/flutter
+        run: flutter pub get
+
+      - name: Restore Firebase configuration
+        working-directory: apps/flutter
+        env:
+          FIREBASE_GOOGLE_SERVICES_JSON: ${{ vars.FIREBASE_GOOGLE_SERVICES_JSON }}
+        run: |
+          set -euo pipefail
+          test -n "$FIREBASE_GOOGLE_SERVICES_JSON"
+          printf '%s' "$FIREBASE_GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          test -s android/app/google-services.json
+
+      - name: Validate Firebase configuration
+        working-directory: apps/flutter
+        env:
+          EXPECTED_APPLICATION_ID: ${{ vars.ANDROID_APPLICATION_ID }}
+          EXPECTED_FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+
+          path = "android/app/google-services.json"
+          with open(path, encoding="utf-8") as f:
+              data = json.load(f)
+
+          expected_project = os.environ["EXPECTED_FIREBASE_PROJECT_ID"]
+          actual_project = data.get("project_info", {}).get("project_id")
+          if actual_project != expected_project:
+              raise SystemExit(
+                  f"Firebase project mismatch: expected {expected_project!r}, got {actual_project!r}"
+              )
+
+          expected_app = os.environ["EXPECTED_APPLICATION_ID"]
+          clients = data.get("client", [])
+          package_names = {
+              client.get("client_info", {}).get("android_client_info", {}).get("package_name")
+              for client in clients
+          }
+          if expected_app not in package_names:
+              raise SystemExit(
+                  f"Android package {expected_app!r} is not present in google-services.json"
+              )
+
+          print("Firebase project and Android application ID validated.")
+          PY
+
+      - name: Restore Android signing configuration
+        working-directory: apps/flutter
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/release-keystore.jks
+
+          cat > android/key.properties <<EOF
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyPassword=$ANDROID_KEY_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          storeFile=release-keystore.jks
+          EOF
+
+          test -s android/release-keystore.jks
+          test -s android/key.properties
+
+      - name: Analyze
+        working-directory: apps/flutter
+        run: flutter analyze
+
+      - name: Run tests
+        working-directory: apps/flutter
+        run: flutter test
+
+      - name: Build signed Android App Bundle
+        working-directory: apps/flutter
+        run: flutter build appbundle --release
+
+      - name: Verify signed AAB
+        working-directory: apps/flutter
+        run: |
+          set -euo pipefail
+          AAB="build/app/outputs/bundle/release/app-release.aab"
+          test -s "$AAB"
+          jarsigner -verify -verbose -certs "$AAB" >/dev/null
+          echo "Signed AAB verified: $AAB"
+
+      - name: Upload Android App Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: myjinalay-release-aab
+          path: apps/flutter/build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
