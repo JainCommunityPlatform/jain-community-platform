@@ -54,7 +54,7 @@ jobs:
       - name: Restore Firebase configuration
         working-directory: apps/flutter
         env:
-          FIREBASE_GOOGLE_SERVICES_JSON: ${{ secrets.FIREBASE_GOOGLE_SERVICES_JSON }}
+          FIREBASE_GOOGLE_SERVICES_JSON: ${{ vars.FIREBASE_GOOGLE_SERVICES_JSON }}
         run: |
           set -euo pipefail
           test -n "$FIREBASE_GOOGLE_SERVICES_JSON"
