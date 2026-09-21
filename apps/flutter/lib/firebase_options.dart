@@ -57,8 +57,8 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyC0FYgKD6mhXurNLd-a_VMXwICM73yrzUo',
-    appId: '1:817235117988:android:f65f0baa9fc7de088ce331',
+    apiKey: 'AIzaSyBcRZWqh5vnz2kfMehXxEJeOTsAkVZ00b4',
+    appId: '1:817235117988:android:d9f82206cb5680148ce331',
     messagingSenderId: '817235117988',
     projectId: 'jain-community-platform',
     storageBucket: 'jain-community-platform.firebasestorage.app',
@@ -69,7 +69,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '817235117988',
     projectId: 'jain-community-platform',
     storageBucket: 'jain-community-platform.firebasestorage.app',
-    androidClientId: '817235117988-21c9cgg36kfhffps4vlhtg6haj0h3kso.apps.googleusercontent.com',
+    androidClientId: '817235117988-9tkgfqq3vn8c16rhfo0h30o20a8438cp.apps.googleusercontent.com',
     iosClientId: '817235117988-8aue6a3grtu1f3t6eoaaj9tjde05pufh.apps.googleusercontent.com',
     iosBundleId: 'com.nipun.jcp',
   );
