@@ -138,7 +138,7 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(builder: (_, setDialogState) => AlertDialog(
         title: const Text('Change role'),
-        content: DropdownButtonFormField<String>(value: role,
+        content: DropdownButtonFormField<String>(initialValue: role,
           items: roles.map((r) => DropdownMenuItem(value: r, child: Text(roleLabel(r)))).toList(),
           onChanged: (value) => setDialogState(() => role = value!)),
         actions: [
