@@ -44,7 +44,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ vars.FLUTTER_VERSION }}
+          flutter-version: '3.47.0'
           channel: stable
           cache: true
 
@@ -141,6 +141,14 @@ jobs:
         if: ${{ env.RELEASE_VALIDATION == 'full' }}
         working-directory: apps/flutter
         run: flutter test
+
+      - name: Verify Android Play target configuration
+        working-directory: apps/flutter
+        run: |
+          set -euo pipefail
+          grep -q 'compileSdk = 36' android/app/build.gradle.kts
+          grep -q 'targetSdk = 36' android/app/build.gradle.kts
+          echo "Android compileSdk/targetSdk explicitly set to API 36."
 
       - name: Verify Android release signing configuration
         working-directory: apps/flutter
