@@ -131,7 +131,7 @@ jobs:
           storePassword=$ANDROID_KEYSTORE_PASSWORD
           keyPassword=$ANDROID_KEY_PASSWORD
           keyAlias=$ANDROID_KEY_ALIAS
-          storeFile=release-keystore.jks
+          storeFile=../release-keystore.jks
           EOF
 
           test -s android/release-keystore.jks
