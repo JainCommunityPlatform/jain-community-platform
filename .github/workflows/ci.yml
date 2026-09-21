@@ -159,7 +159,7 @@ jobs:
 
   android:
     name: Android - Analyze, Test and Build AAB
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.scope == 'full' || inputs.scope == 'android' }}
+    if: ${{ github.event_name != 'push' && (github.event_name != 'workflow_dispatch' || inputs.scope == 'full' || inputs.scope == 'android') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
