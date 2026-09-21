@@ -1,12 +1,7 @@
 name: Android Pipeline
 
 on:
-  pull_request:
-    branches:
-      - master
   push:
-    branches:
-      - master
     tags:
       - 'v*'
   workflow_dispatch:
