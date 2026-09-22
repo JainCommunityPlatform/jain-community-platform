@@ -1,9 +1,6 @@
 name: Android Pipeline
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_run:
     workflows:
       - CI
@@ -25,29 +22,65 @@ permissions:
   contents: read
 
 concurrency:
-  group: android-${{ github.workflow }}-${{ github.event.workflow_run.head_sha || github.ref }}
-  cancel-in-progress: ${{ github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/') }}
+  group: android-${{github.workflow}}-${{github.event.workflow_run.head_sha || github.ref}}
+  cancel-in-progress: ${{github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')}}
 
 env:
-  RELEASE_VALIDATION: ${{ github.event.inputs.validation || 'full' }}
+  RELEASE_VALIDATION: ${{github.event.inputs.validation || 'full'}}
 
 jobs:
-  android:
-    name: Android - Analyze, Test and Build AAB
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+  validate:
+    name: Android - Validate Flutter
+    if: ${{github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'}}
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+          ref: ${{github.event.workflow_run.head_sha || github.ref}}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.0'
+          channel: stable
+          cache: true
+
+      - name: Get Flutter dependencies
+        working-directory: apps/flutter
+        run: flutter pub get
+
+      - name: Analyze
+        if: ${{env.RELEASE_VALIDATION == 'full'}}
+        working-directory: apps/flutter
+        run: flutter analyze
+
+      - name: Run tests
+        if: ${{env.RELEASE_VALIDATION == 'full'}}
+        working-directory: apps/flutter
+        run: flutter test
+
+  build:
+    name: Android - Build and Verify AAB
+    needs: validate
+    if: ${{github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'}}
+    runs-on: ubuntu-latest
+    outputs:
+      release_version: ${{steps.version.outputs.release_version}}
+      play_version_code: ${{steps.version.outputs.play_version_code}}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{github.event.workflow_run.head_sha || github.ref}}
 
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: ${{ vars.JAVA_VERSION }}
+          java-version: ${{vars.JAVA_VERSION}}
           cache: gradle
 
       - name: Set up Flutter
@@ -62,8 +95,8 @@ jobs:
         run: |
           flutter --version
           java -version
-          echo "Application ID: ${{ vars.ANDROID_APPLICATION_ID }}"
-          echo "Firebase project: ${{ vars.FIREBASE_PROJECT_ID }}"
+          echo "Application ID: ${{vars.ANDROID_APPLICATION_ID}}"
+          echo "Firebase project: ${{vars.FIREBASE_PROJECT_ID}}"
 
       - name: Get Flutter dependencies
         working-directory: apps/flutter
@@ -72,7 +105,7 @@ jobs:
       - name: Restore Firebase configuration
         working-directory: apps/flutter
         env:
-          FIREBASE_GOOGLE_SERVICES_JSON: ${{ vars.FIREBASE_GOOGLE_SERVICES_JSON }}
+          FIREBASE_GOOGLE_SERVICES_JSON: ${{vars.FIREBASE_GOOGLE_SERVICES_JSON}}
         run: |
           set -euo pipefail
           test -n "$FIREBASE_GOOGLE_SERVICES_JSON"
@@ -82,8 +115,8 @@ jobs:
       - name: Validate Firebase configuration
         working-directory: apps/flutter
         env:
-          EXPECTED_APPLICATION_ID: ${{ vars.ANDROID_APPLICATION_ID }}
-          EXPECTED_FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+          EXPECTED_APPLICATION_ID: ${{vars.ANDROID_APPLICATION_ID}}
+          EXPECTED_FIREBASE_PROJECT_ID: ${{vars.FIREBASE_PROJECT_ID}}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -118,10 +151,10 @@ jobs:
       - name: Restore Android signing configuration
         working-directory: apps/flutter
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_BASE64: ${{secrets.ANDROID_KEYSTORE_BASE64}}
+          ANDROID_KEYSTORE_PASSWORD: ${{secrets.ANDROID_KEYSTORE_PASSWORD}}
+          ANDROID_KEY_ALIAS: ${{secrets.ANDROID_KEY_ALIAS}}
+          ANDROID_KEY_PASSWORD: ${{secrets.ANDROID_KEY_PASSWORD}}
         run: |
           set -euo pipefail
           test -n "$ANDROID_KEYSTORE_BASE64"
@@ -141,16 +174,6 @@ jobs:
           test -s android/release-keystore.jks
           test -s android/key.properties
 
-      - name: Analyze
-        if: ${{ env.RELEASE_VALIDATION == 'full' }}
-        working-directory: apps/flutter
-        run: flutter analyze
-
-      - name: Run tests
-        if: ${{ env.RELEASE_VALIDATION == 'full' }}
-        working-directory: apps/flutter
-        run: flutter test
-
       - name: Verify Android Play target configuration
         working-directory: apps/flutter
         run: |
@@ -168,7 +191,7 @@ jobs:
           grep -q 'signingConfigs.getByName("release")' android/app/build.gradle.kts
 
       - name: Generate release version
-        if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_run' }}
+        id: version
         working-directory: apps/flutter
         run: |
           set -euo pipefail
@@ -180,27 +203,18 @@ jobs:
 
           MAJOR_VERSION=$(printf '%s' "$BASE_VERSION" | cut -d. -f1)
           MINOR_VERSION=$(printf '%s' "$BASE_VERSION" | cut -d. -f2)
-          RELEASE_VERSION="${BASE_VERSION}.${GITHUB_RUN_NUMBER}.$(printf '%02d' "${GITHUB_RUN_ATTEMPT}")"
+          RELEASE_VERSION="$BASE_VERSION.$GITHUB_RUN_NUMBER.$(printf '%02d' "$GITHUB_RUN_ATTEMPT")"
           PLAY_VERSION_CODE=$((10#$MAJOR_VERSION * 10000000 + 10#$MINOR_VERSION * 1000000 + GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))
 
-          echo "RELEASE_VERSION=$RELEASE_VERSION" >> "$GITHUB_ENV"
-          echo "PLAY_VERSION_CODE=$PLAY_VERSION_CODE" >> "$GITHUB_ENV"
+          echo "release_version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "play_version_code=$PLAY_VERSION_CODE" >> "$GITHUB_OUTPUT"
           echo "Publishing versionName: $RELEASE_VERSION"
           echo "Publishing versionCode: $PLAY_VERSION_CODE"
 
-      - name: Build signed Android App Bundle
-        if: ${{ github.event_name != 'workflow_dispatch' && !startsWith(github.ref, 'refs/tags/v') && github.event_name != 'workflow_run' }}
-        working-directory: apps/flutter
-        run: flutter build appbundle --release
-
       - name: Build signed release App Bundle
-        if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_run' }}
         working-directory: apps/flutter
         run: |
-          flutter build appbundle --release \
-            --build-name="$RELEASE_VERSION" \
-            --build-number="$PLAY_VERSION_CODE" \
-            --dart-define=JCP_API_BASE_URL="${{ vars.JCP_API_BASE_URL }}"
+          flutter build appbundle --release             --build-name="${{steps.version.outputs.release_version}}"             --build-number="${{steps.version.outputs.play_version_code}}"             --dart-define=JCP_API_BASE_URL="${{vars.JCP_API_BASE_URL}}"
 
       - name: Verify signed AAB
         working-directory: apps/flutter
@@ -211,37 +225,47 @@ jobs:
           jarsigner -verify -verbose -certs "$AAB" >/dev/null
           echo "Signed AAB verified: $AAB"
 
-      - name: Upload Android App Bundle
+      - name: Upload Android release artifact
         uses: actions/upload-artifact@v4
         with:
-          name: myjinalay-release-aab-${{ github.run_number }}
+          name: myjinalay-release-aab
           path: apps/flutter/build/app/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 14
 
+  publish:
+    name: Android - Publish to Google Play
+    needs: build
+    if: ${(github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_run') && vars.GOOGLE_PLAY_PUBLISH == 'true'}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Android release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: myjinalay-release-aab
+          path: release
+
       - name: Validate Google Play publishing configuration
-        if: ${{ (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_run') && vars.GOOGLE_PLAY_PUBLISH == 'true' }}
         env:
-          PLAY_STORE_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
+          PLAY_STORE_SERVICE_ACCOUNT_JSON: ${{secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON}}
         run: |
           set -euo pipefail
           test -n "$PLAY_STORE_SERVICE_ACCOUNT_JSON"
 
       - name: Validate Google Play track configuration
-        if: ${{ (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_run') && vars.GOOGLE_PLAY_PUBLISH == 'true' }}
         run: |
           set -euo pipefail
           echo "Google Play tracks: internal + closed testing (alpha)"
           test "internal,alpha" = "internal,alpha"
 
       - name: Publish to Google Play internal and closed testing
-        if: ${{ (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_run') && vars.GOOGLE_PLAY_PUBLISH == 'true' }}
         uses: r0adkll/upload-google-play@v1
         with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
-          packageName: ${{ vars.ANDROID_APPLICATION_ID }}
-          releaseFiles: apps/flutter/build/app/outputs/bundle/release/app-release.aab
+          serviceAccountJsonPlainText: ${{secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON}}
+          packageName: ${{vars.ANDROID_APPLICATION_ID}}
+          releaseFiles: release/app-release.aab
           tracks: internal,alpha
           status: completed
           changesNotSentForReview: false
-          releaseName: CI build ${{ env.PLAY_VERSION_CODE }}
+          releaseName: CI build ${{needs.build.outputs.play_version_code}}
