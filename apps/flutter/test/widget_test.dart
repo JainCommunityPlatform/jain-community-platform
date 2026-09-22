@@ -14,7 +14,8 @@ const badeBabaKharadiTenant = TenantContext(
 );
 
 void main() {
-  testWidgets('renders the public home route', (tester) async {
+  testWidgets('renders the public home route with a sign-in action',
+      (tester) async {
     final router = AppRouter(tenant: badeBabaKharadiTenant);
     await tester.pumpWidget(
       JainCommunityPlatformApp(
@@ -28,6 +29,23 @@ void main() {
       find.text('Community, temples, events and giving in one platform'),
       findsOneWidget,
     );
+    expect(find.text('Sign in'), findsOneWidget);
+  });
+
+  testWidgets('home sign-in action navigates to login', (tester) async {
+    final router = AppRouter(tenant: badeBabaKharadiTenant);
+    await tester.pumpWidget(
+      JainCommunityPlatformApp(
+        router: router,
+        tenant: badeBabaKharadiTenant,
+      ),
+    );
+
+    await tester.tap(find.text('Sign in'));
+    await tester.pumpAndSettle();
+
+    expect(router.router.state.uri.path, '/login');
+    expect(find.text('Continue with Google'), findsOneWidget);
   });
 
   testWidgets('redirects unauthenticated users from admin to login',
