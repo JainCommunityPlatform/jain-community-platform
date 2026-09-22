@@ -266,6 +266,6 @@ jobs:
           packageName: ${{vars.ANDROID_APPLICATION_ID}}
           releaseFiles: release/app-release.aab
           tracks: internal,alpha
-          status: completed
+          status: draft
           changesNotSentForReview: false
           releaseName: CI build ${{needs.build.outputs.play_version_code}}
