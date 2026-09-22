@@ -42,6 +42,7 @@ void main() {
       ),
     );
 
+    await tester.ensureVisible(find.text('Sign in to MyJinalay'));
     await tester.tap(find.text('Sign in to MyJinalay'));
     await tester.pumpAndSettle();
 
@@ -110,7 +111,7 @@ void main() {
 
     expect(find.text('Namaste 🙏'), findsOneWidget);
     expect(find.text('Nearby Jinalays'), findsOneWidget);
-    expect(find.text('Temple Renovation Fund'), findsOneWidget);
+    expect(find.text('Faith Brings Us Together'), findsOneWidget);
   });
 
   testWidgets('member experience exposes the demo navigation tabs',
@@ -163,6 +164,7 @@ void main() {
       ),
     );
 
+    await tester.ensureVisible(find.text('Continue with Google'));
     await tester.tap(find.text('Continue with Google'));
     await tester.pump();
 
