@@ -146,7 +146,7 @@ void main() {
 
     await tester.tap(find.text('Profile'));
     await tester.pumpAndSettle();
-    expect(find.text('Arpit Jain'), findsOneWidget);
+    expect(find.text('MyJinalay Member'), findsOneWidget);
   });
 
   testWidgets('login page invokes the Google sign-in callback',
