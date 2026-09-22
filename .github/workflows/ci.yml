@@ -1,5 +1,7 @@
 name: CI
 
+# Required merge-gate status is published for both the PR head and GitHub's test merge commit.
+
 on:
   pull_request:
     branches:
