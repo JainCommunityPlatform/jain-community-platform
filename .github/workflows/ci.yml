@@ -25,6 +25,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 concurrency:
   group: ci-${{ github.head_ref || github.ref }}
@@ -301,3 +302,28 @@ jobs:
             exit 1
           fi
           echo "All applicable validation jobs passed."
+
+      - name: Publish merge-gate commit status
+        if: ${{ success() && github.event_name == 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          payload=$(python3 - <<'PY'
+          import json
+          print(json.dumps({
+              "state": "success",
+              "context": "Merge gate",
+              "description": "All required CI validation jobs passed."
+          }))
+          PY
+          )
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --url "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${TARGET_SHA}" \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            --header "Content-Type: application/json" \
+            --data "${payload}"
