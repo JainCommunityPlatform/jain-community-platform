@@ -175,9 +175,9 @@ class _ProfileTab extends StatelessWidget {
           Card(
             child: ListTile(
               contentPadding: const EdgeInsets.all(16),
-              leading: const CircleAvatar(radius: 28, child: Text('AJ')),
-              title: const Text('Arpit Jain', style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: const Text('+91 98765 43210'),
+              leading: const CircleAvatar(radius: 28, child: Text('MJ')),
+              title: const Text('MyJinalay Member', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Community member'),
               trailing: const Icon(Icons.chevron_right),
             ),
           ),
