@@ -335,6 +335,7 @@ jobs:
           TARGET_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
+          payload='{"state":"success","context":"Merge gate","description":"All required CI validation jobs passed."}'
           curl --fail-with-body --silent --show-error \
             --request POST \
             --url "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${TARGET_SHA}" \
