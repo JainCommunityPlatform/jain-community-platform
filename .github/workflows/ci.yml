@@ -327,3 +327,19 @@ jobs:
             --header "X-GitHub-Api-Version: 2022-11-28" \
             --header "Content-Type: application/json" \
             --data "${payload}"
+
+      - name: Publish merge-gate status on the test merge commit
+        if: ${{ success() && github.event_name == 'pull_request' && github.sha != github.event.pull_request.head.sha }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --url "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${TARGET_SHA}" \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            --header "Content-Type: application/json" \
+            --data "${payload}"
