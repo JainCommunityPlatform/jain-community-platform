@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../core/routing/app_routes.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -10,22 +13,28 @@ class HomePage extends StatelessWidget {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
-          child: const Padding(
-            padding: EdgeInsets.all(24),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.temple_hindu, size: 72),
-                SizedBox(height: 24),
-                Text(
+                const Icon(Icons.temple_hindu, size: 72),
+                const SizedBox(height: 24),
+                const Text(
                   'Community, temples, events and giving in one platform',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                 ),
-                SizedBox(height: 12),
-                Text(
+                const SizedBox(height: 12),
+                const Text(
                   'Public content will be tenant-aware and backend-driven as the platform modules are implemented.',
                   textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: () => context.go(AppRoutes.login),
+                  icon: const Icon(Icons.login),
+                  label: const Text('Sign in'),
                 ),
               ],
             ),
