@@ -28,6 +28,7 @@ on:
 permissions:
   contents: read
   statuses: write
+  checks: write
 
 concurrency:
   group: ci-${{ github.head_ref || github.ref }}
