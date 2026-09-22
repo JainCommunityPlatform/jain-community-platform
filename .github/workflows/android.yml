@@ -1,11 +1,6 @@
 name: Android Pipeline
 
 on:
-  push:
-    branches:
-      - master
-    tags:
-      - 'v*'
   workflow_run:
     workflows:
       - CI
