@@ -32,11 +32,11 @@ jobs:
   validate:
     name: Android - Validate Flutter
     if: ${{github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'}}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{github.event.workflow_run.head_sha || github.ref}}
 
@@ -65,19 +65,19 @@ jobs:
     name: Android - Build and Verify AAB
     needs: validate
     if: ${{github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'}}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       release_version: ${{steps.version.outputs.release_version}}
       play_version_code: ${{steps.version.outputs.play_version_code}}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{github.event.workflow_run.head_sha || github.ref}}
 
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: ${{vars.JAVA_VERSION}}
@@ -226,7 +226,7 @@ jobs:
           echo "Signed AAB verified: $AAB"
 
       - name: Upload Android release artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: myjinalay-release-aab
           path: apps/flutter/build/app/outputs/bundle/release/app-release.aab
@@ -237,11 +237,11 @@ jobs:
     name: Android - Publish to Google Play
     needs: build
     if: ${{ (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_run') && vars.GOOGLE_PLAY_PUBLISH == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Download Android release artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: myjinalay-release-aab
           path: release
