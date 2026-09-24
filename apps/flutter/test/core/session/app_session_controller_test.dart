@@ -128,6 +128,35 @@ void main() {
     await auth.dispose();
   });
 
+  test('fails the session handshake instead of waiting forever', () async {
+    final auth = FakeFirebaseAuthProvider();
+    final service = FakeAuthSessionService(
+      () async {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        return const AppSession(
+          isAuthenticated: true,
+          userId: 'user-123',
+        );
+      },
+    );
+    final controller = AppSessionController(
+      auth: auth,
+      sessionService: service,
+      sessionLoadTimeout: const Duration(milliseconds: 10),
+    );
+
+    await controller.initialize();
+    auth.emit(const FirebaseAuthUser(uid: 'firebase-uid'));
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+
+    expect(controller.status, AppSessionStatus.error);
+    expect(controller.session, AppSession.signedOut);
+    expect(controller.error, isA<TimeoutException>());
+
+    controller.dispose();
+    await auth.dispose();
+  });
+
   test('starts Google sign-in through the Firebase provider', () async {
     final auth = FakeFirebaseAuthProvider();
     final service = FakeAuthSessionService(
