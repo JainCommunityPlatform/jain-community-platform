@@ -112,7 +112,7 @@ jobs:
           printf '%s' "$FIREBASE_GOOGLE_SERVICES_JSON" > android/app/google-services.json
           test -s android/app/google-services.json
 
-      - name: Validate Firebase configuration
+      - name: Validate Firebase and OAuth configuration
         working-directory: apps/flutter
         env:
           EXPECTED_APPLICATION_ID: ${{vars.ANDROID_APPLICATION_ID}}
@@ -145,8 +145,37 @@ jobs:
                   f"Android package {expected_app!r} is not present in google-services.json"
               )
 
-          print("Firebase project and Android application ID validated.")
+          web_client_ids = []
+          for client in clients:
+              for oauth_client in client.get("oauth_client", []):
+                  if oauth_client.get("client_type") == 3 and oauth_client.get("client_id"):
+                      web_client_ids.append(oauth_client["client_id"])
+
+          if not web_client_ids:
+              raise SystemExit(
+                  "No web OAuth client (client_type=3) found in google-services.json. "
+                  "Google Sign-In requires a server client ID for the Android build."
+              )
+
+          print("Firebase project, Android application ID and web OAuth client validated.")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
+              env.write(f"GOOGLE_SERVER_CLIENT_ID={web_client_ids[0]}\n")
           PY
+
+      - name: Validate release API configuration
+        env:
+          JCP_API_BASE_URL: ${{vars.JCP_API_BASE_URL}}
+        run: |
+          set -euo pipefail
+          test -n "$JCP_API_BASE_URL"
+          case "$JCP_API_BASE_URL" in
+            https://*) ;;
+            *)
+              echo "JCP_API_BASE_URL must use HTTPS for release builds."
+              exit 1
+              ;;
+          esac
+          echo "Release API endpoint is configured."
 
       - name: Verify Android release network permission
         working-directory: apps/flutter
@@ -221,7 +250,7 @@ jobs:
       - name: Build signed release App Bundle
         working-directory: apps/flutter
         run: |
-          flutter build appbundle --release             --build-name="${{steps.version.outputs.release_version}}"             --build-number="${{steps.version.outputs.play_version_code}}"             --dart-define=JCP_API_BASE_URL="${{vars.JCP_API_BASE_URL}}"
+          flutter build appbundle --release             --build-name="${{steps.version.outputs.release_version}}"             --build-number="${{steps.version.outputs.play_version_code}}"             --dart-define=JCP_API_BASE_URL="${{vars.JCP_API_BASE_URL}}"             --dart-define=GOOGLE_SERVER_CLIENT_ID="$GOOGLE_SERVER_CLIENT_ID"
 
       - name: Verify signed AAB
         working-directory: apps/flutter
