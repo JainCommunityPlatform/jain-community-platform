@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -28,15 +30,20 @@ class FirebaseAuthService implements FirebaseAuthProvider {
   FirebaseAuthService({
     FirebaseAuth? auth,
     GoogleSignIn? googleSignIn,
+    this.signInTimeout = const Duration(seconds: 30),
   })  : _auth = auth ?? FirebaseAuth.instance,
         _googleSignIn = googleSignIn ?? GoogleSignIn.instance;
 
   final FirebaseAuth _auth;
   final GoogleSignIn _googleSignIn;
+  final Duration signInTimeout;
 
   Future<void> initialize() async {
     if (!kIsWeb) {
-      await _googleSignIn.initialize();
+      const serverClientId = String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID');
+      await _googleSignIn.initialize(
+        serverClientId: serverClientId.isEmpty ? null : serverClientId,
+      );
     }
   }
 
@@ -60,18 +67,34 @@ class FirebaseAuthService implements FirebaseAuthProvider {
 
   @override
   Future<void> signInWithGoogle() async {
-    if (kIsWeb) {
-      await _auth.signInWithPopup(GoogleAuthProvider());
-      return;
+    try {
+      if (kIsWeb) {
+        await _auth
+            .signInWithPopup(GoogleAuthProvider())
+            .timeout(signInTimeout);
+        return;
+      }
+
+      final googleUser =
+          await _googleSignIn.authenticate().timeout(signInTimeout);
+      final googleAuth = googleUser.authentication;
+      final idToken = googleAuth.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw const StateError(
+          'Google Sign-In returned no ID token. Check the Android OAuth '
+          'client configuration and signing certificate.',
+        );
+      }
+
+      final credential = GoogleAuthProvider.credential(idToken: idToken);
+      await _auth
+          .signInWithCredential(credential)
+          .timeout(signInTimeout);
+    } on TimeoutException {
+      rethrow;
+    } on GoogleSignInException catch (error) {
+      throw StateError('Google Sign-In failed: ${error.code}');
     }
-
-    final googleUser = await _googleSignIn.authenticate();
-    final googleAuth = googleUser.authentication;
-    final credential = GoogleAuthProvider.credential(
-      idToken: googleAuth.idToken,
-    );
-
-    await _auth.signInWithCredential(credential);
   }
 
   @override
