@@ -80,7 +80,7 @@ class FirebaseAuthService implements FirebaseAuthProvider {
       final googleAuth = googleUser.authentication;
       final idToken = googleAuth.idToken;
       if (idToken == null || idToken.isEmpty) {
-        throw const StateError(
+        throw StateError(
           'Google Sign-In returned no ID token. Check the Android OAuth '
           'client configuration and signing certificate.',
         );
