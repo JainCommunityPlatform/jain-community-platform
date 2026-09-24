@@ -148,6 +148,13 @@ jobs:
           print("Firebase project and Android application ID validated.")
           PY
 
+      - name: Verify Android release network permission
+        working-directory: apps/flutter
+        run: |
+          set -euo pipefail
+          grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
+          echo "Release manifest declares Android INTERNET permission."
+
       - name: Restore Android signing configuration
         working-directory: apps/flutter
         env:
