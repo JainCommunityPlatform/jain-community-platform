@@ -220,7 +220,19 @@ jobs:
           }
           if expected_app not in package_names:
               raise SystemExit(f"Android package {expected_app!r} is not present in google-services.json")
-          print("Firebase project and Android application ID validated.")
+
+          web_client_ids = [
+              oauth_client["client_id"]
+              for client in clients
+              for oauth_client in client.get("oauth_client", [])
+              if oauth_client.get("client_type") == 3 and oauth_client.get("client_id")
+          ]
+          if not web_client_ids:
+              raise SystemExit(
+                  "No web OAuth client (client_type=3) found in google-services.json"
+              )
+
+          print("Firebase project, Android application ID and web OAuth client validated.")
           PY
       - name: Restore Android signing configuration
         working-directory: apps/flutter
