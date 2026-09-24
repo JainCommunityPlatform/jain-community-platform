@@ -17,11 +17,13 @@ class AppSessionController extends ChangeNotifier {
   AppSessionController({
     required FirebaseAuthProvider auth,
     required AuthSessionService sessionService,
+    this.sessionLoadTimeout = const Duration(seconds: 20),
   })  : _auth = auth,
         _sessionService = sessionService;
 
   final FirebaseAuthProvider _auth;
   final AuthSessionService _sessionService;
+  final Duration sessionLoadTimeout;
 
   AppSessionStatus _status = AppSessionStatus.initializing;
   AppSession _session = AppSession.signedOut;
@@ -63,7 +65,9 @@ class AppSessionController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _session = await _sessionService.loadCurrentSession();
+      _session = await _sessionService
+          .loadCurrentSession()
+          .timeout(sessionLoadTimeout);
       if (!_session.isAuthenticated) {
         await _auth.signOut();
         _session = AppSession.signedOut;
