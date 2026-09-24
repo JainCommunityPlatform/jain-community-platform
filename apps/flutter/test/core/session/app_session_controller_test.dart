@@ -9,6 +9,9 @@ import 'package:jain_community_platform/core/session/app_session_controller.dart
 import 'package:jain_community_platform/core/session/auth_session_service.dart';
 
 class FakeFirebaseAuthProvider implements FirebaseAuthProvider {
+  FakeFirebaseAuthProvider({this.signInDelay = Duration.zero});
+
+  final Duration signInDelay;
   final controller = StreamController<FirebaseAuthUser?>.broadcast();
 
   @override
@@ -19,6 +22,9 @@ class FakeFirebaseAuthProvider implements FirebaseAuthProvider {
 
   @override
   Future<void> signInWithGoogle() async {
+    if (signInDelay > Duration.zero) {
+      await Future<void>.delayed(signInDelay);
+    }
     controller.add(const FirebaseAuthUser(uid: 'firebase-uid'));
   }
 
@@ -148,6 +154,30 @@ void main() {
     await controller.initialize();
     auth.emit(const FirebaseAuthUser(uid: 'firebase-uid'));
     await Future<void>.delayed(const Duration(milliseconds: 30));
+
+    expect(controller.status, AppSessionStatus.error);
+    expect(controller.session, AppSession.signedOut);
+    expect(controller.error, isA<TimeoutException>());
+
+    controller.dispose();
+    await auth.dispose();
+  });
+
+  test('fails Google sign-in instead of leaving the button loading forever', () async {
+    final auth = FakeFirebaseAuthProvider(
+      signInDelay: const Duration(milliseconds: 100),
+    );
+    final service = FakeAuthSessionService(
+      () async => const AppSession(isAuthenticated: true, userId: 'user-123'),
+    );
+    final controller = AppSessionController(
+      auth: auth,
+      sessionService: service,
+      googleSignInTimeout: const Duration(milliseconds: 10),
+    );
+
+    await controller.initialize();
+    await controller.signInWithGoogle();
 
     expect(controller.status, AppSessionStatus.error);
     expect(controller.session, AppSession.signedOut);
