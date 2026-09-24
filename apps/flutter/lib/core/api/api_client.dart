@@ -12,12 +12,14 @@ class ApiClient {
     required this.baseUrl,
     this.accessTokenProvider,
     this.onUnauthorized,
+    this.requestTimeout = const Duration(seconds: 20),
     http.Client? client,
   }) : _client = client ?? http.Client();
 
   final Uri baseUrl;
   final AccessTokenProvider? accessTokenProvider;
   final UnauthorizedHandler? onUnauthorized;
+  final Duration requestTimeout;
   final http.Client _client;
 
   Future<List<dynamic>> getList(String path) async {
@@ -62,7 +64,9 @@ class ApiClient {
     String path, {
     Map<String, dynamic>? body,
   }) async {
-    final token = await accessTokenProvider?.call();
+    final token = accessTokenProvider == null
+        ? null
+        : await accessTokenProvider!.call().timeout(requestTimeout);
     final headers = <String, String>{'Accept': 'application/json'};
     if (body != null) headers['Content-Type'] = 'application/json';
     if (token != null && token.isNotEmpty) {
@@ -72,13 +76,15 @@ class ApiClient {
     final uri = baseUrl.resolve(path.startsWith('/') ? path.substring(1) : path);
     final encodedBody = body == null ? null : jsonEncode(body);
 
-    final response = switch (method) {
-      'GET' => await _client.get(uri, headers: headers),
-      'POST' => await _client.post(uri, headers: headers, body: encodedBody),
-      'PATCH' => await _client.patch(uri, headers: headers, body: encodedBody),
-      'DELETE' => await _client.delete(uri, headers: headers),
+    final Future<http.Response> request = switch (method) {
+      'GET' => _client.get(uri, headers: headers),
+      'POST' => _client.post(uri, headers: headers, body: encodedBody),
+      'PATCH' => _client.patch(uri, headers: headers, body: encodedBody),
+      'DELETE' => _client.delete(uri, headers: headers),
       _ => throw ArgumentError('Unsupported HTTP method: $method'),
     };
+
+    final response = await request.timeout(requestTimeout);
 
     if (response.statusCode == 401) {
       await onUnauthorized?.call();

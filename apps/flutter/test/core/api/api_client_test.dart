@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -73,6 +74,24 @@ void main() {
             .having((e) => e.statusCode, 'statusCode', 403)
             .having((e) => e.message, 'message', 'Permission denied'),
       ),
+    );
+  });
+
+  test('times out a request instead of waiting forever', () async {
+    final client = MockClient((_) async {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      return http.Response(jsonEncode({'status': 'late'}), 200);
+    });
+
+    final api = ApiClient(
+      baseUrl: Uri.parse('https://example.test/'),
+      requestTimeout: const Duration(milliseconds: 10),
+      client: client,
+    );
+
+    await expectLater(
+      api.getObject('/api/auth/me'),
+      throwsA(isA<TimeoutException>()),
     );
   });
 }
