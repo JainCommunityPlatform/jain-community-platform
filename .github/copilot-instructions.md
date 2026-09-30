@@ -143,3 +143,8 @@ Before opening a PR:
 10. If the implementation changes a product or architecture decision, reconcile the private documentation rather than leaving drift.
 
 Never declare work complete while knowingly leaving the implementation inconsistent with an approved product/architecture decision or while knowingly exposing private planning material.
+
+
+## AI Repository Profile
+
+Before starting work, read and apply [`.ai/repo-profile.md`](../.ai/repo-profile.md). It defines the repository-specific operating contract for Developer, Product Owner, QA, Architecture and Release workflows. This profile complements these instructions; when this file is more specific, follow this file.
