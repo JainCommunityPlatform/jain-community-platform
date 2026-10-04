@@ -1,7 +1,15 @@
 export interface AppConfiguration {
   port: number;
-  database: {
-    url?: string;
+  firebase: {
+    projectId: string;
+    bootstrapEnabled: boolean;
+    bootstrapTenantId?: string;
+    bootstrapTenantSlug?: string;
+    bootstrapTenantName?: string;
+    bootstrapTenantHostname?: string;
+    bootstrapAdminSubject?: string;
+    bootstrapAdminEmail?: string;
+    bootstrapAdminName?: string;
   };
   redis: {
     url?: string;
@@ -23,8 +31,16 @@ export function configuration(): AppConfiguration {
 
   return {
     port: parsePort(process.env.PORT),
-    database: {
-      url: process.env.DATABASE_URL,
+    firebase: {
+      projectId: firebaseProjectId,
+      bootstrapEnabled: process.env.FIREBASE_BOOTSTRAP_ENABLED === 'true',
+      bootstrapTenantId: process.env.FIREBASE_BOOTSTRAP_TENANT_ID?.trim(),
+      bootstrapTenantSlug: process.env.FIREBASE_BOOTSTRAP_TENANT_SLUG?.trim(),
+      bootstrapTenantName: process.env.FIREBASE_BOOTSTRAP_TENANT_NAME?.trim(),
+      bootstrapTenantHostname: process.env.FIREBASE_BOOTSTRAP_TENANT_HOSTNAME?.trim(),
+      bootstrapAdminSubject: process.env.FIREBASE_BOOTSTRAP_ADMIN_SUBJECT?.trim(),
+      bootstrapAdminEmail: process.env.FIREBASE_BOOTSTRAP_ADMIN_EMAIL?.trim(),
+      bootstrapAdminName: process.env.FIREBASE_BOOTSTRAP_ADMIN_NAME?.trim(),
     },
     redis: {
       url: process.env.REDIS_URL,
@@ -33,7 +49,7 @@ export function configuration(): AppConfiguration {
       jwksUrl: process.env.AUTH_JWKS_URL?.trim() || FIREBASE_JWKS_URL,
       issuer:
         process.env.AUTH_ISSUER?.trim() ||
-        `https://securetoken.google.com/${firebaseProjectId}`,
+        'https://securetoken.google.com/' + firebaseProjectId,
       audience: process.env.AUTH_AUDIENCE?.trim() || firebaseProjectId,
     },
   };
