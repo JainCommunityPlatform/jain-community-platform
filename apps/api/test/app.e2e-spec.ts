@@ -13,6 +13,7 @@ import { AuthenticatedUser } from '../src/auth/auth.types';
 import { AppModule } from '../src/app.module';
 import { MembershipService } from '../src/authorization/membership.service';
 import { UserIdentityService } from '../src/identity/user-identity.service';
+import { FirestoreTenantResolver } from '../src/tenant/firestore-tenant.resolver';
 
 describe('API endpoints (integration)', () => {
   let app: INestApplication;
@@ -39,6 +40,19 @@ describe('API endpoints (integration)', () => {
       })),
     };
 
+    const tenantResolver = {
+      resolve: jest.fn(async (hostname: string) => {
+        if (hostname.toLowerCase().replace(/^www\./, '') !== 'badebabakharadi.com') {
+          return null;
+        }
+        return {
+          id: '00000000-0000-0000-0000-000000000001',
+          name: 'Bade Baba Kharadi',
+          hostname: 'badebabakharadi.com',
+        };
+      }),
+    };
+
     const membership = {
       resolve: jest.fn(async (userId: string, tenantId: string) => {
         if (userId === 'user-none') return null;
@@ -60,6 +74,8 @@ describe('API endpoints (integration)', () => {
       .useValue(identity)
       .overrideProvider(MembershipService)
       .useValue(membership)
+      .overrideProvider(FirestoreTenantResolver)
+      .useValue(tenantResolver)
       .compile();
 
     app = moduleFixture.createNestApplication();

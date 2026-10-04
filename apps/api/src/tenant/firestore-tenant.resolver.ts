@@ -1,27 +1,23 @@
 import { Injectable } from '@nestjs/common';
 
-import { PrismaService } from '../database/prisma.service';
+import { FirestoreService } from '../database/firestore.service';
 import { TenantContext, TenantResolver } from './tenant.types';
 
 @Injectable()
-export class PrismaTenantResolver implements TenantResolver {
-  constructor(private readonly prisma: PrismaService) {}
+export class FirestoreTenantResolver implements TenantResolver {
+  constructor(private readonly firestore: FirestoreService) {}
 
   async resolve(hostname: string): Promise<TenantContext | null> {
     const normalized = normalizeHostname(hostname);
     if (!normalized) return null;
 
-    const domain = await this.prisma.tenantDomain.findUnique({
-      where: { hostname: normalized },
-      include: { tenant: true },
-    });
-
-    if (!domain) return null;
+    const tenant = await this.firestore.getTenantByHostname(normalized);
+    if (!tenant) return null;
 
     return {
-      id: domain.tenant.id,
-      name: domain.tenant.name,
-      hostname: domain.hostname,
+      id: tenant.id,
+      name: tenant.name,
+      hostname: tenant.hostname,
     };
   }
 }

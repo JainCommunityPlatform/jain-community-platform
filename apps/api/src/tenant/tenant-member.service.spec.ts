@@ -1,17 +1,13 @@
 import { TenantMemberService } from './tenant-member.service';
 
 describe('TenantMemberService', () => {
-  const prisma = {
-    membership: {
-      findMany: jest.fn(),
-      findUnique: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    },
-    user: {
-      findUnique: jest.fn(),
-    },
+  const firestore = {
+    listMemberships: jest.fn(),
+    getMembership: jest.fn(),
+    createMembership: jest.fn(),
+    updateMembership: jest.fn(),
+    deleteMembership: jest.fn(),
+    getUser: jest.fn(),
   };
   const tenantContext = { get: jest.fn() };
   const audit = { record: jest.fn() };
@@ -26,17 +22,18 @@ describe('TenantMemberService', () => {
       hostname: 'test.example',
     });
     service = new TenantMemberService(
-      prisma as never,
+      firestore as never,
       tenantContext as never,
       audit as never,
     );
   });
 
   it('lists only members from the resolved tenant', async () => {
-    prisma.membership.findMany.mockResolvedValue([
+    firestore.listMemberships.mockResolvedValue([
       {
         id: 'membership-1',
         userId: 'user-1',
+        tenantId: '00000000-0000-0000-0000-000000000001',
         role: 'TENANT_ADMIN',
         createdAt: new Date('2026-01-01'),
         user: { email: 'one@example.com', displayName: 'One' },
@@ -46,41 +43,43 @@ describe('TenantMemberService', () => {
     await expect(service.list()).resolves.toEqual([
       expect.objectContaining({ userId: 'user-1', role: 'TENANT_ADMIN' }),
     ]);
-    expect(prisma.membership.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { tenantId: '00000000-0000-0000-0000-000000000001' },
-      }),
+    expect(firestore.listMemberships).toHaveBeenCalledWith(
+      '00000000-0000-0000-0000-000000000001',
     );
   });
 
   it('rejects adding an unknown user', async () => {
-    prisma.user.findUnique.mockResolvedValue(null);
+    firestore.getUser.mockResolvedValue(null);
 
     await expect(
       service.create('00000000-0000-0000-0000-000000000099', 'CONTENT_MANAGER'),
     ).rejects.toThrow('User not found');
-    expect(prisma.membership.create).not.toHaveBeenCalled();
+    expect(firestore.createMembership).not.toHaveBeenCalled();
   });
 
   it('rejects duplicate membership', async () => {
-    prisma.user.findUnique.mockResolvedValue({ id: 'user-1' });
-    prisma.membership.findUnique.mockResolvedValue({ id: 'existing' });
+    firestore.getUser.mockResolvedValue({ id: 'user-1' });
+    firestore.getMembership.mockResolvedValue({ id: 'existing' });
 
     await expect(
       service.create('user-1', 'CONTENT_MANAGER'),
     ).rejects.toThrow('already a member');
-    expect(prisma.membership.create).not.toHaveBeenCalled();
+    expect(firestore.createMembership).not.toHaveBeenCalled();
   });
 
   it('audits membership creation', async () => {
-    prisma.user.findUnique.mockResolvedValue({ id: 'user-1' });
-    prisma.membership.findUnique.mockResolvedValue(null);
-    prisma.membership.create.mockResolvedValue({
+    firestore.getUser.mockResolvedValue({
+      id: 'user-1',
+      email: 'one@example.com',
+      displayName: 'One',
+    });
+    firestore.getMembership.mockResolvedValue(null);
+    firestore.createMembership.mockResolvedValue({
       id: 'membership-1',
       userId: 'user-1',
+      tenantId: '00000000-0000-0000-0000-000000000001',
       role: 'CONTENT_MANAGER',
       createdAt: new Date('2026-01-01'),
-      user: { email: 'one@example.com', displayName: 'One' },
     });
 
     await service.create('user-1', 'CONTENT_MANAGER');
@@ -95,47 +94,61 @@ describe('TenantMemberService', () => {
   });
 
   it('updates and audits a membership inside the resolved tenant', async () => {
-    prisma.membership.findUnique.mockResolvedValue({
+    firestore.getMembership
+      .mockResolvedValueOnce({
+        id: 'membership-1',
+        userId: 'user-1',
+        tenantId: 'tenant-1',
+        role: 'CONTENT_MANAGER',
+        createdAt: new Date('2026-01-01'),
+      })
+      .mockResolvedValueOnce({
+        id: 'membership-1',
+        userId: 'user-1',
+        tenantId: 'tenant-1',
+        role: 'EVENT_MANAGER',
+        createdAt: new Date('2026-01-01'),
+      });
+    firestore.getUser.mockResolvedValue({
+      id: 'user-1',
+      email: 'one@example.com',
+      displayName: 'One',
+    });
+    firestore.updateMembership.mockResolvedValue({
       id: 'membership-1',
       userId: 'user-1',
       tenantId: 'tenant-1',
-      role: 'CONTENT_MANAGER',
-      user: { email: 'one@example.com', displayName: 'One' },
-    });
-    prisma.membership.update.mockResolvedValue({
-      id: 'membership-1',
-      userId: 'user-1',
       role: 'EVENT_MANAGER',
       createdAt: new Date('2026-01-01'),
-      user: { email: 'one@example.com', displayName: 'One' },
     });
 
     await service.update('user-1', 'EVENT_MANAGER');
 
-    expect(prisma.membership.update).toHaveBeenCalledWith({
-      where: { id: 'membership-1' },
-      data: { role: 'EVENT_MANAGER' },
-      include: { user: true },
-    });
+    expect(firestore.updateMembership).toHaveBeenCalledWith(
+      'user-1',
+      'tenant-1',
+      'EVENT_MANAGER',
+    );
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'MEMBERSHIP_ROLE_CHANGED' }),
     );
   });
 
   it('removes and audits a membership inside the resolved tenant', async () => {
-    prisma.membership.findUnique.mockResolvedValue({
+    firestore.getMembership.mockResolvedValue({
       id: 'membership-1',
       userId: 'user-1',
       tenantId: 'tenant-1',
       role: 'CONTENT_MANAGER',
-      user: { email: 'one@example.com', displayName: 'One' },
+      createdAt: new Date('2026-01-01'),
     });
 
     await service.remove('user-1');
 
-    expect(prisma.membership.delete).toHaveBeenCalledWith({
-      where: { id: 'membership-1' },
-    });
+    expect(firestore.deleteMembership).toHaveBeenCalledWith(
+      'user-1',
+      'tenant-1',
+    );
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'MEMBERSHIP_REMOVED' }),
     );

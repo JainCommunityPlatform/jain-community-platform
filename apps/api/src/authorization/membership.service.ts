@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { PrismaService } from '../database/prisma.service';
+import { FirestoreService } from '../database/firestore.service';
 import {
   AuthorizationContext,
   MembershipRole,
@@ -19,17 +19,13 @@ const MEMBERSHIP_ROLES = new Set<MembershipRole>([
 
 @Injectable()
 export class MembershipService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly firestore: FirestoreService) {}
 
   async resolve(
     userId: string,
     tenantId: string,
   ): Promise<AuthorizationContext['membership']> {
-    const membership = await this.prisma.membership.findUnique({
-      where: {
-        userId_tenantId: { userId, tenantId },
-      },
-    });
+    const membership = await this.firestore.getMembership(userId, tenantId);
 
     if (
       !membership ||

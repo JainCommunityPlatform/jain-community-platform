@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 
-import { PrismaService } from '../database/prisma.service';
+import { FirestoreService } from '../database/firestore.service';
 import { MembershipContextStore } from '../authorization/membership-context.store';
 import { AuditEvent, AuditRecord } from './audit.types';
 
 @Injectable()
 export class AuditService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly firestore: FirestoreService,
     private readonly membershipContext: MembershipContextStore,
   ) {}
 
@@ -19,16 +19,7 @@ export class AuditService {
       userId: authorization?.userId,
     };
 
-    await this.prisma.auditLog.create({
-      data: {
-        tenantId: record.tenantId,
-        userId: record.userId,
-        action: record.action,
-        entity: record.entity,
-        entityId: record.entityId,
-        metadata: record.metadata,
-      },
-    });
+    await this.firestore.recordAudit(record);
 
     return record;
   }
