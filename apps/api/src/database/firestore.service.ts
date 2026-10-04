@@ -359,7 +359,7 @@ function hashSubject(subject: string): string {
 
 function normalizeHostname(hostname: string | undefined): string | null {
   if (!hostname) return null;
-  const normalized = hostname.trim().toLowerCase().replace(/^www\\./, '');
+  const normalized = hostname.trim().toLowerCase().replace(/^www\./, '');
   return normalized || null;
 }
 
