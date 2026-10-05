@@ -3,6 +3,7 @@ import { AuthenticatedUser } from '../auth/auth.types';
 import { FirestoreService } from '../database/firestore.service';
 import { UserIdentityService } from '../identity/user-identity.service';
 import { UserActivity, UserProfile } from './profile.types';
+import { RegistrationContext } from './dto/registration-context.dto';
 
 @Injectable()
 export class ProfileService {
@@ -11,6 +12,33 @@ export class ProfileService {
   async getCurrent(authenticated: AuthenticatedUser): Promise<UserProfile> {
     const identity = await this.identity.resolve(authenticated);
     return this.toProfile(await this.firestore.getUser(identity.id));
+  }
+
+  async registrationContext(authenticated: AuthenticatedUser): Promise<RegistrationContext> {
+    const user = await this.identity.resolve(authenticated);
+    const profile = this.toProfile(await this.firestore.getUser(user.id));
+    const activities = await this.firestore.listUserActivities(user.id);
+    return {
+      profile: {
+        id: profile.id,
+        displayName: profile.displayName,
+        email: profile.email,
+        primaryPhone: profile.primaryPhone,
+        phoneNumbers: profile.phoneNumbers,
+        address: profile.address,
+        city: profile.city,
+        state: profile.state,
+        postalCode: profile.postalCode,
+      },
+      activities: activities.map((a) => ({
+        id: a.id,
+        eventType: a.eventType,
+        eventId: a.eventId,
+        title: a.title,
+        participatedAt: a.participatedAt.toISOString(),
+        tenantId: a.tenantId,
+      })),
+    };
   }
 
   async updateCurrent(authenticated: AuthenticatedUser, input: Parameters<FirestoreService['updateUserProfile']>[1]): Promise<UserProfile> {
