@@ -162,20 +162,26 @@ jobs:
               env.write(f"GOOGLE_SERVER_CLIENT_ID={web_client_ids[0]}\n")
           PY
 
-      - name: Validate release API configuration
+      - name: Resolve release API configuration
+        id: api
         env:
           JCP_API_BASE_URL: ${{vars.JCP_API_BASE_URL}}
         run: |
           set -euo pipefail
-          test -n "$JCP_API_BASE_URL"
-          case "$JCP_API_BASE_URL" in
-            https://*) ;;
-            *)
-              echo "JCP_API_BASE_URL must use HTTPS for release builds."
-              exit 1
-              ;;
-          esac
-          echo "Release API endpoint is configured."
+          if [ -n "$JCP_API_BASE_URL" ]; then
+            case "$JCP_API_BASE_URL" in
+              https://*) ;;
+              *)
+                echo "JCP_API_BASE_URL must use HTTPS for release builds."
+                exit 1
+                ;;
+            esac
+            echo "JCP_API_BASE_URL is configured."
+            echo "base_url=$JCP_API_BASE_URL" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::JCP_API_BASE_URL is not configured yet; using a non-routable CI placeholder until the production API is deployed."
+            echo "base_url=https://jcp-api-not-configured.invalid" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Verify Android release network permission
         working-directory: apps/flutter
@@ -250,7 +256,7 @@ jobs:
       - name: Build signed release App Bundle
         working-directory: apps/flutter
         run: |
-          flutter build appbundle --release             --build-name="${{steps.version.outputs.release_version}}"             --build-number="${{steps.version.outputs.play_version_code}}"             --dart-define=JCP_API_BASE_URL="${{vars.JCP_API_BASE_URL}}"             --dart-define=GOOGLE_SERVER_CLIENT_ID="$GOOGLE_SERVER_CLIENT_ID"
+          flutter build appbundle --release             --build-name="${{steps.version.outputs.release_version}}"             --build-number="${{steps.version.outputs.play_version_code}}"             --dart-define=JCP_API_BASE_URL="${{steps.api.outputs.base_url}}"             --dart-define=GOOGLE_SERVER_CLIENT_ID="$GOOGLE_SERVER_CLIENT_ID"
 
       - name: Verify signed AAB
         working-directory: apps/flutter

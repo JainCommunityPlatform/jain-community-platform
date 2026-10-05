@@ -29,7 +29,7 @@ class AppRouter {
       routes: [
         GoRoute(
           path: AppRoutes.home,
-          builder: (_, __) => const HomePage(),
+          builder: (_, __) => HomePage(tenant: _tenant),
         ),
         GoRoute(
           path: AppRoutes.login,
@@ -42,11 +42,14 @@ class AppRouter {
         ),
         GoRoute(
           path: '/link-contact',
-          builder: (_, __) => LinkContactPage(onLink: (value) => _sessionController!.linkContact(value)),
+          builder: (_, __) => LinkContactPage(
+            onLink: (value) => _sessionController!.linkContact(value),
+          ),
         ),
         GoRoute(
           path: AppRoutes.member,
-          builder: (_, __) => MemberHomePage(profileRepository: _profileRepository),
+          builder: (_, __) =>
+              MemberHomePage(profileRepository: _profileRepository),
         ),
         GoRoute(
           path: AppRoutes.admin,
@@ -54,11 +57,13 @@ class AppRouter {
         ),
         GoRoute(
           path: AppRoutes.finance,
-          builder: (_, __) => const _PlaceholderPage(title: 'Finance console'),
+          builder: (_, __) =>
+              const _PlaceholderPage(title: 'Finance console'),
         ),
         GoRoute(
           path: AppRoutes.library,
-          builder: (_, __) => const _PlaceholderPage(title: 'Digital library'),
+          builder: (_, __) =>
+              const _PlaceholderPage(title: 'Digital library'),
         ),
       ],
     );
@@ -80,11 +85,21 @@ class AppRouter {
         location == AppRoutes.finance ||
         location == AppRoutes.library;
 
-    if (location == AppRoutes.login && session.isAuthenticated) return session.needsPhoneLink ? '/link-contact' : AppRoutes.member;
-    if (location == '/link-contact' && session.isAuthenticated && !session.needsPhoneLink) return AppRoutes.member;
+    if (location == AppRoutes.login && session.isAuthenticated) {
+      return session.needsPhoneLink ? '/link-contact' : AppRoutes.member;
+    }
+    if (location == '/link-contact' &&
+        session.isAuthenticated &&
+        !session.needsPhoneLink) {
+      return AppRoutes.member;
+    }
 
-    if (location == '/link-contact') return session.isAuthenticated ? null : AppRoutes.login;
-    if (session.isAuthenticated && session.needsPhoneLink) return '/link-contact';
+    if (location == '/link-contact') {
+      return session.isAuthenticated ? null : AppRoutes.login;
+    }
+    if (session.isAuthenticated && session.needsPhoneLink) {
+      return '/link-contact';
+    }
     if (!isPrivateRoute) return null;
 
     if (_tenant == null) {

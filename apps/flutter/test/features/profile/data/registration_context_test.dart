@@ -26,16 +26,12 @@ void main() {
         },
       ],
     });
-
     expect(context.profile.id, 'u1');
     expect(context.profile.primaryPhone, '9876543210');
     expect(context.activities.single.eventId, 'k26');
   });
 
   test('rejects malformed responses', () {
-    expect(
-      () => RegistrationContext.fromJson({'profile': {}, 'activities': {}}),
-      throwsA(isA<FormatException>()),
-    );
+    expect(() => RegistrationContext.fromJson({'profile': {}, 'activities': {}}), throwsA(isA<FormatException>()));
   });
 }
