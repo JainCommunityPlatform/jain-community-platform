@@ -132,7 +132,7 @@ export class TenantMemberService {
     userId: string;
     role: string;
     createdAt: Date;
-    user?: { email: string | null; displayName: string | null };
+    user?: { email: string | null; displayName: string | null; primaryPhone: string | null };
   }): TenantMemberSummary {
     return {
       id: membership.id,
