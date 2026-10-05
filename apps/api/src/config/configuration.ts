@@ -2,6 +2,7 @@ export interface AppConfiguration {
   port: number;
   firebase: {
     projectId: string;
+    databaseId: string;
     bootstrapEnabled: boolean;
     bootstrapTenantId?: string;
     bootstrapTenantSlug?: string;
@@ -22,17 +23,21 @@ export interface AppConfiguration {
 }
 
 const FIREBASE_PROJECT_ID = 'jain-community-platform';
+const FIREBASE_DATABASE_ID = 'jcp-firestore-db-001';
 const FIREBASE_JWKS_URL =
   'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com';
 
 export function configuration(): AppConfiguration {
   const firebaseProjectId =
     process.env.FIREBASE_PROJECT_ID?.trim() || FIREBASE_PROJECT_ID;
+  const firebaseDatabaseId =
+    process.env.FIRESTORE_DATABASE_ID?.trim() || FIREBASE_DATABASE_ID;
 
   return {
     port: parsePort(process.env.PORT),
     firebase: {
       projectId: firebaseProjectId,
+      databaseId: firebaseDatabaseId,
       bootstrapEnabled: process.env.FIREBASE_BOOTSTRAP_ENABLED === 'true',
       bootstrapTenantId: process.env.FIREBASE_BOOTSTRAP_TENANT_ID?.trim(),
       bootstrapTenantSlug: process.env.FIREBASE_BOOTSTRAP_TENANT_SLUG?.trim(),
