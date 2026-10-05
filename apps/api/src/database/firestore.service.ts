@@ -20,6 +20,24 @@ export interface FirestoreUser {
   authSubject: string;
   email?: string;
   displayName?: string;
+  primaryPhone?: string;
+  phoneNumbers: string[];
+  address?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  mergedInto?: string;
+}
+
+export interface FirestoreUserActivity {
+  id: string;
+  userId: string;
+  tenantId?: string;
+  eventType: string;
+  eventId: string;
+  title: string;
+  participatedAt: Date;
+  metadata?: Record<string, unknown>;
 }
 
 export interface FirestoreMembership {
@@ -155,12 +173,99 @@ export class FirestoreService implements OnModuleInit {
   async getUser(userId: string): Promise<FirestoreUser | null> {
     const snapshot = await this.getDb().collection('users').doc(userId).get();
     if (!snapshot.exists) return null;
-    const data = snapshot.data() ?? {};
+    return this.toUser(snapshot.id, snapshot.data() ?? {});
+  }
+
+  async updateUserProfile(userId: string, input: {
+    displayName?: string; address?: string; city?: string; state?: string; postalCode?: string;
+  }): Promise<FirestoreUser> {
+    const ref = this.getDb().collection('users').doc(userId);
+    await ref.set({ ...input, updatedAt: Timestamp.now() }, { merge: true });
+    const user = await this.getUser(userId);
+    if (!user) throw new Error('User disappeared while updating profile');
+    return user;
+  }
+
+  async linkPhoneToUser(userId: string, phone: string): Promise<FirestoreUser> {
+    const db = this.getDb();
+    const indexRef = db.collection('userPhoneIndexes').doc(hashPhone(phone));
+    const userRef = db.collection('users').doc(userId);
+    const userBefore = await this.getUser(userId);
+    if (!userBefore) throw new Error('User not found');
+    const authIndexRef = db.collection('userAuthIndexes').doc(hashSubject(userBefore.authSubject));
+
+    return db.runTransaction(async (transaction) => {
+      const [userSnapshot, phoneSnapshot] = await Promise.all([transaction.get(userRef), transaction.get(indexRef)]);
+      if (!userSnapshot.exists) throw new Error('User not found');
+      const current = this.toUser(userId, userSnapshot.data() ?? {});
+      const indexedUserId = phoneSnapshot.exists ? phoneSnapshot.data()?.userId as string | undefined : undefined;
+
+      if (indexedUserId && indexedUserId !== userId) {
+        const targetRef = db.collection('users').doc(indexedUserId);
+        const targetSnapshot = await transaction.get(targetRef);
+        if (!targetSnapshot.exists) throw new Error('Phone index is inconsistent');
+        const target = this.toUser(indexedUserId, targetSnapshot.data() ?? {});
+        const phones = uniquePhones([...target.phoneNumbers, phone]);
+        transaction.set(targetRef, { phoneNumbers: phones, primaryPhone: target.primaryPhone ?? phone, updatedAt: Timestamp.now() }, { merge: true });
+        transaction.set(indexRef, { userId: indexedUserId, phone }, { merge: true });
+        transaction.set(authIndexRef, { userId: indexedUserId }, { merge: true });
+        transaction.set(userRef, { mergedInto: indexedUserId, updatedAt: Timestamp.now() }, { merge: true });
+        return { ...target, phoneNumbers: phones, primaryPhone: target.primaryPhone ?? phone };
+      }
+
+      const phones = uniquePhones([...current.phoneNumbers, phone]);
+      transaction.set(userRef, { phoneNumbers: phones, primaryPhone: current.primaryPhone ?? phone, updatedAt: Timestamp.now() }, { merge: true });
+      transaction.set(indexRef, { userId, phone }, { merge: true });
+      return { ...current, phoneNumbers: phones, primaryPhone: current.primaryPhone ?? phone };
+    });
+  }
+
+  async setPrimaryPhone(userId: string, phone: string): Promise<FirestoreUser> {
+    const db = this.getDb();
+    const indexRef = db.collection('userPhoneIndexes').doc(hashPhone(phone));
+    const userRef = db.collection('users').doc(userId);
+    return db.runTransaction(async (transaction) => {
+      const [userSnapshot, indexSnapshot] = await Promise.all([transaction.get(userRef), transaction.get(indexRef)]);
+      if (!userSnapshot.exists) throw new Error('User not found');
+      const owner = indexSnapshot.exists ? indexSnapshot.data()?.userId as string | undefined : undefined;
+      if (owner && owner !== userId) throw new Error('Phone number is already linked to another profile');
+      const user = this.toUser(userId, userSnapshot.data() ?? {});
+      const phones = uniquePhones([...user.phoneNumbers, phone]);
+      transaction.set(userRef, { phoneNumbers: phones, primaryPhone: phone, updatedAt: Timestamp.now() }, { merge: true });
+      transaction.set(indexRef, { userId, phone }, { merge: true });
+      return { ...user, phoneNumbers: phones, primaryPhone: phone };
+    });
+  }
+
+  async listUserActivities(userId: string): Promise<FirestoreUserActivity[]> {
+    const snapshot = await this.getDb().collection('userActivities').where('userId', '==', userId).orderBy('participatedAt', 'desc').get();
+    return snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return { id: doc.id, userId, tenantId: data.tenantId as string | undefined, eventType: data.eventType as string, eventId: data.eventId as string, title: data.title as string, participatedAt: toDate(data.participatedAt), metadata: data.metadata as Record<string, unknown> | undefined };
+    });
+  }
+
+  async recordUserActivity(input: Omit<FirestoreUserActivity, 'id'>): Promise<void> {
+    const id = hashActivity(input.userId, input.eventType, input.eventId);
+    await this.getDb().collection('userActivities').doc(id).set({
+      userId: input.userId, tenantId: input.tenantId ?? null, eventType: input.eventType,
+      eventId: input.eventId, title: input.title, participatedAt: input.participatedAt,
+      metadata: input.metadata ?? null, updatedAt: Timestamp.now(),
+    }, { merge: true });
+  }
+
+  private toUser(id: string, data: Record<string, unknown>): FirestoreUser {
     return {
-      id: snapshot.id,
-      authSubject: data.authSubject as string,
+      id, authSubject: data.authSubject as string,
       email: (data.email as string | null) ?? undefined,
       displayName: (data.displayName as string | null) ?? undefined,
+      primaryPhone: (data.primaryPhone as string | null) ?? undefined,
+      phoneNumbers: Array.isArray(data.phoneNumbers) ? data.phoneNumbers as string[] : [],
+      address: (data.address as string | null) ?? undefined,
+      city: (data.city as string | null) ?? undefined,
+      state: (data.state as string | null) ?? undefined,
+      postalCode: (data.postalCode as string | null) ?? undefined,
+      mergedInto: (data.mergedInto as string | null) ?? undefined,
     };
   }
 
@@ -360,6 +465,10 @@ function membershipId(userId: string, tenantId: string): string {
 function hashSubject(subject: string): string {
   return createHash('sha256').update(subject).digest('hex');
 }
+
+function hashPhone(phone: string): string { return createHash('sha256').update(phone).digest('hex'); }
+function hashActivity(userId: string, eventType: string, eventId: string): string { return createHash('sha256').update(userId + ':' + eventType + ':' + eventId).digest('hex'); }
+function uniquePhones(values: string[]): string[] { return [...new Set(values.filter(Boolean))]; }
 
 function normalizeHostname(hostname: string | undefined): string | null {
   if (!hostname) return null;
