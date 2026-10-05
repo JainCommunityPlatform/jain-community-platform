@@ -369,7 +369,12 @@ export class FirestoreService implements OnModuleInit {
     const now = Timestamp.now();
 
     await db.runTransaction(async (transaction) => {
-      const tenant = await transaction.get(tenantRef);
+      // Firestore transactions require every read to happen before any write.
+      const [tenant, domain] = await Promise.all([
+        transaction.get(tenantRef),
+        transaction.get(domainRef),
+      ]);
+
       if (!tenant.exists) {
         transaction.create(tenantRef, {
           slug: input.slug,
@@ -379,7 +384,6 @@ export class FirestoreService implements OnModuleInit {
         });
       }
 
-      const domain = await transaction.get(domainRef);
       if (!domain.exists) {
         transaction.create(domainRef, {
           tenantId: input.id,
