@@ -10,6 +10,7 @@ describe('configuration', () => {
   it('uses safe Firebase defaults when infrastructure variables are absent', () => {
     delete process.env.PORT;
     delete process.env.FIREBASE_PROJECT_ID;
+    delete process.env.FIRESTORE_DATABASE_ID;
     delete process.env.FIREBASE_BOOTSTRAP_ENABLED;
     delete process.env.FIREBASE_BOOTSTRAP_TENANT_ID;
     delete process.env.FIREBASE_BOOTSTRAP_TENANT_SLUG;
@@ -27,6 +28,7 @@ describe('configuration', () => {
       port: 3000,
       firebase: {
         projectId: 'jain-community-platform',
+        databaseId: 'jcp-firestore-db-001',
         bootstrapEnabled: false,
         bootstrapTenantId: undefined,
         bootstrapTenantSlug: undefined,
@@ -49,6 +51,7 @@ describe('configuration', () => {
   it('reads Firebase and Redis settings from the environment', () => {
     process.env.PORT = '4000';
     process.env.FIREBASE_PROJECT_ID = 'custom-project';
+    process.env.FIRESTORE_DATABASE_ID = 'custom-database';
     process.env.FIREBASE_BOOTSTRAP_ENABLED = 'true';
     process.env.FIREBASE_BOOTSTRAP_TENANT_ID = 'tenant-1';
     process.env.FIREBASE_BOOTSTRAP_TENANT_SLUG = 'tenant-one';
@@ -66,6 +69,7 @@ describe('configuration', () => {
       port: 4000,
       firebase: {
         projectId: 'custom-project',
+        databaseId: 'custom-database',
         bootstrapEnabled: true,
         bootstrapTenantId: 'tenant-1',
         bootstrapTenantSlug: 'tenant-one',
