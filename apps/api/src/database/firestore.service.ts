@@ -275,7 +275,7 @@ export class FirestoreService implements OnModuleInit {
   async listUserActivities(userId: string): Promise<FirestoreUserActivity[]> {
     const db = this.getDb();
     const [activitySnapshot, kshamawaniSnapshot, pratibhaSnapshot] = await Promise.all([
-      db.collection('userActivities').where('userId', '==', userId).orderBy('participatedAt', 'desc').get(),
+      db.collection('userActivities').where('userId', '==', userId).get(),
       db.collection('registrations').where('userId', '==', userId).get(),
       db.collection('pratibhaSammanApplications').where('userId', '==', userId).get(),
     ]);
