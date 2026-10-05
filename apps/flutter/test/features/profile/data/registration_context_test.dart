@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jain_community_platform/features/profile/data/registration_context.dart';
-import 'package:jain_community_platform/features/profile/data/user_profile.dart';
 
 void main() {
   test('parses canonical profile and activities for a registration', () {
@@ -27,16 +26,12 @@ void main() {
         },
       ],
     });
-
     expect(context.profile.id, 'u1');
     expect(context.profile.primaryPhone, '9876543210');
     expect(context.activities.single.eventId, 'k26');
   });
 
   test('rejects malformed responses', () {
-    expect(
-      () => RegistrationContext.fromJson({'profile': {}, 'activities': {}}),
-      throwsA(isA<FormatException>()),
-    );
+    expect(() => RegistrationContext.fromJson({'profile': {}, 'activities': {}}), throwsA(isA<FormatException>()));
   });
 }
