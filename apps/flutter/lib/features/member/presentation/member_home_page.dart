@@ -3,8 +3,8 @@ import '../../profile/data/profile_repository.dart';
 import '../../profile/presentation/profile_page.dart';
 
 class MemberHomePage extends StatefulWidget {
-  const MemberHomePage({required this.profileRepository, super.key});
-  final ProfileRepository profileRepository;
+  const MemberHomePage({this.profileRepository, super.key});
+  final ProfileRepository? profileRepository;
 
   @override
   State<MemberHomePage> createState() => _MemberHomePageState();
