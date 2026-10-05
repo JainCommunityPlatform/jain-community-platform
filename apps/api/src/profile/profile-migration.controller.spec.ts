@@ -8,7 +8,7 @@ describe('ProfileMigrationController', () => {
   afterEach(() => { delete process.env.JCP_INTERNAL_TOKEN; jest.clearAllMocks(); });
 
   it('rejects requests without the integration key', async () => {
-    await expect(controller.provision('wrong', { value:'9876543210' })).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(() => controller.provision('wrong', { value:'9876543210' })).toThrow(UnauthorizedException);
   });
 
   it('provisions profiles and records activities with the integration key', async () => {
