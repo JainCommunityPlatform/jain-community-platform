@@ -5,6 +5,7 @@ import { AuthenticationContextInterceptor } from '../auth/authentication-context
 import { AuthorizationGuard } from '../authorization/authorization.guard';
 import { MembershipContextInterceptor } from '../authorization/membership-context.interceptor';
 import { RequirePermission } from '../authorization/require-permission.decorator';
+import { MembershipContextStore } from '../authorization/membership-context.store';
 import { ProfileService } from './profile.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { LinkContactDto } from './dto/link-contact.dto';
@@ -14,7 +15,7 @@ import { RecordActivityDto } from './dto/record-activity.dto';
 @UseGuards(AuthenticationGuard)
 @UseInterceptors(AuthenticationContextInterceptor, MembershipContextInterceptor)
 export class ProfileController {
-  constructor(private readonly profiles: ProfileService, private readonly auth: AuthContextStore) {}
+  constructor(private readonly profiles: ProfileService, private readonly auth: AuthContextStore, private readonly membership: MembershipContextStore) {}
 
   @Get()
   get() {
@@ -48,7 +49,7 @@ export class ProfileController {
   @UseGuards(AuthorizationGuard)
   @RequirePermission('tenant.manage')
   adminSetContact(@Param('userId') userId: string, @Body() dto: LinkContactDto) {
-    return this.profiles.adminSetContact(userId, dto.value);
+    return this.profiles.adminSetContact(userId, dto.value, this.membership.get()?.tenantId);
   }
 
   @Post('migrations/provision')
