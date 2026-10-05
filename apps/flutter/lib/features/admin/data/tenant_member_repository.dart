@@ -43,9 +43,9 @@ class TenantMemberRepository {
     );
   }
 
-  Future<TenantMember> updateContact({required String userId, required String value}) async {
+  Future<void> updateContact({required String userId, required String value}) async {
     final path = '/api/profile/' + userId + '/con' + 'tact';
-    return TenantMember.fromJson(await api.patch(path, body: {'value': value}));
+    await api.patch(path, body: {'value': value});
   }
 
   Future<void> remove(String userId) {
