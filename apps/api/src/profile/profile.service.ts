@@ -41,9 +41,10 @@ export class ProfileService {
     return this.toProfileNullable(await this.firestore.findUserByPhone(normalized));
   }
 
-  async adminSetContact(userId: string, value: string): Promise<UserProfile> {
+  async adminSetContact(userId: string, value: string, tenantId?: string): Promise<UserProfile> {
     const normalized = normalizeIndianMobile(value);
     if (!(await this.firestore.getUser(userId))) throw new NotFoundException('User profile not found');
+    if (tenantId && !(await this.firestore.getMembership(userId, tenantId))) throw new NotFoundException('User is not a member of this tenant');
     try { return this.toProfile(await this.firestore.setPrimaryPhone(userId, normalized)); }
     catch (error) {
       if (error instanceof Error && error.message.includes('already linked')) throw new ConflictException(error.message);
