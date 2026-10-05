@@ -70,7 +70,7 @@ class _ProfilePageState extends State<ProfilePage> {
         Card(child: ListTile(
           leading: const Icon(Icons.event_available),
           title: Text(activity.title),
-          subtitle: Text(activity.eventType + ' • ' + activity.participatedAt.toLocal().toString()),
+          subtitle: Text('${activity.eventType} • ${activity.participatedAt.toLocal()}'),
         )),
     ]);
   }
