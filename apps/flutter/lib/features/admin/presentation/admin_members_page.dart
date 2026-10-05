@@ -6,9 +6,7 @@ import '../data/tenant_member_repository.dart';
 class AdminMembersPage extends StatefulWidget {
   const AdminMembersPage({required this.repository, super.key});
   final TenantMemberRepository repository;
-
-  @override
-  State<AdminMembersPage> createState() => _AdminMembersPageState();
+  @override State<AdminMembersPage> createState() => _AdminMembersPageState();
 }
 
 class _AdminMembersPageState extends State<AdminMembersPage> {
@@ -17,8 +15,7 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
   bool mutating = false;
   String? error;
 
-  @override
-  void initState() { super.initState(); load(); }
+  @override void initState() { super.initState(); load(); }
 
   Future<void> load() async {
     setState(() { loading = true; error = null; });
@@ -32,43 +29,29 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
 
   Future<void> add(String userId, String role) async {
     setState(() => mutating = true);
-    try {
-      await widget.repository.create(userId: userId, role: role);
-      if (mounted) Navigator.pop(context);
-      await load();
-    } catch (e) { if (mounted) _showError(e.toString()); }
+    try { await widget.repository.create(userId: userId, role: role); if (mounted) Navigator.pop(context); await load(); }
+    catch (e) { if (mounted) _showError(e.toString()); }
     finally { if (mounted) setState(() => mutating = false); }
   }
 
   Future<void> changeRole(TenantMember member, String role) async {
     setState(() => mutating = true);
-    try {
-      await widget.repository.updateRole(userId: member.userId, role: role);
-      if (mounted) Navigator.pop(context);
-      await load();
-    } catch (e) { if (mounted) _showError(e.toString()); }
+    try { await widget.repository.updateRole(userId: member.userId, role: role); if (mounted) Navigator.pop(context); await load(); }
+    catch (e) { if (mounted) _showError(e.toString()); }
     finally { if (mounted) setState(() => mutating = false); }
   }
 
   Future<void> updateContact(TenantMember member, String value) async {
     setState(() => mutating = true);
-    try {
-      await widget.repository.updateContact(userId: member.userId, value: value);
-      if (mounted) Navigator.pop(context);
-      await load();
-    } catch (e) {
-      if (mounted) _showError(e.toString());
-    } finally {
-      if (mounted) setState(() => mutating = false);
-    }
+    try { await widget.repository.updateContact(userId: member.userId, value: value); if (mounted) Navigator.pop(context); await load(); }
+    catch (e) { if (mounted) _showError(e.toString()); }
+    finally { if (mounted) setState(() => mutating = false); }
   }
 
   Future<void> remove(TenantMember member) async {
     setState(() => mutating = true);
-    try {
-      await widget.repository.remove(member.userId);
-      await load();
-    } catch (e) { if (mounted) _showError(e.toString()); }
+    try { await widget.repository.remove(member.userId); await load(); }
+    catch (e) { if (mounted) _showError(e.toString()); }
     finally { if (mounted) setState(() => mutating = false); }
   }
 
@@ -76,8 +59,13 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  @override
-  Widget build(BuildContext context) {
+  bool validMobile(String? value) {
+    final v = value?.trim() ?? '';
+    if (v.length != 10) return false;
+    return '6789'.contains(v[0]);
+  }
+
+  @override Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Members'), actions: [
         IconButton(tooltip: 'Add member', onPressed: mutating ? null : showAdd, icon: const Icon(Icons.person_add_outlined)),
@@ -86,8 +74,7 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
           ? const Center(child: CircularProgressIndicator())
           : error != null
               ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const Text('Unable to load members'),
-                  FilledButton(onPressed: load, child: const Text('Retry')),
+                  const Text('Unable to load members'), FilledButton(onPressed: load, child: const Text('Retry')),
                 ]))
               : members.isEmpty
                   ? const Center(child: Text('No members yet'))
@@ -100,10 +87,11 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
                         itemBuilder: (_, index) {
                           final member = members[index];
                           final name = member.displayName ?? member.email ?? member.userId;
+                          final contact = member.primaryPhone == null ? '' : '\n' + member.primaryPhone!;
                           return ListTile(
                             leading: CircleAvatar(child: Text(name.substring(0, 1).toUpperCase())),
                             title: Text(name),
-                            subtitle: Text((member.email ?? member.userId) + (member.primaryPhone == null ? '' : '\n' + member.primaryPhone!)),
+                            subtitle: Text((member.email ?? member.userId) + contact),
                             trailing: PopupMenuButton<String>(
                               onSelected: (value) {
                                 if (value == 'role') showRole(member);
@@ -129,21 +117,23 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
     final key = GlobalKey<FormState>();
     showDialog<void>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(builder: (_, setDialogState) => AlertDialog(
-        title: const Text('Add member'),
-        content: Form(key: key, child: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextFormField(controller: controller, decoration: const InputDecoration(labelText: 'User ID'),
-            validator: (value) => value == null || value.trim().isEmpty ? 'User ID is required' : null),
-          DropdownButtonFormField<String>(initialValue: role, decoration: const InputDecoration(labelText: 'Role'),
-            items: roles.map((r) => DropdownMenuItem(value: r, child: Text(roleLabel(r)))).toList(),
-            onChanged: (value) => setDialogState(() => role = value!)),
-        ])),
-        actions: [
-          TextButton(onPressed: mutating ? null : () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-          FilledButton(onPressed: mutating ? null : () { if (key.currentState!.validate()) add(controller.text.trim(), role); },
-            child: mutating ? const CircularProgressIndicator() : const Text('Add')),
-        ],
-      )),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (_, setDialogState) => AlertDialog(
+          title: const Text('Add member'),
+          content: Form(key: key, child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextFormField(controller: controller, decoration: const InputDecoration(labelText: 'User ID'),
+              validator: (value) => value == null || value.trim().isEmpty ? 'User ID is required' : null),
+            DropdownButtonFormField<String>(initialValue: role, decoration: const InputDecoration(labelText: 'Role'),
+              items: roles.map((r) => DropdownMenuItem(value: r, child: Text(roleLabel(r)))).toList(),
+              onChanged: (value) => setDialogState(() => role = value!)),
+          ])),
+          actions: [
+            TextButton(onPressed: mutating ? null : () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            FilledButton(onPressed: mutating ? null : () { if (key.currentState!.validate()) add(controller.text.trim(), role); },
+              child: mutating ? const CircularProgressIndicator() : const Text('Add')),
+          ],
+        ),
+      ),
     ).whenComplete(controller.dispose);
   }
 
@@ -161,37 +151,12 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
             keyboardType: TextInputType.phone,
             maxLength: 10,
             decoration: const InputDecoration(labelText: 'Mobile number', prefixText: '+91 '),
-            validator: (value) {
-              if (!RegExp(r'^[6-9][0-9]{9}
-    var role = member.role;
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(builder: (_, setDialogState) => AlertDialog(
-        title: const Text('Change role'),
-        content: DropdownButtonFormField<String>(initialValue: role,
-          items: roles.map((r) => DropdownMenuItem(value: r, child: Text(roleLabel(r)))).toList(),
-          onChanged: (value) => setDialogState(() => role = value!)),
-        actions: [
-          TextButton(onPressed: mutating ? null : () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-          FilledButton(onPressed: mutating ? null : () => changeRole(member, role), child: const Text('Save')),
-        ],
-      )),
-    );
-  }
-}
-
-const roles = ['TENANT_ADMIN', 'CONTENT_MANAGER', 'EVENT_MANAGER', 'INVENTORY_MANAGER', 'FINANCE_VIEWER', 'FINANCE_OPERATOR', 'FINANCE_APPROVER', 'CA_AUDITOR'];
-String roleLabel(String role) => role.split('_').map((part) => part[0] + part.substring(1).toLowerCase()).join(' ');
-).hasMatch(value?.trim() ?? '')) return 'Enter a valid 10 digit mobile number';
-              return null;
-            },
+            validator: (value) => validMobile(value) ? null : 'Enter a valid 10 digit mobile number',
           ),
         ),
         actions: [
           TextButton(onPressed: mutating ? null : () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-          FilledButton(onPressed: mutating ? null : () {
-            if (key.currentState!.validate()) updateContact(member, controller.text.trim());
-          }, child: const Text('Save')),
+          FilledButton(onPressed: mutating ? null : () { if (key.currentState!.validate()) updateContact(member, controller.text.trim()); }, child: const Text('Save')),
         ],
       ),
     ).whenComplete(controller.dispose);
@@ -201,16 +166,18 @@ String roleLabel(String role) => role.split('_').map((part) => part[0] + part.su
     var role = member.role;
     showDialog<void>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(builder: (_, setDialogState) => AlertDialog(
-        title: const Text('Change role'),
-        content: DropdownButtonFormField<String>(initialValue: role,
-          items: roles.map((r) => DropdownMenuItem(value: r, child: Text(roleLabel(r)))).toList(),
-          onChanged: (value) => setDialogState(() => role = value!)),
-        actions: [
-          TextButton(onPressed: mutating ? null : () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-          FilledButton(onPressed: mutating ? null : () => changeRole(member, role), child: const Text('Save')),
-        ],
-      )),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (_, setDialogState) => AlertDialog(
+          title: const Text('Change role'),
+          content: DropdownButtonFormField<String>(initialValue: role,
+            items: roles.map((r) => DropdownMenuItem(value: r, child: Text(roleLabel(r)))).toList(),
+            onChanged: (value) => setDialogState(() => role = value!)),
+          actions: [
+            TextButton(onPressed: mutating ? null : () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            FilledButton(onPressed: mutating ? null : () => changeRole(member, role), child: const Text('Save')),
+          ],
+        ),
+      ),
     );
   }
 }
