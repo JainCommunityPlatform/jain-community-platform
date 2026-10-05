@@ -17,7 +17,7 @@ describe('ProfileController', () => {
     membership.get.mockReturnValue({ tenantId:'tenant-1' });
   });
 
-  it('covers profile and registration context operations', async () => {
+  it('gets profile, registration context, updates and links current profile', async () => {
     profiles.getCurrent.mockResolvedValue({ id:'u1' });
     profiles.registrationContext.mockResolvedValue({ profile:{ id:'u1' }, activities:[] });
     profiles.updateCurrent.mockResolvedValue({ id:'u1' });
@@ -28,7 +28,7 @@ describe('ProfileController', () => {
     await expect(controller.linkContact({ value:'9876543210' })).resolves.toEqual({ id:'u1' });
   });
 
-  it('covers activities and tenant-scoped admin update', async () => {
+  it('gets participation and scopes admin contact updates to the tenant', async () => {
     profiles.activities.mockResolvedValue([]);
     profiles.adminSetContact.mockResolvedValue({ id:'u1' });
     await expect(controller.activities()).resolves.toEqual([]);
@@ -45,7 +45,7 @@ describe('ProfileController', () => {
     expect(() => controller.activities()).toThrow(UnauthorizedException);
   });
 
-  it('allows admin update without a tenant context', async () => {
+  it('allows admin update without a tenant context when the service permits it', async () => {
     membership.get.mockReturnValue(null);
     profiles.adminSetContact.mockResolvedValue({ id:'u1' });
     await expect(controller.adminSetContact('u1', { value:'9876543210' })).resolves.toEqual({ id:'u1' });
