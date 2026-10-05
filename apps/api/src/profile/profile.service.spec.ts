@@ -52,10 +52,10 @@ describe('ProfileService', () => {
 
   it('rejects missing profiles and enforces tenant membership for admin changes', async () => {
     firestore.getUser.mockResolvedValue(null);
-    await expect(service.adminSetContact('missing','9876543210')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.adminSetContact('missing','9876543210')).rejects.toThrow('User profile not found');
     firestore.getUser.mockResolvedValue({ id:'user-1', authSubject:'auth-1', phoneNumbers:[] });
     firestore.getMembership.mockResolvedValue(null);
-    await expect(service.adminSetContact('user-1','9876543210','tenant-1')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.adminSetContact('user-1','9876543210','tenant-1')).rejects.toThrow('User is not a member of this tenant');
   });
 
   it('records participation', async () => {
