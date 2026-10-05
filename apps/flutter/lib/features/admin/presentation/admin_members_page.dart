@@ -50,6 +50,19 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
     finally { if (mounted) setState(() => mutating = false); }
   }
 
+  Future<void> updateContact(TenantMember member, String value) async {
+    setState(() => mutating = true);
+    try {
+      await widget.repository.updateContact(userId: member.userId, value: value);
+      if (mounted) Navigator.pop(context);
+      await load();
+    } catch (e) {
+      if (mounted) _showError(e.toString());
+    } finally {
+      if (mounted) setState(() => mutating = false);
+    }
+  }
+
   Future<void> remove(TenantMember member) async {
     setState(() => mutating = true);
     try {
@@ -90,14 +103,16 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
                           return ListTile(
                             leading: CircleAvatar(child: Text(name.substring(0, 1).toUpperCase())),
                             title: Text(name),
-                            subtitle: Text(member.email ?? member.userId),
+                            subtitle: Text((member.email ?? member.userId) + (member.primaryPhone == null ? '' : '\n' + member.primaryPhone!)),
                             trailing: PopupMenuButton<String>(
                               onSelected: (value) {
                                 if (value == 'role') showRole(member);
+                                if (value == 'contact') showContact(member);
                                 if (value == 'remove') remove(member);
                               },
                               itemBuilder: (_) => const [
                                 PopupMenuItem(value: 'role', child: Text('Change role')),
+                                PopupMenuItem(value: 'contact', child: Text('Update mobile number')),
                                 PopupMenuItem(value: 'remove', child: Text('Remove member')),
                               ],
                             ),
@@ -129,6 +144,56 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
             child: mutating ? const CircularProgressIndicator() : const Text('Add')),
         ],
       )),
+    ).whenComplete(controller.dispose);
+  }
+
+  void showContact(TenantMember member) {
+    final controller = TextEditingController(text: member.primaryPhone ?? '');
+    final key = GlobalKey<FormState>();
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Update mobile number'),
+        content: Form(
+          key: key,
+          child: TextFormField(
+            controller: controller,
+            keyboardType: TextInputType.phone,
+            maxLength: 10,
+            decoration: const InputDecoration(labelText: 'Mobile number', prefixText: '+91 '),
+            validator: (value) {
+              if (!RegExp(r'^[6-9][0-9]{9}
+    var role = member.role;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(builder: (_, setDialogState) => AlertDialog(
+        title: const Text('Change role'),
+        content: DropdownButtonFormField<String>(initialValue: role,
+          items: roles.map((r) => DropdownMenuItem(value: r, child: Text(roleLabel(r)))).toList(),
+          onChanged: (value) => setDialogState(() => role = value!)),
+        actions: [
+          TextButton(onPressed: mutating ? null : () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+          FilledButton(onPressed: mutating ? null : () => changeRole(member, role), child: const Text('Save')),
+        ],
+      )),
+    );
+  }
+}
+
+const roles = ['TENANT_ADMIN', 'CONTENT_MANAGER', 'EVENT_MANAGER', 'INVENTORY_MANAGER', 'FINANCE_VIEWER', 'FINANCE_OPERATOR', 'FINANCE_APPROVER', 'CA_AUDITOR'];
+String roleLabel(String role) => role.split('_').map((part) => part[0] + part.substring(1).toLowerCase()).join(' ');
+).hasMatch(value?.trim() ?? '')) return 'Enter a valid 10 digit mobile number';
+              return null;
+            },
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: mutating ? null : () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+          FilledButton(onPressed: mutating ? null : () {
+            if (key.currentState!.validate()) updateContact(member, controller.text.trim());
+          }, child: const Text('Save')),
+        ],
+      ),
     ).whenComplete(controller.dispose);
   }
 
