@@ -1,5 +1,6 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 
+import { AuthModule } from '../auth/auth.module';
 import { DatabaseModule } from '../database/database.module';
 import { IdentityModule } from '../identity/identity.module';
 import { TenantContextMiddleware } from './tenant-context.middleware';
@@ -14,6 +15,7 @@ import { AuditModule } from '../audit/audit.module';
 
 @Module({
   imports: [
+    AuthModule,
     DatabaseModule,
     IdentityModule,
     TenantContextModule,
