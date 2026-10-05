@@ -12,17 +12,24 @@ void main() {
   test('loads the current session from auth/me', () async {
     final client = MockClient((request) async {
       expect(request.method, 'GET');
-      expect(request.url.path, '/api/auth/me');
-      return http.Response(
-        jsonEncode({
+      if (request.url.path == '/api/auth/me') {
+        return http.Response(jsonEncode({
           'userId': 'user-123',
           'email': 'member@example.com',
           'displayName': 'Community Member',
           'tenantId': 'tenant-123',
           'role': 'CONTENT_MANAGER',
-        }),
-        200,
-      );
+        }), 200);
+      }
+      expect(request.url.path, '/api/profile');
+      return http.Response(jsonEncode({
+        'id': 'user-123',
+        'email': 'member@example.com',
+        'displayName': 'Community Member',
+        'phoneNumbers': ['9876543210'],
+        'primaryPhone': '9876543210',
+        'needsPhoneLink': false,
+      }), 200);
     });
 
     final service = AuthSessionService(

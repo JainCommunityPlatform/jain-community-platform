@@ -14,6 +14,7 @@ export interface TenantMemberSummary {
   userId: string;
   email?: string;
   displayName?: string;
+  primaryPhone?: string;
   role: MembershipRole;
   createdAt: Date;
 }
@@ -64,7 +65,7 @@ export class TenantMemberService {
 
     return this.toSummary({
       ...membership,
-      user: { email: user.email ?? null, displayName: user.displayName ?? null },
+      user: { email: user.email ?? null, displayName: user.displayName ?? null, primaryPhone: user.primaryPhone ?? null },
     });
   }
 
@@ -108,7 +109,7 @@ export class TenantMemberService {
 
     return {
       ...membership,
-      user: { email: user?.email ?? null, displayName: user?.displayName ?? null },
+      user: { email: user?.email ?? null, displayName: user?.displayName ?? null, primaryPhone: user?.primaryPhone ?? null },
     };
   }
 
@@ -131,13 +132,14 @@ export class TenantMemberService {
     userId: string;
     role: string;
     createdAt: Date;
-    user?: { email: string | null; displayName: string | null };
+    user?: { email: string | null; displayName: string | null; primaryPhone: string | null };
   }): TenantMemberSummary {
     return {
       id: membership.id,
       userId: membership.userId,
       email: membership.user?.email ?? undefined,
       displayName: membership.user?.displayName ?? undefined,
+      primaryPhone: membership.user?.primaryPhone ?? undefined,
       role: membership.role as MembershipRole,
       createdAt: membership.createdAt,
     };

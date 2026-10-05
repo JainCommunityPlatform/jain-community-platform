@@ -43,6 +43,12 @@ class TenantMemberRepository {
     );
   }
 
+  Future<void> updateContact({required String userId, required String value}) async {
+    // ignore: prefer_interpolation_to_compose_strings
+    final path = '/api/profile/' + userId + '/contact';
+    await api.patch(path, body: {'value': value});
+  }
+
   Future<void> remove(String userId) {
     return api.delete('/api/tenant/members/$userId');
   }

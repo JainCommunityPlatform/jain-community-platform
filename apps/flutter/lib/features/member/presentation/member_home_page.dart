@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../profile/data/profile_repository.dart';
+import '../../profile/presentation/profile_page.dart';
 
 class MemberHomePage extends StatefulWidget {
-  const MemberHomePage({super.key});
+  const MemberHomePage({this.profileRepository, super.key});
+  final ProfileRepository? profileRepository;
 
   @override
   State<MemberHomePage> createState() => _MemberHomePageState();
@@ -17,7 +20,7 @@ class _MemberHomePageState extends State<MemberHomePage> {
       const _TemplesTab(),
       const _EventsTab(),
       const _DonationsTab(),
-      const _ProfileTab(),
+      widget.profileRepository == null ? const _ProfileTab() : ProfilePage(repository: widget.profileRepository!),
     ];
 
     return Scaffold(

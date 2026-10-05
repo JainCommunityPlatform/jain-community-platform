@@ -8,4 +8,9 @@ module.exports = {
   collectCoverageFrom: ['src/**/*.ts'],
   coverageDirectory: './coverage',
   testEnvironment: 'node',
+  coverageThreshold: {
+    './src/profile/profile.service.ts': { branches: 90, functions: 90, lines: 90, statements: 90 },
+    './src/profile/profile.controller.ts': { branches: 90, functions: 90, lines: 90, statements: 90 },
+    './src/profile/profile-migration.controller.ts': { branches: 90, functions: 90, lines: 90, statements: 90 },
+  },
 };

@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../features/admin/presentation/admin_home_page.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/member/presentation/member_home_page.dart';
+import '../../features/profile/presentation/link_contact_page.dart';
+import '../../features/profile/data/profile_repository.dart';
 import '../../features/public/presentation/home_page.dart';
 import '../session/app_session.dart';
 import '../session/app_session_controller.dart';
@@ -15,9 +17,11 @@ class AppRouter {
     AppSession session = const AppSession(),
     TenantContext? tenant,
     AppSessionController? sessionController,
+    ProfileRepository? profileRepository,
   })  : _session = session,
         _tenant = tenant,
-        _sessionController = sessionController {
+        _sessionController = sessionController,
+        _profileRepository = profileRepository {
     router = GoRouter(
       initialLocation: AppRoutes.home,
       refreshListenable: sessionController,
@@ -37,8 +41,12 @@ class AppRouter {
           ),
         ),
         GoRoute(
+          path: '/link-contact',
+          builder: (_, __) => LinkContactPage(onLink: (value) => _sessionController!.linkContact(value)),
+        ),
+        GoRoute(
           path: AppRoutes.member,
-          builder: (_, __) => const MemberHomePage(),
+          builder: (_, __) => MemberHomePage(profileRepository: _profileRepository),
         ),
         GoRoute(
           path: AppRoutes.admin,
@@ -59,6 +67,7 @@ class AppRouter {
   final AppSession _session;
   final TenantContext? _tenant;
   final AppSessionController? _sessionController;
+  final ProfileRepository? _profileRepository;
   late final GoRouter router;
 
   AppSession get currentSession => _sessionController?.session ?? _session;
@@ -71,13 +80,12 @@ class AppRouter {
         location == AppRoutes.finance ||
         location == AppRoutes.library;
 
-    if (location == AppRoutes.login && session.isAuthenticated) {
-      return AppRoutes.member;
-    }
+    if (location == AppRoutes.login && session.isAuthenticated) return session.needsPhoneLink ? '/link-contact' : AppRoutes.member;
+    if (location == '/link-contact' && session.isAuthenticated && !session.needsPhoneLink) return AppRoutes.member;
 
-    if (!isPrivateRoute) {
-      return null;
-    }
+    if (location == '/link-contact') return session.isAuthenticated ? null : AppRoutes.login;
+    if (session.isAuthenticated && session.needsPhoneLink) return '/link-contact';
+    if (!isPrivateRoute) return null;
 
     if (_tenant == null) {
       return AppRoutes.home;

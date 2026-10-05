@@ -8,6 +8,7 @@ class AppSession {
     this.displayName,
     this.tenantId,
     this.role,
+    this.needsPhoneLink = false,
   });
 
   final bool isAuthenticated;
@@ -16,6 +17,7 @@ class AppSession {
   final String? displayName;
   final String? tenantId;
   final String? role;
+  final bool needsPhoneLink;
 
   bool get isAdmin => role == 'TENANT_ADMIN';
   bool get isFinance => const {
@@ -34,6 +36,7 @@ class AppSession {
       displayName: json['displayName'] as String?,
       tenantId: json['tenantId'] as String?,
       role: json['role'] as String?,
+      needsPhoneLink: json['needsPhoneLink'] as bool? ?? false,
     );
   }
 
