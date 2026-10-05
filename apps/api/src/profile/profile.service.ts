@@ -27,6 +27,15 @@ export class ProfileService {
     }
   }
 
+  async provisionByContact(input: { value: string; displayName?: string; address?: string }): Promise<UserProfile> {
+    const normalized = normalizeIndianMobile(input.value);
+    return this.toProfile(await this.firestore.provisionUserByPhone({
+      phone: normalized,
+      displayName: input.displayName,
+      address: input.address,
+    }));
+  }
+
   async resolveByContact(value: string): Promise<UserProfile | null> {
     const normalized = normalizeIndianMobile(value);
     return this.toProfileNullable(await this.firestore.findUserByPhone(normalized));
