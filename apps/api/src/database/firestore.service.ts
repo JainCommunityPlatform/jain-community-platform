@@ -221,6 +221,33 @@ export class FirestoreService implements OnModuleInit {
     });
   }
 
+  async provisionUserByPhone(input: { phone: string; displayName?: string; address?: string }): Promise<FirestoreUser> {
+    const db = this.getDb();
+    const indexRef = db.collection('userPhoneIndexes').doc(hashPhone(input.phone));
+    return db.runTransaction(async (transaction) => {
+      const index = await transaction.get(indexRef);
+      if (index.exists) {
+        const existing = await transaction.get(db.collection('users').doc(index.data()?.userId as string));
+        if (existing.exists) return this.toUser(existing.id, existing.data() ?? {});
+      }
+      const userId = randomUUID();
+      const subject = 'migration:' + hashPhone(input.phone);
+      const now = Timestamp.now();
+      transaction.create(db.collection('users').doc(userId), {
+        authSubject: subject,
+        displayName: input.displayName ?? null,
+        address: input.address ?? null,
+        phoneNumbers: [input.phone],
+        primaryPhone: input.phone,
+        createdAt: now,
+        updatedAt: now,
+      });
+      transaction.create(indexRef, { userId, phone: input.phone, createdAt: now });
+      transaction.create(db.collection('userAuthIndexes').doc(hashSubject(subject)), { userId, authSubject: subject });
+      return { id:userId, authSubject:subject, displayName:input.displayName, address:input.address, primaryPhone:input.phone, phoneNumbers:[input.phone] };
+    });
+  }
+
   async findUserByPhone(phone: string): Promise<FirestoreUser | null> {
     const snapshot = await this.getDb().collection('userPhoneIndexes').doc(hashPhone(phone)).get();
     if (!snapshot.exists) return null;
