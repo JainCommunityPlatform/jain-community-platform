@@ -7,6 +7,7 @@ import 'core/firebase/firebase_bootstrap.dart';
 import 'core/routing/app_router.dart';
 import 'core/session/app_session_controller.dart';
 import 'core/session/auth_session_service.dart';
+import 'features/profile/data/profile_repository.dart';
 import 'core/tenant/tenant_context.dart';
 import 'core/tenant/tenant_scope.dart';
 import 'core/theme/app_theme.dart';
@@ -24,6 +25,7 @@ Future<void> main() async {
     accessTokenProvider: firebaseAuth.getIdToken,
     onUnauthorized: firebaseAuth.signOut,
   );
+  final profileRepository = ProfileRepository(api);
   final sessionController = AppSessionController(
     auth: firebaseAuth,
     sessionService: AuthSessionService(api),
@@ -36,6 +38,7 @@ Future<void> main() async {
       router: AppRouter(
         tenant: tenant,
         sessionController: sessionController,
+        profileRepository: profileRepository,
       ),
       tenant: tenant,
     ),
