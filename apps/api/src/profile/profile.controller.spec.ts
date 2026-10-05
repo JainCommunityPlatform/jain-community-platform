@@ -1,3 +1,4 @@
+jest.mock('jose', () => ({ createRemoteJWKSet: jest.fn(), jwtVerify: jest.fn() }));
 import { UnauthorizedException } from '@nestjs/common';
 import { ProfileController } from './profile.controller';
 
