@@ -23,6 +23,13 @@ export class ProfileController {
     return this.profiles.getCurrent(user);
   }
 
+  @Get('registration-context')
+  registrationContext() {
+    const user = this.auth.get();
+    if (!user) throw new UnauthorizedException('Authenticated user context is missing');
+    return this.profiles.registrationContext(user);
+  }
+
   @Patch()
   update(@Body() dto: UpdateProfileDto) {
     const user = this.auth.get();
@@ -50,5 +57,4 @@ export class ProfileController {
   adminSetContact(@Param('userId') userId: string, @Body() dto: LinkContactDto) {
     return this.profiles.adminSetContact(userId, dto.value, this.membership.get()?.tenantId);
   }
-
 }
