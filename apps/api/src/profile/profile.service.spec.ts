@@ -44,6 +44,11 @@ describe('ProfileService', () => {
     expect(firestore.linkPhoneToUser).not.toHaveBeenCalled();
   });
 
+  it('propagates unexpected link errors', async () => {
+    firestore.linkPhoneToUser.mockRejectedValue(new Error('database unavailable'));
+    await expect(service.linkCurrentContact({ subject:'auth-1' }, '9876543210')).rejects.toThrow('database unavailable');
+  });
+
   it('provisions and resolves profiles by mobile', async () => {
     firestore.provisionUserByPhone.mockResolvedValue({ id:'user-1', authSubject:'migration:1', phoneNumbers:['9876543210'], primaryPhone:'9876543210' });
     firestore.findUserByPhone.mockResolvedValue({ id:'user-1', authSubject:'migration:1', phoneNumbers:['9876543210'], primaryPhone:'9876543210' });
@@ -59,6 +64,12 @@ describe('ProfileService', () => {
     firestore.getUser.mockResolvedValue({ id:'user-1', authSubject:'auth-1', phoneNumbers:[] });
     firestore.getMembership.mockResolvedValue(null);
     await expect(service.adminSetContact('user-1','9876543210','tenant-1')).rejects.toThrow('User is not a member of this tenant');
+  });
+
+  it('handles admin updates without tenant context', async () => {
+    firestore.getUser.mockResolvedValue({ id:'user-1', authSubject:'auth-1', phoneNumbers:[] });
+    firestore.setPrimaryPhone.mockResolvedValue({ id:'user-1', authSubject:'auth-1', phoneNumbers:['9876543210'], primaryPhone:'9876543210' });
+    await expect(service.adminSetContact('user-1','9876543210')).resolves.toMatchObject({ primaryPhone:'9876543210' });
   });
 
   it('records participation', async () => {
