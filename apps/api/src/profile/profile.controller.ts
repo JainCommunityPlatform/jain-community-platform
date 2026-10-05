@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Param, Patch, Post, UnauthorizedException, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UnauthorizedException, UseGuards, UseInterceptors } from '@nestjs/common';
 import { AuthenticationGuard } from '../auth/authentication.guard';
 import { AuthContextStore } from '../auth/auth-context.store';
 import { AuthenticationContextInterceptor } from '../auth/authentication-context.interceptor';
@@ -9,7 +9,6 @@ import { MembershipContextStore } from '../authorization/membership-context.stor
 import { ProfileService } from './profile.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { LinkContactDto } from './dto/link-contact.dto';
-import { RecordActivityDto } from './dto/record-activity.dto';
 
 @Controller('profile')
 @UseGuards(AuthenticationGuard)
