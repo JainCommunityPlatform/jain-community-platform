@@ -74,7 +74,7 @@ export class ProfileService {
 }
 
 function normalizeIndianMobile(value: string): string {
-  const normalized = String(value).replace(/\\D/g, '');
+  const normalized = String(value).replace(/\D/g, '');
   if (!/^[6-9][0-9]{9}$/.test(normalized)) throw new ConflictException('A valid Indian mobile number is required');
   return normalized;
 }
