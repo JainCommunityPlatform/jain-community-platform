@@ -65,7 +65,7 @@ export class TenantMemberService {
 
     return this.toSummary({
       ...membership,
-      user: { email: user.email ?? null, displayName: user.displayName ?? null },
+      user: { email: user.email ?? null, displayName: user.displayName ?? null, primaryPhone: user.primaryPhone ?? null },
     });
   }
 
