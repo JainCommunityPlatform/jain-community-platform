@@ -14,6 +14,7 @@ import { AppModule } from '../src/app.module';
 import { MembershipService } from '../src/authorization/membership.service';
 import { UserIdentityService } from '../src/identity/user-identity.service';
 import { FirestoreTenantResolver } from '../src/tenant/firestore-tenant.resolver';
+import { ProfileService } from '../src/profile/profile.service';
 
 describe('API endpoints (integration)', () => {
   let app: INestApplication;
@@ -38,6 +39,37 @@ describe('API endpoints (integration)', () => {
         email: user.email,
         displayName: user.displayName,
       })),
+    };
+
+    const profile = {
+      getCurrent: jest.fn(async () => ({
+        id: 'user-a',
+        displayName: 'Test Member',
+        email: 'test@example.com',
+        primaryPhone: '9876543210',
+        phoneNumbers: ['9876543210'],
+        address: 'Pune',
+        needsPhoneLink: false,
+      })),
+      updateCurrent: jest.fn(async () => ({
+        id: 'user-a',
+        displayName: 'Updated Member',
+        email: 'test@example.com',
+        primaryPhone: '9876543210',
+        phoneNumbers: ['9876543210'],
+        address: 'Updated Pune',
+        needsPhoneLink: false,
+      })),
+      activities: jest.fn(async () => [{
+        id: 'activity-1',
+        eventType: 'KSHAMAWANI',
+        eventId: 'kshamawani-2026',
+        title: 'Kshamawani 2026',
+        participatedAt: '2026-09-05T00:00:00.000Z',
+      }]),
+      linkCurrentContact: jest.fn(),
+      adminSetContact: jest.fn(),
+      recordActivity: jest.fn(),
     };
 
     const tenantResolver = {
@@ -76,6 +108,8 @@ describe('API endpoints (integration)', () => {
       .useValue(membership)
       .overrideProvider(FirestoreTenantResolver)
       .useValue(tenantResolver)
+      .overrideProvider(ProfileService)
+      .useValue(profile)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -105,6 +139,38 @@ describe('API endpoints (integration)', () => {
           '00000000-0000-0000-0000-000000000001',
         );
         expect(response.body.role).toBe('TENANT_ADMIN');
+      });
+  });
+
+  it('GET /api/profile returns the canonical profile', async () => {
+    await request(app.getHttpServer())
+      .get('/api/profile')
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.id).toBe('user-a');
+        expect(response.body.primaryPhone).toBe('9876543210');
+        expect(response.body.needsPhoneLink).toBe(false);
+      });
+  });
+
+  it('PATCH /api/profile updates editable profile fields without accepting phone fields', async () => {
+    await request(app.getHttpServer())
+      .patch('/api/profile')
+      .send({ displayName: 'Updated Member', address: 'Updated Pune' })
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.displayName).toBe('Updated Member');
+        expect(response.body.primaryPhone).toBe('9876543210');
+      });
+  });
+
+  it('GET /api/profile/activities returns participation history', async () => {
+    await request(app.getHttpServer())
+      .get('/api/profile/activities')
+      .expect(200)
+      .expect((response) => {
+        expect(response.body[0].eventType).toBe('KSHAMAWANI');
+        expect(response.body[0].eventId).toBe('kshamawani-2026');
       });
   });
 
