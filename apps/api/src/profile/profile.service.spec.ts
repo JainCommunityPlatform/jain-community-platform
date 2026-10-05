@@ -41,6 +41,28 @@ describe('ProfileService', () => {
     expect(firestore.linkPhoneToUser).not.toHaveBeenCalled();
   });
 
+  it('provisions and resolves profiles by mobile', async () => {
+    firestore.provisionUserByPhone.mockResolvedValue({ id:'user-1', authSubject:'migration:1', phoneNumbers:['9876543210'], primaryPhone:'9876543210' });
+    firestore.findUserByPhone.mockResolvedValue({ id:'user-1', authSubject:'migration:1', phoneNumbers:['9876543210'], primaryPhone:'9876543210' });
+    await expect(service.provisionByContact({ value:'9876543210', displayName:'Member', address:'Pune' })).resolves.toMatchObject({ id:'user-1' });
+    await expect(service.resolveByContact('9876543210')).resolves.toMatchObject({ id:'user-1' });
+    firestore.findUserByPhone.mockResolvedValue(null);
+    await expect(service.resolveByContact('9876543210')).resolves.toBeNull();
+  });
+
+  it('rejects missing profiles and enforces tenant membership for admin changes', async () => {
+    firestore.getUser.mockResolvedValue(null);
+    await expect(service.adminSetContact('missing','9876543210')).rejects.toBeInstanceOf(NotFoundException);
+    firestore.getUser.mockResolvedValue({ id:'user-1', authSubject:'auth-1', phoneNumbers:[] });
+    firestore.getMembership.mockResolvedValue(null);
+    await expect(service.adminSetContact('user-1','9876543210','tenant-1')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('records participation', async () => {
+    await service.recordActivity({ userId:'user-1', eventType:'KSHAMAWANI', eventId:'k1', title:'Kshamawani', participatedAt:'2026-09-05T00:00:00Z' });
+    expect(firestore.recordUserActivity).toHaveBeenCalledWith(expect.objectContaining({ userId:'user-1', eventType:'KSHAMAWANI' }));
+  });
+
   it('returns participation history', async () => {
     firestore.listUserActivities.mockResolvedValue([{ id:'a1', userId:'user-1', eventType:'KSHAMAWANI', eventId:'k1', title:'Kshamawani', participatedAt:new Date('2026-09-05T00:00:00Z') }]);
     await expect(service.activities({ subject:'auth-1' })).resolves.toEqual([{ id:'a1', eventType:'KSHAMAWANI', eventId:'k1', title:'Kshamawani', participatedAt:'2026-09-05T00:00:00.000Z', tenantId:undefined }]);
