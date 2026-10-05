@@ -52,22 +52,4 @@ export class ProfileController {
     return this.profiles.adminSetContact(userId, dto.value, this.membership.get()?.tenantId);
   }
 
-  @Post('migrations/provision')
-  async provisionMigration(@Headers('x-jcp-internal-token') token: string | undefined, @Body() dto: { value: string; displayName?: string; address?: string }) {
-    if (!process.env.JCP_INTERNAL_TOKEN || token !== process.env.JCP_INTERNAL_TOKEN) throw new UnauthorizedException('Internal activity token is required');
-    return this.profiles.provisionByContact(dto);
-  }
-
-  @Post('migrations/resolve')
-  async resolveMigration(@Headers('x-jcp-internal-token') token: string | undefined, @Body() dto: LinkContactDto) {
-    if (!process.env.JCP_INTERNAL_TOKEN || token !== process.env.JCP_INTERNAL_TOKEN) throw new UnauthorizedException('Internal activity token is required');
-    return this.profiles.resolveByContact(dto.value);
-  }
-
-  @Post('activities')
-  async recordActivity(@Headers('x-jcp-internal-token') token: string | undefined, @Body() dto: RecordActivityDto) {
-    if (!process.env.JCP_INTERNAL_TOKEN || token !== process.env.JCP_INTERNAL_TOKEN) throw new UnauthorizedException('Internal activity token is required');
-    await this.profiles.recordActivity(dto);
-    return { recorded: true };
-  }
 }
