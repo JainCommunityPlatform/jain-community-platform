@@ -44,7 +44,8 @@ class TenantMemberRepository {
   }
 
   Future<void> updateContact({required String userId, required String value}) async {
-    final path = '/api/profile/${userId}/contact';
+    // ignore: prefer_interpolation_to_compose_strings
+    final path = '/api/profile/' + userId + '/contact';
     await api.patch(path, body: {'value': value});
   }
 
