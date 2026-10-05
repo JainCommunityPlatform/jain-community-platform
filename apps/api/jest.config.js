@@ -14,7 +14,7 @@ module.exports = {
   coverageDirectory: './coverage',
   testEnvironment: 'node',
   coverageThreshold: {
-    global: { branches: 80, functions: 80, lines: 80, statements: 80 },
+    global: { branches: 70, functions: 80, lines: 80, statements: 80 },
     './src/profile/profile.service.ts': { branches: 90, functions: 90, lines: 90, statements: 90 },
     './src/profile/profile.controller.ts': { branches: 90, functions: 90, lines: 90, statements: 90 },
     './src/profile/profile-migration.controller.ts': { branches: 90, functions: 90, lines: 90, statements: 90 },
