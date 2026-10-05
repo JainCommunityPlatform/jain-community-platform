@@ -5,10 +5,11 @@ import { AuthorizationModule } from '../authorization/authorization.module';
 import { IdentityModule } from '../identity/identity.module';
 import { ProfileController } from './profile.controller';
 import { ProfileService } from './profile.service';
+import { ProfileMigrationController } from './profile-migration.controller';
 
 @Module({
   imports: [AuthModule, AuthorizationModule, IdentityModule],
-  controllers: [ProfileController],
+  controllers: [ProfileController, ProfileMigrationController],
   providers: [ProfileService],
   exports: [ProfileService],
 })
