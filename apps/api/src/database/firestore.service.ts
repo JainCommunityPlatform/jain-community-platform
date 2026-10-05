@@ -221,6 +221,13 @@ export class FirestoreService implements OnModuleInit {
     });
   }
 
+  async findUserByPhone(phone: string): Promise<FirestoreUser | null> {
+    const snapshot = await this.getDb().collection('userPhoneIndexes').doc(hashPhone(phone)).get();
+    if (!snapshot.exists) return null;
+    const userId = snapshot.data()?.userId as string | undefined;
+    return userId ? this.getUser(userId) : null;
+  }
+
   async setPrimaryPhone(userId: string, phone: string): Promise<FirestoreUser> {
     const db = this.getDb();
     const indexRef = db.collection('userPhoneIndexes').doc(hashPhone(phone));
