@@ -117,7 +117,7 @@ jobs:
       - name: Unit tests
         if: steps.backend.outputs.available == 'true'
         working-directory: apps/api
-        run: npm test --if-present
+        run: npm run test:cov --if-present
       - name: Integration tests
         if: steps.backend.outputs.available == 'true'
         working-directory: apps/api
