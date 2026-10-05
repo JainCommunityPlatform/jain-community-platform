@@ -42,6 +42,13 @@ describe('ProfileController', () => {
     expect(() => controller.activities()).toThrow(UnauthorizedException);
   });
 
+  it('allows admin update without a tenant context when the service permits it', async () => {
+    membership.get.mockReturnValue(null);
+    profiles.adminSetContact.mockResolvedValue({ id:'u1' });
+    await expect(controller.adminSetContact('u1', { value:'9876543210' })).resolves.toEqual({ id:'u1' });
+    expect(profiles.adminSetContact).toHaveBeenCalledWith('u1','9876543210',undefined);
+  });
+
   it('protects trusted activity ingestion', async () => {
     const previous = process.env.JCP_INTERNAL_TOKEN;
     process.env.JCP_INTERNAL_TOKEN = 'test-key';
