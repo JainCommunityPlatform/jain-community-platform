@@ -46,7 +46,7 @@ class AppRouter {
         ),
         GoRoute(
           path: AppRoutes.member,
-          builder: (_, __) => MemberHomePage(profileRepository: _profileRepository!),
+          builder: (_, __) => MemberHomePage(profileRepository: _profileRepository),
         ),
         GoRoute(
           path: AppRoutes.admin,
