@@ -20,7 +20,7 @@ class _MemberHomePageState extends State<MemberHomePage> {
       const _TemplesTab(),
       const _EventsTab(),
       const _DonationsTab(),
-      ProfilePage(repository: widget.profileRepository),
+      widget.profileRepository == null ? const _ProfileTab() : ProfilePage(repository: widget.profileRepository!),
     ];
 
     return Scaffold(
