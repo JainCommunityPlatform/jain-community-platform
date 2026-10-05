@@ -27,7 +27,7 @@ void main() {
 
     expect(find.text('Shri Adinath Jinalay'), findsOneWidget);
     expect(find.text('Bade Baba Kharadi, Pune'), findsOneWidget);
-    expect(find.text('Explore Bade Baba Kharadi'), findsOneWidget);
+    expect(find.text('What would you like to do?'), findsOneWidget);
   });
 
   testWidgets('home sign-in action navigates to login', (tester) async {
@@ -39,8 +39,8 @@ void main() {
       ),
     );
 
-    await tester.ensureVisible(find.text('Sign in to MyJinalay'));
-    await tester.tap(find.text('Sign in to MyJinalay'));
+    await tester.ensureVisible(find.text('Sign in to continue'));
+    await tester.tap(find.text('Sign in to continue'));
     await tester.pumpAndSettle();
 
     expect(router.router.state.uri.path, '/login');
