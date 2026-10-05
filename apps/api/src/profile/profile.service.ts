@@ -27,6 +27,11 @@ export class ProfileService {
     }
   }
 
+  async resolveByContact(value: string): Promise<UserProfile | null> {
+    const normalized = normalizeIndianMobile(value);
+    return this.toProfileNullable(await this.firestore.findUserByPhone(normalized));
+  }
+
   async adminSetContact(userId: string, value: string): Promise<UserProfile> {
     const normalized = normalizeIndianMobile(value);
     if (!(await this.firestore.getUser(userId))) throw new NotFoundException('User profile not found');
@@ -45,6 +50,10 @@ export class ProfileService {
 
   async recordActivity(input: {userId:string; tenantId?:string; eventType:string; eventId:string; title:string; participatedAt:string}): Promise<void> {
     await this.firestore.recordUserActivity({ id:'', userId:input.userId, tenantId:input.tenantId, eventType:input.eventType, eventId:input.eventId, title:input.title, participatedAt:new Date(input.participatedAt) });
+  }
+
+  private toProfileNullable(user: Awaited<ReturnType<FirestoreService['getUser']>>): UserProfile | null {
+    return user ? this.toProfile(user) : null;
   }
 
   private toProfile(user: Awaited<ReturnType<FirestoreService['getUser']>>): UserProfile {
