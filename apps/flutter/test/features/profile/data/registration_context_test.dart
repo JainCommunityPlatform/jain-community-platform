@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jain_community_platform/features/profile/data/registration_context.dart';
-import 'package:jain_community_platform/features/profile/data/user_profile.dart';
 
 void main() {
   test('parses canonical profile and activities for a registration', () {
