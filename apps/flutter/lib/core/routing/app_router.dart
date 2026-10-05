@@ -84,6 +84,7 @@ class AppRouter {
     if (location == '/link-contact' && session.isAuthenticated && !session.needsPhoneLink) return AppRoutes.member;
 
     if (location == '/link-contact') return session.isAuthenticated ? null : AppRoutes.login;
+    if (session.isAuthenticated && session.needsPhoneLink) return '/link-contact';
     if (!isPrivateRoute) return null;
 
     if (_tenant == null) {
