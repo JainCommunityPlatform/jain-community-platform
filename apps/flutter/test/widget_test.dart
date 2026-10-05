@@ -25,12 +25,9 @@ void main() {
       ),
     );
 
-    expect(find.text('MyJinalay'), findsOneWidget);
-    expect(
-      find.text('Community, temples, events and giving'),
-      findsOneWidget,
-    );
-    expect(find.text('Sign in to MyJinalay'), findsOneWidget);
+    expect(find.text('Shri Adinath Jinalay'), findsOneWidget);
+    expect(find.text('Bade Baba Kharadi, Pune'), findsOneWidget);
+    expect(find.text('Explore Bade Baba Kharadi'), findsOneWidget);
   });
 
   testWidgets('home sign-in action navigates to login', (tester) async {
