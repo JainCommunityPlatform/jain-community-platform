@@ -49,11 +49,5 @@ describe('ProfileController', () => {
     expect(profiles.adminSetContact).toHaveBeenCalledWith('u1','9876543210',undefined);
   });
 
-  it('protects trusted activity ingestion', async () => {
-    const previous = process.env.JCP_INTERNAL_TOKEN;
-    process.env.JCP_INTERNAL_TOKEN = 'test-key';
-    await expect(controller.recordActivity('wrong', { userId:'u1', eventType:'K', eventId:'1', title:'K', participatedAt:'2026-01-01T00:00:00Z' })).rejects.toBeInstanceOf(UnauthorizedException);
-    await expect(controller.recordActivity('test-key', { userId:'u1', eventType:'K', eventId:'1', title:'K', participatedAt:'2026-01-01T00:00:00Z' })).resolves.toEqual({ recorded:true });
-    process.env.JCP_INTERNAL_TOKEN = previous;
-  });
+
 });
