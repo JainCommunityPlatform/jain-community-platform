@@ -87,7 +87,7 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
                         itemBuilder: (_, index) {
                           final member = members[index];
                           final name = member.displayName ?? member.email ?? member.userId;
-                          final contact = member.primaryPhone == null ? '' : '\n' + member.primaryPhone!;
+                          final contact = member.primaryPhone == null ? '' : '\n${member.primaryPhone!}';
                           return ListTile(
                             leading: CircleAvatar(child: Text(name.substring(0, 1).toUpperCase())),
                             title: Text(name),
