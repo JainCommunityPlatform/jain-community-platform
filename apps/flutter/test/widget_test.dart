@@ -39,8 +39,7 @@ void main() {
       ),
     );
 
-    await tester.ensureVisible(find.text('Sign in to continue'));
-    await tester.tap(find.text('Sign in to continue'));
+    await tester.tap(find.widgetWithText(TextButton, 'Sign in'));
     await tester.pumpAndSettle();
 
     expect(router.router.state.uri.path, '/login');
