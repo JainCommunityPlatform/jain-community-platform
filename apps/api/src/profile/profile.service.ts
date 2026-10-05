@@ -9,7 +9,8 @@ export class ProfileService {
   constructor(private readonly firestore: FirestoreService, private readonly identity: UserIdentityService) {}
 
   async getCurrent(authenticated: AuthenticatedUser): Promise<UserProfile> {
-    return this.toProfile(await this.identity.resolve(authenticated));
+    const identity = await this.identity.resolve(authenticated);
+    return this.toProfile(await this.firestore.getUser(identity.id));
   }
 
   async updateCurrent(authenticated: AuthenticatedUser, input: Parameters<FirestoreService['updateUserProfile']>[1]): Promise<UserProfile> {
@@ -59,7 +60,7 @@ export class ProfileService {
   }
 
   async recordActivity(input: {userId:string; tenantId?:string; eventType:string; eventId:string; title:string; participatedAt:string}): Promise<void> {
-    await this.firestore.recordUserActivity({ id:'', userId:input.userId, tenantId:input.tenantId, eventType:input.eventType, eventId:input.eventId, title:input.title, participatedAt:new Date(input.participatedAt) });
+    await this.firestore.recordUserActivity({ userId:input.userId, tenantId:input.tenantId, eventType:input.eventType, eventId:input.eventId, title:input.title, participatedAt:new Date(input.participatedAt) });
   }
 
   private toProfileNullable(user: Awaited<ReturnType<FirestoreService['getUser']>>): UserProfile | null {
