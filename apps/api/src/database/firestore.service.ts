@@ -166,6 +166,7 @@ export class FirestoreService implements OnModuleInit {
         authSubject: input.subject,
         email: input.email,
         displayName: input.displayName,
+        phoneNumbers: this.toUser(userId, existing.data() ?? {}).phoneNumbers,
       };
     });
   }
