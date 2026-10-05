@@ -46,7 +46,7 @@ export interface FirestoreMembership {
   tenantId: string;
   role: string;
   createdAt: Date;
-  user?: { email: string | null; displayName: string | null };
+  user?: { email: string | null; displayName: string | null; primaryPhone: string | null };
 }
 
 export interface FirestoreAuditLogInput {
@@ -417,6 +417,7 @@ export class FirestoreService implements OnModuleInit {
         membership.user = {
           email: user?.email ?? null,
           displayName: user?.displayName ?? null,
+          primaryPhone: user?.primaryPhone ?? null,
         };
       }),
     );
