@@ -273,11 +273,37 @@ export class FirestoreService implements OnModuleInit {
   }
 
   async listUserActivities(userId: string): Promise<FirestoreUserActivity[]> {
-    const snapshot = await this.getDb().collection('userActivities').where('userId', '==', userId).orderBy('participatedAt', 'desc').get();
-    return snapshot.docs.map((doc) => {
+    const db = this.getDb();
+    const [activitySnapshot, kshamawaniSnapshot, pratibhaSnapshot] = await Promise.all([
+      db.collection('userActivities').where('userId', '==', userId).orderBy('participatedAt', 'desc').get(),
+      db.collection('registrations').where('userId', '==', userId).get(),
+      db.collection('pratibhaSammanApplications').where('userId', '==', userId).get(),
+    ]);
+
+    const activities: FirestoreUserActivity[] = activitySnapshot.docs.map((doc) => {
       const data = doc.data();
       return { id: doc.id, userId, tenantId: data.tenantId as string | undefined, eventType: data.eventType as string, eventId: data.eventId as string, title: data.title as string, participatedAt: toDate(data.participatedAt), metadata: data.metadata as Record<string, unknown> | undefined };
     });
+
+    for (const doc of kshamawaniSnapshot.docs) {
+      const data = doc.data();
+      activities.push({
+        id: 'kshamawani:' + doc.id, userId, tenantId: 'bade-baba-kharadi',
+        eventType: 'KSHAMAWANI', eventId: data.eventId as string || doc.id,
+        title: 'Kshamawani 2026', participatedAt: toDate(data.createdAt),
+      });
+    }
+
+    for (const doc of pratibhaSnapshot.docs) {
+      const data = doc.data();
+      activities.push({
+        id: 'pratibha:' + doc.id, userId, tenantId: 'bade-baba-kharadi',
+        eventType: 'PRATIBHA_SAMMAN', eventId: data.applicationId as string || doc.id,
+        title: 'Pratibha Samman 2026', participatedAt: toDate(data.createdAt),
+      });
+    }
+
+    return activities.sort((a, b) => b.participatedAt.getTime() - a.participatedAt.getTime());
   }
 
   async recordUserActivity(input: Omit<FirestoreUserActivity, 'id'>): Promise<void> {
