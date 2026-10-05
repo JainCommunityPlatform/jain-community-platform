@@ -65,7 +65,11 @@ export class FirestoreService implements OnModuleInit {
         credential: this.createCredential(),
       });
 
-    this.firestore = getFirestore(this.app);
+    const databaseId =
+      this.config.get<string>('firebase.databaseId')?.trim() ||
+      '(default)';
+
+    this.firestore = getFirestore(this.app, databaseId);
     return this.firestore;
   }
 
