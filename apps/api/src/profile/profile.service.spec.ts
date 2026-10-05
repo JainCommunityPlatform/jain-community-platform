@@ -8,6 +8,7 @@ describe('ProfileService', () => {
     linkPhoneToUser: jest.fn(),
     setPrimaryPhone: jest.fn(),
     getUser: jest.fn(),
+    getMembership: jest.fn(),
     listUserActivities: jest.fn(),
     recordUserActivity: jest.fn(),
   };
