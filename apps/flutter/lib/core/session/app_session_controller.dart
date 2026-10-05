@@ -98,6 +98,20 @@ class AppSessionController extends ChangeNotifier {
     }
   }
 
+  Future<void> linkContact(String value) async {
+    _status = AppSessionStatus.initializing;
+    _error = null;
+    notifyListeners();
+    try {
+      await _sessionService.linkContact(value);
+      _session = await _sessionService.loadCurrentSession();
+      _status = AppSessionStatus.authenticated;
+    } catch (error) {
+      _setError(error);
+    }
+    notifyListeners();
+  }
+
   Future<void> signOut() async {
     await _auth.signOut();
   }
