@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { FirestoreService } from './firestore.service';
 
 class Snapshot {
