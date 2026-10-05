@@ -66,6 +66,12 @@ describe('ProfileService', () => {
     await expect(service.adminSetContact('user-1','9876543210','tenant-1')).rejects.toThrow('User is not a member of this tenant');
   });
 
+  it('propagates unexpected admin update errors', async () => {
+    firestore.getUser.mockResolvedValue({ id:'user-1', authSubject:'auth-1', phoneNumbers:[] });
+    firestore.setPrimaryPhone.mockRejectedValue(new Error('database unavailable'));
+    await expect(service.adminSetContact('user-1','9876543210')).rejects.toThrow('database unavailable');
+  });
+
   it('handles admin updates without tenant context', async () => {
     firestore.getUser.mockResolvedValue({ id:'user-1', authSubject:'auth-1', phoneNumbers:[] });
     firestore.setPrimaryPhone.mockResolvedValue({ id:'user-1', authSubject:'auth-1', phoneNumbers:['9876543210'], primaryPhone:'9876543210' });
