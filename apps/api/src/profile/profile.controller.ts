@@ -51,6 +51,12 @@ export class ProfileController {
     return this.profiles.adminSetContact(userId, dto.value);
   }
 
+  @Post('migrations/resolve')
+  async resolveMigration(@Headers('x-jcp-internal-token') token: string | undefined, @Body() dto: LinkContactDto) {
+    if (!process.env.JCP_INTERNAL_TOKEN || token !== process.env.JCP_INTERNAL_TOKEN) throw new UnauthorizedException('Internal activity token is required');
+    return this.profiles.resolveByContact(dto.value);
+  }
+
   @Post('activities')
   async recordActivity(@Headers('x-jcp-internal-token') token: string | undefined, @Body() dto: RecordActivityDto) {
     if (!process.env.JCP_INTERNAL_TOKEN || token !== process.env.JCP_INTERNAL_TOKEN) throw new UnauthorizedException('Internal activity token is required');
