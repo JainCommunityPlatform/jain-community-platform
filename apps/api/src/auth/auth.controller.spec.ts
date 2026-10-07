@@ -8,6 +8,7 @@ jest.mock('jose', () => ({
 import { AuthContextStore } from './auth-context.store';
 import { AuthController } from './auth.controller';
 import { MembershipContextStore } from '../authorization/membership-context.store';
+import { UserIdentityService } from '../identity/user-identity.service';
 
 describe('AuthController', () => {
   it('returns the authenticated user and resolved membership context', () => {
@@ -30,14 +31,16 @@ describe('AuthController', () => {
         },
       }),
     } as unknown as MembershipContextStore;
-    const controller = new AuthController(authStore, membershipStore);
+    const identity = { resolve: jest.fn().mockResolvedValue({ id: 'database-user-1', platformRoles: [] }) } as unknown as UserIdentityService;
+    const controller = new AuthController(authStore, membershipStore, identity);
 
-    expect(controller.getCurrentUser()).toEqual({
+    return controller.getCurrentUser().then((result) => expect(result).toEqual({
       ...user,
       userId: 'database-user-1',
       tenantId: 'tenant-1',
       role: 'TENANT_ADMIN',
-    });
+      platformRoles: [],
+    }));
   });
 
   it('rejects when the authenticated user context is missing', () => {
@@ -47,7 +50,8 @@ describe('AuthController', () => {
     const membershipStore = {
       get: jest.fn(),
     } as unknown as MembershipContextStore;
-    const controller = new AuthController(authStore, membershipStore);
+    const identity = { resolve: jest.fn() } as unknown as UserIdentityService;
+    const controller = new AuthController(authStore, membershipStore, identity);
 
     expect(() => controller.getCurrentUser()).toThrow(UnauthorizedException);
   });
@@ -59,11 +63,13 @@ describe('AuthController', () => {
     const membershipStore = {
       get: jest.fn().mockReturnValue(null),
     } as unknown as MembershipContextStore;
-    const controller = new AuthController(authStore, membershipStore);
+    const identity = { resolve: jest.fn().mockResolvedValue({ id: 'database-user-1', platformRoles: [] }) } as unknown as UserIdentityService;
+    const controller = new AuthController(authStore, membershipStore, identity);
 
-    expect(controller.getCurrentUser()).toEqual({
+    return controller.getCurrentUser().then((result) => expect(result).toEqual({
       subject: 'user-1',
-      userId: '',
-    });
+      userId: 'database-user-1',
+      platformRoles: [],
+    }));
   });
 });
