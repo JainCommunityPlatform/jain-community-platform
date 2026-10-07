@@ -35,7 +35,7 @@ export class AuthController {
   ) {}
 
   @Get('me')
-  getCurrentUser(): AuthenticatedUserContext {
+  async getCurrentUser(): Promise<AuthenticatedUserContext> {
     const user = this.authContext.get();
 
     if (!user) {
