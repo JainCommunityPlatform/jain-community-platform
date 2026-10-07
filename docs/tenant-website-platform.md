@@ -41,7 +41,7 @@ The reusable configuration currently supports:
 - contact information and map handoff;
 - section visibility and titles.
 
-The configuration is intentionally data-driven. A tenant must not require a dedicated UI module or service.
+The configuration is intentionally data-driven and shared across web and mobile. A tenant must not require a dedicated UI module or service.
 
 ## Deployment requirements
 
