@@ -58,7 +58,7 @@ class TenantRepository {
     if (hostname.isEmpty) return null;
     try {
       final json = await api.getObject(
-        '/api/tenant/resolve?hostname=' + Uri.encodeQueryComponent(hostname),
+        '/api/tenant/resolve?hostname=${Uri.encodeQueryComponent(hostname)}',
       );
       return TenantContext(
         id: json['id'] as String,
