@@ -2,19 +2,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jain_community_platform/core/tenant/tenant_context.dart';
 
 void main() {
-  const resolver = TenantResolver();
-
-  test('resolves the Bade Baba Kharadi custom domain', () {
-    final tenant = resolver.resolve(
-      Uri.parse('https://badebabakharadi.com/events/chaturmas'),
+  test('stores a resolved tenant context without hardcoded tenant routing', () {
+    const tenant = TenantContext(
+      id: 'tenant-1',
+      name: 'Temple One',
+      hostname: 'temple.example.com',
     );
 
-    expect(tenant?.id, 'bade-baba-kharadi');
-    expect(tenant?.name, 'Bade Baba Kharadi');
-    expect(tenant?.hostname, 'badebabakharadi.com');
-  });
-
-  test('does not invent a tenant for an unknown host', () {
-    expect(resolver.resolve(Uri.parse('https://example.com')), isNull);
+    expect(tenant.id, 'tenant-1');
+    expect(tenant.name, 'Temple One');
+    expect(tenant.hostname, 'temple.example.com');
   });
 }
