@@ -23,30 +23,39 @@ class _LoginPageState extends State<LoginPage> {
   String? _shownError;
 
   @override
+  void initState() {
+    super.initState();
+    _showErrorIfNeeded(widget.error);
+  }
+
+  @override
   void didUpdateWidget(covariant LoginPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final error = widget.error;
-    if (error != null && error.toString() != _shownError) {
-      _shownError = error.toString();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        showDialog<void>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Google Sign-In failed'),
-            content: SingleChildScrollView(
-              child: SelectableText('Technical details:\n\n$error'),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('OK'),
-              ),
-            ],
+    _showErrorIfNeeded(widget.error);
+  }
+
+  void _showErrorIfNeeded(Object? error) {
+    if (error == null || error.toString() == _shownError) return;
+    _shownError = error.toString();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('Google Sign-In failed'),
+          content: SingleChildScrollView(
+            child: SelectableText('Technical details:\n\n$error'),
           ),
-        );
-      });
-    }
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   @override
