@@ -7,18 +7,18 @@ import { TenantContext, TenantResolver } from './tenant.types';
 export class FirestoreTenantResolver implements TenantResolver {
   constructor(private readonly firestore: FirestoreService) {}
 
-  async resolve(hostname: string): Promise<TenantContext | null> {
+  async resolve(hostname: string, tenantId?: string): Promise<TenantContext | null> {
     const normalized = normalizeHostname(hostname);
-    if (!normalized) return null;
+    if (normalized) {
+      const tenant = await this.firestore.getTenantByHostname(normalized);
+      if (tenant) return { id: tenant.id, name: tenant.name, hostname: tenant.hostname };
+    }
 
-    const tenant = await this.firestore.getTenantByHostname(normalized);
-    if (!tenant) return null;
-
-    return {
-      id: tenant.id,
-      name: tenant.name,
-      hostname: tenant.hostname,
-    };
+    if (!tenantId?.trim()) return null;
+    const tenant = await this.firestore.getTenantById(tenantId.trim());
+    if (!tenant || tenant.status === 'INACTIVE') return null;
+    return { id: tenant.id, name: tenant.name, hostname: tenant.hostname };
+  }
   }
 }
 
