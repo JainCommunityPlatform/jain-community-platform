@@ -395,6 +395,8 @@ export class FirestoreService implements OnModuleInit {
         transaction.create(tenantRef, {
           slug: input.slug,
           name: input.name,
+          primaryHostname: input.hostname,
+          status: 'ACTIVE',
           createdAt: now,
           updatedAt: now,
         });
@@ -520,12 +522,12 @@ export class FirestoreService implements OnModuleInit {
     const snapshot = await this.getDb().collection('tenants').doc(tenantId).get();
     if (!snapshot.exists) return null;
     const data = snapshot.data() ?? {};
-    const domain = await this.getPrimaryTenantDomain(tenantId);
+    const domain = (data.primaryHostname as string | null) ?? '';
     return {
       id: snapshot.id,
       slug: data.slug as string,
       name: data.name as string,
-      hostname: domain?.hostname ?? '',
+      hostname: domain,
       status: (data.status as string) ?? 'ACTIVE',
       address: (data.address as string | null) ?? undefined,
       city: (data.city as string | null) ?? undefined,
@@ -562,7 +564,7 @@ export class FirestoreService implements OnModuleInit {
         id: tenant.id,
         slug: tenant.slug as string,
         name: tenant.name as string,
-        hostname: (await this.getPrimaryTenantDomain(tenant.id))?.hostname ?? '',
+        hostname: (tenant.primaryHostname as string | null) ?? '',
         city: (tenant.city as string | null) ?? undefined,
         state: (tenant.state as string | null) ?? undefined,
         address: (tenant.address as string | null) ?? undefined,
@@ -600,6 +602,7 @@ export class FirestoreService implements OnModuleInit {
       transaction.create(tenantRef, {
         slug: input.slug,
         name: input.name,
+        primaryHostname: input.hostname,
         status: 'ACTIVE',
         address: input.address ?? null,
         city: input.city ?? null,
