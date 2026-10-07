@@ -23,6 +23,7 @@ class TenantHomePage extends StatefulWidget {
   final TenantRepository tenantRepository;
   final WebsiteRepository websiteRepository;
   final FutureOr<void> Function(TenantSummary)? onSelectTenant;
+  final AppSessionController sessionController;
 
   @override
   State<TenantHomePage> createState() => _TenantHomePageState();
@@ -119,7 +120,7 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
       appBar: AppBar(
         title: const Text('MyJinalay'),
         actions: [
-          if (showPlatformAdmin)
+          if (widget.showPlatformAdmin)
             TextButton(onPressed: () => context.go(AppRoutes.platformAdmin), child: const Text('JCP Admin')),
           TextButton(
             onPressed: () => context.go(AppRoutes.login),
