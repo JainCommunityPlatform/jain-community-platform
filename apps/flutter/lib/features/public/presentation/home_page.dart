@@ -37,7 +37,6 @@ class HomePage extends StatelessWidget {
           sessionController: sessionController,
         ),
       ),
-    ),
     );
   }
 }
