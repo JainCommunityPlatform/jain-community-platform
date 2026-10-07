@@ -17,7 +17,7 @@ This is implemented as a reusable platform capability; the reference tenant is d
 9. Mobile requests select a tenant from the central directory and send the validated tenant ID as an explicit API context.
 10. Both surfaces read and write the same tenant website configuration record.
 
-## Tenant isolation
+## Tenant isolation and platform administration
 
 - Global identity is separate from tenant membership.
 - Tenant context is resolved from the request hostname or a validated tenant selector.
