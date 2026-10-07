@@ -52,8 +52,6 @@ describe('WebsiteService', () => {
 
     await expect(service.getCurrent()).rejects.toThrow('Tenant context not found');
   });
-});
-
 
   it('enforces website content limits', async () => {
     firestore.getWebsiteConfig.mockResolvedValue(defaultWebsiteConfig('tenant-1', 'Temple One'));
@@ -72,3 +70,4 @@ describe('WebsiteService', () => {
       templeDirectory: { limit: 13 },
     })).rejects.toThrow('between 1 and 12');
   });
+});
