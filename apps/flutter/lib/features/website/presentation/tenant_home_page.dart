@@ -329,7 +329,13 @@ class _Header extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           child: Row(
             children: [
-              const Icon(Icons.temple_hindu, size: 38, color: Color(0xFFE65100)),
+              if ((header['logoUrl'] as String?)?.isNotEmpty ?? false)
+                Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: Image.network(header['logoUrl'] as String, width: 42, height: 42, fit: BoxFit.contain),
+                )
+              else
+                const Icon(Icons.temple_hindu, size: 38, color: Color(0xFFE65100)),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
