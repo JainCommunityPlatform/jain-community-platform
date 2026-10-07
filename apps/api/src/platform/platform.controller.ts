@@ -26,9 +26,7 @@ export class PlatformController {
   @Post('tenants')
   async createTenant(@Body() dto: CreateTenantDto) {
     const authenticated = this.auth.get();
-    const actor = authenticated
-      ? await this.identity.resolve(authenticated)
-      : null;
+    const actor = authenticated ? await this.identity.resolve(authenticated) : null;
     if (!actor) throw new Error('Authenticated platform user is required');
 
     return this.platform.createTenant(dto, actor.id);
@@ -38,9 +36,4 @@ export class PlatformController {
   async verifyDomain(@Param('tenantId') tenantId: string) {
     return this.platform.verifyCustomDomain(tenantId);
   }
-
 }
-
-  async verifyDomain(@Param('tenantId') tenantId: string) {
-    return this.platform.verifyCustomDomain(tenantId);
-  }
