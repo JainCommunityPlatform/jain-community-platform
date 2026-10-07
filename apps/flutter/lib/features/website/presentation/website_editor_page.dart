@@ -261,14 +261,15 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
                           )),
                           OutlinedButton.icon(
                             onPressed: () async {
-                              final file = await FilePicker.pickFile(
+                              final result = await FilePicker.pickFiles(
                                 type: FileType.custom,
                                 allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
                                 withData: true,
                               );
-                              if (file == null) return;
-                              final bytes = await file.readAsBytes();
-                              if (bytes.isEmpty) return;
+                              if (result == null || result.files.isEmpty) return;
+                              final file = result.files.single;
+                              final bytes = file.bytes;
+                              if (bytes == null || bytes.isEmpty) return;
                               try {
                                 final url = await widget.repository.uploadImage(bytes, file.name);
                                 controllers[imageField]?.text = url;
