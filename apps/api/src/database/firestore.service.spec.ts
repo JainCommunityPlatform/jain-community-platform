@@ -31,7 +31,14 @@ class Query {
 class FakeDb {
   private readonly data = new Map<string, any>();
   collection(name: string) {
-    return { doc: (id: string) => new Ref(this, name, id), where: (field: string, op: string, value: any) => new Query(this, name).where(field, op, value) };
+    return {
+      doc: (id: string) => new Ref(this, name, id),
+      where: (field: string, op: string, value: any) => new Query(this, name).where(field, op, value),
+      get: async () => {
+        const docs = this.entries(name).map(([id, value]) => new Snapshot(value, id));
+        return { docs, empty: docs.length === 0, size: docs.length };
+      },
+    };
   }
   get(collection: string, id: string) { return this.data.get(collection + '/' + id); }
   has(collection: string, id: string) { return this.data.has(collection + '/' + id); }
