@@ -4,6 +4,8 @@ The JCP implementation uses one reusable temple website template backed by tenan
 
 ## Runtime model
 
+This is implemented as a reusable platform capability; the reference tenant is data, not code.
+
 1. A platform administrator creates a tenant.
 2. The tenant receives a stable ID and slug.
 3. The platform administrator can provide a custom hostname or let JCP generate a subdomain from JCP_TENANT_BASE_DOMAIN.
