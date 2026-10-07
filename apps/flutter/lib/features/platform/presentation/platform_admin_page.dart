@@ -23,6 +23,8 @@ class _PlatformAdminPageState extends State<PlatformAdminPage> {
   bool _loading = true;
   bool _saving = false;
   String? _message;
+  String? _lastTenantId;
+  Map<String, dynamic>? _domainVerification;
 
   @override
   void initState() {
@@ -62,6 +64,10 @@ class _PlatformAdminPageState extends State<PlatformAdminPage> {
         if (_postalCode.text.trim().isNotEmpty) 'postalCode': _postalCode.text.trim(),
       });
       _message = 'Temple onboarded: \${result['hostname']}. Admin: \${result['adminStatus']}.';
+      _lastTenantId = result['id'] as String?;
+      _domainVerification = result['domainVerification'] is Map
+          ? Map<String, dynamic>.from(result['domainVerification'] as Map)
+          : null;
       _name.clear(); _slug.clear(); _hostname.clear(); _adminEmail.clear();
       await _load();
     } catch (error) {
@@ -69,6 +75,21 @@ class _PlatformAdminPageState extends State<PlatformAdminPage> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  Future<void> _verifyDomain() async {
+    final tenantId = _lastTenantId;
+    if (tenantId == null) return;
+    try {
+      final result = await widget.api.post('/api/platform/tenants/' + tenantId + '/domain/verify');
+      _domainVerification = Map<String, dynamic>.from(result);
+      _message = result['verified'] == true
+          ? 'Custom domain verified and public resolution is enabled.'
+          : result['message']?.toString() ?? 'Domain is not verified yet.';
+    } catch (error) {
+      _message = 'Domain verification failed: $error';
+    }
+    if (mounted) setState(() {});
   }
 
   @override
@@ -110,6 +131,27 @@ class _PlatformAdminPageState extends State<PlatformAdminPage> {
               ),
             ),
           ),
+          if (_domainVerification != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Custom domain verification', style: TextStyle(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 6),
+                    Text('TXT name: ' + (_domainVerification?['txtRecordName']?.toString() ?? '')),
+                    Text('TXT value: ' + (_domainVerification?['txtRecordValue']?.toString() ?? '')),
+                    const SizedBox(height: 8),
+                    FilledButton.icon(
+                      onPressed: _verifyDomain,
+                      icon: const Icon(Icons.verified),
+                      label: const Text('Verify DNS'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           const SizedBox(height: 10),
           const Text('Existing temples', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
           const SizedBox(height: 10),
