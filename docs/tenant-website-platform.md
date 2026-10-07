@@ -4,7 +4,7 @@ The JCP implementation uses one reusable temple website template backed by tenan
 
 ## Runtime model
 
-This is implemented as a reusable platform capability; the reference tenant is data, not code, and its behavior is covered by backend and Flutter tests.
+This is implemented as a reusable platform capability; the reference tenant is data, not code, and its behavior is covered by backend and Flutter tests, including tenant-isolation and onboarding paths.
 
 1. A platform administrator creates a tenant.
 2. The tenant receives a stable ID and slug.
