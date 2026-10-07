@@ -66,7 +66,7 @@ class AppRouter {
         ),
         GoRoute(
           path: AppRoutes.admin,
-          builder: (_, __) => const AdminHomePage(),
+          builder: (_, __) => AdminHomePage(api: _api),
         ),
         GoRoute(
           path: AppRoutes.adminSite,
