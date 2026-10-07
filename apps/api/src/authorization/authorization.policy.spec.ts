@@ -14,7 +14,7 @@ describe('AuthorizationPolicy', () => {
       tenantId: 'tenant-a',
       role: 'TENANT_ADMIN',
     },
-  ): AuthorizationContext => ({ userId, tenantId, membership });
+  ): AuthorizationContext => ({ userId, tenantId, platformRoles: [], membership });
 
   it('allows a member to access the tenant they belong to', () => {
     expect(() => policy.assertTenantAccess(context())).not.toThrow();
@@ -107,3 +107,26 @@ describe('AuthorizationPolicy', () => {
     expect(policy.hasPermission(approver, 'finance.approve')).toBe(true);
   });
 });
+
+
+  it('allows a platform admin to manage tenants without tenant membership', () => {
+    expect(() => policy.assertPlatformPermission({
+      userId: 'platform-user',
+      tenantId: '',
+      platformRoles: ['PLATFORM_ADMIN'],
+      membership: null,
+    }, 'platform.tenant.manage')).not.toThrow();
+  });
+
+  it('rejects a tenant administrator from platform administration', () => {
+    expect(() => policy.assertPlatformPermission({
+      userId: 'tenant-admin',
+      tenantId: 'tenant-a',
+      platformRoles: [],
+      membership: {
+        userId: 'tenant-admin',
+        tenantId: 'tenant-a',
+        role: 'TENANT_ADMIN',
+      },
+    }, 'platform.tenant.manage')).toThrow('Platform administrator permission is required');
+  });
