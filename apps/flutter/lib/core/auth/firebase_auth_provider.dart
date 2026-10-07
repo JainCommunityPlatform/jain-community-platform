@@ -21,6 +21,8 @@ abstract interface class FirebaseAuthProvider {
 
   Future<String?> getIdToken();
 
+  bool get isSignedIn;
+
   Future<void> signInWithGoogle();
 
   Future<void> signOut();
@@ -46,6 +48,9 @@ class FirebaseAuthService implements FirebaseAuthProvider {
       );
     }
   }
+
+  @override
+  bool get isSignedIn => _auth.currentUser != null;
 
   @override
   Stream<FirebaseAuthUser?> authStateChanges() {
