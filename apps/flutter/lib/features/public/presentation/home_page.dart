@@ -22,6 +22,7 @@ class HomePage extends StatelessWidget {
     return AnimatedBuilder(
       animation: selection,
       builder: (context, _) => TenantHomePage(
+        key: ValueKey(selection.tenantId),
         selection: selection,
         tenantRepository: tenantRepository,
         websiteRepository: websiteRepository,
