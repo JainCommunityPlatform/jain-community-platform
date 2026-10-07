@@ -11,6 +11,6 @@ export class TenantService {
   ) {}
 
   resolve(hostname: string, tenantId?: string): Promise<TenantContext | null> {
-    return this.resolver.resolve(hostname, tenantId);
+    return tenantId ? this.resolver.resolve(hostname, tenantId) : this.resolver.resolve(hostname);
   }
 }
