@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/session/app_session_controller.dart';
 import '../../../core/tenant/tenant_selection_controller.dart';
 import '../../tenant/data/tenant_repository.dart';
 import '../../website/data/website_repository.dart';
@@ -10,24 +11,31 @@ class HomePage extends StatelessWidget {
     required this.selection,
     required this.tenantRepository,
     required this.websiteRepository,
+    required this.sessionController,
     super.key,
   });
 
   final TenantSelectionController selection;
   final TenantRepository tenantRepository;
   final WebsiteRepository websiteRepository;
+  final AppSessionController sessionController;
   final Future<void> Function(TenantSummary)? onTenantSelected;
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: selection,
-      builder: (context, _) => TenantHomePage(
+      builder: (context, _) => AnimatedBuilder(
+        animation: sessionController,
+        builder: (context, __) => TenantHomePage(
         key: ValueKey(selection.tenantId),
         selection: selection,
         tenantRepository: tenantRepository,
         websiteRepository: websiteRepository,
         onSelectTenant: onTenantSelected,
+        sessionController: sessionController,
+      ),
+        ),
       ),
     );
   }
