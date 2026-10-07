@@ -349,6 +349,7 @@ export class FirestoreService implements OnModuleInit {
     name: string;
     hostname: string;
     status: string;
+    verified: boolean;
   } | null> {
     const db = this.getDb();
     const domainSnapshot = await db
@@ -359,8 +360,6 @@ export class FirestoreService implements OnModuleInit {
     if (!domainSnapshot.exists) return null;
 
     const domain = domainSnapshot.data() ?? {};
-    if (domain.verified !== true) return null;
-
     const tenantId = domain.tenantId as string | undefined;
     if (!tenantId) return null;
 
@@ -373,6 +372,7 @@ export class FirestoreService implements OnModuleInit {
       name: tenant.name as string,
       hostname,
       status: (tenant.status as string | null) ?? 'ACTIVE',
+      verified: domain.verified === true,
     };
   }
 
