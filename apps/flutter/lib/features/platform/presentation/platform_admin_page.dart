@@ -63,7 +63,9 @@ class _PlatformAdminPageState extends State<PlatformAdminPage> {
         if (_state.text.trim().isNotEmpty) 'state': _state.text.trim(),
         if (_postalCode.text.trim().isNotEmpty) 'postalCode': _postalCode.text.trim(),
       });
-      _message = 'Temple onboarded: ' + (result['hostname']?.toString() ?? '') + '. Admin: ' + (result['adminStatus']?.toString() ?? '') + '.';
+      final hostname = result['hostname']?.toString() ?? '';
+      final adminStatus = result['adminStatus']?.toString() ?? '';
+      _message = 'Temple onboarded: $hostname. Admin: $adminStatus.';
       _lastTenantId = result['id'] as String?;
       _domainVerification = result['domainVerification'] is Map
           ? Map<String, dynamic>.from(result['domainVerification'] as Map)
@@ -81,7 +83,7 @@ class _PlatformAdminPageState extends State<PlatformAdminPage> {
     final tenantId = _lastTenantId;
     if (tenantId == null) return;
     try {
-      final result = await widget.api.post('/api/platform/tenants/' + tenantId + '/domain/verify');
+      final result = await widget.api.post('/api/platform/tenants/$tenantId/domain/verify');
       _domainVerification = Map<String, dynamic>.from(result);
       _message = result['verified'] == true
           ? 'Custom domain verified and public resolution is enabled.'
@@ -140,8 +142,8 @@ class _PlatformAdminPageState extends State<PlatformAdminPage> {
                   children: [
                     const Text('Custom domain verification', style: TextStyle(fontWeight: FontWeight.w800)),
                     const SizedBox(height: 6),
-                    Text('TXT name: ' + (_domainVerification?['txtRecordName']?.toString() ?? '')),
-                    Text('TXT value: ' + (_domainVerification?['txtRecordValue']?.toString() ?? '')),
+                    Text('TXT name: ${_domainVerification?['txtRecordName'] ?? ''}'),
+                    Text('TXT value: ${_domainVerification?['txtRecordValue'] ?? ''}'),
                     const SizedBox(height: 8),
                     FilledButton.icon(
                       onPressed: _verifyDomain,
