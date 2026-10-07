@@ -33,10 +33,14 @@ export class PlatformController {
 
     return this.platform.createTenant(dto, actor.id);
   }
-}
-
 
   @Post('tenants/:tenantId/domain/verify')
+  async verifyDomain(@Param('tenantId') tenantId: string) {
+    return this.platform.verifyCustomDomain(tenantId);
+  }
+
+}
+
   async verifyDomain(@Param('tenantId') tenantId: string) {
     return this.platform.verifyCustomDomain(tenantId);
   }
