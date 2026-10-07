@@ -132,7 +132,7 @@ export class FirestoreService implements OnModuleInit {
       .collection('userAuthIndexes')
       .doc(hashSubject(input.subject));
 
-    return db.runTransaction(async (transaction) => {
+    const user = await db.runTransaction(async (transaction) => {
       const indexSnapshot = await transaction.get(indexRef);
       let userId = indexSnapshot.exists
         ? (indexSnapshot.data()?.userId as string)
@@ -173,6 +173,9 @@ export class FirestoreService implements OnModuleInit {
         platformRoles: current.platformRoles,
       };
     });
+
+    await this.claimTenantAdminInvites(user.id, input.email);
+    return user;
   }
 
   async getUser(userId: string): Promise<FirestoreUser | null> {
