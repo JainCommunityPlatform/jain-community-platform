@@ -43,6 +43,7 @@ describe('AuthorizationGuard', () => {
         authSubject: user.subject,
         email: user.email,
         displayName: user.displayName,
+        platformRoles: [],
       })),
     } as unknown as UserIdentityService;
     const membershipService = {
