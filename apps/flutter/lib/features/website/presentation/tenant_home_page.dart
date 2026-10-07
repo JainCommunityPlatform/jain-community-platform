@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -18,7 +20,7 @@ class TenantHomePage extends StatefulWidget {
   final TenantSelectionController selection;
   final TenantRepository tenantRepository;
   final WebsiteRepository websiteRepository;
-  final ValueChanged<TenantSummary>? onSelectTenant;
+  final FutureOr<void> Function(TenantSummary)? onSelectTenant;
 
   @override
   State<TenantHomePage> createState() => _TenantHomePageState();
@@ -88,7 +90,7 @@ class TempleDirectoryPage extends StatefulWidget {
 
   final TenantRepository repository;
   final TenantSelectionController selection;
-  final ValueChanged<TenantSummary>? onSelect;
+  final FutureOr<void> Function(TenantSummary)? onSelect;
 
   @override
   State<TempleDirectoryPage> createState() => _TempleDirectoryPageState();
@@ -186,9 +188,9 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
                             final temple = items[index];
                             return _TempleCard(
                               temple: temple,
-                              onTap: () {
+                              onTap: () async {
                                 widget.selection.select(temple.toContext());
-                                widget.onSelect?.call(temple);
+                                await widget.onSelect?.call(temple);
                               },
                             );
                           },
