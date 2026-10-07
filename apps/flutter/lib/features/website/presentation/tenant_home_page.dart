@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/routing/app_routes.dart';
+import '../../../core/session/app_session_controller.dart';
 import '../../../core/tenant/tenant_selection_controller.dart';
 import '../../tenant/data/tenant_repository.dart';
 import '../data/website_repository.dart';
@@ -14,6 +15,7 @@ class TenantHomePage extends StatefulWidget {
     required this.tenantRepository,
     required this.websiteRepository,
     this.onSelectTenant,
+    required this.sessionController,
     super.key,
   });
 
@@ -55,6 +57,7 @@ class _TenantHomePageState extends State<TenantHomePage> {
         repository: widget.tenantRepository,
         selection: widget.selection,
         onSelect: widget.onSelectTenant,
+        showPlatformAdmin: widget.sessionController.session.isPlatformAdmin,
       );
     }
 
@@ -74,6 +77,7 @@ class _TenantHomePageState extends State<TenantHomePage> {
           tenant: tenant,
           site: snapshot.data!,
           onFindTemples: () => widget.selection.select(null),
+          showAdmin: widget.sessionController.session.isAdmin,
         );
       },
     );
@@ -85,12 +89,14 @@ class TempleDirectoryPage extends StatefulWidget {
     required this.repository,
     required this.selection,
     this.onSelect,
+    this.showPlatformAdmin = false,
     super.key,
   });
 
   final TenantRepository repository;
   final TenantSelectionController selection;
   final FutureOr<void> Function(TenantSummary)? onSelect;
+  final bool showPlatformAdmin;
 
   @override
   State<TempleDirectoryPage> createState() => _TempleDirectoryPageState();
@@ -113,6 +119,8 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
       appBar: AppBar(
         title: const Text('MyJinalay'),
         actions: [
+          if (showPlatformAdmin)
+            TextButton(onPressed: () => context.go(AppRoutes.platformAdmin), child: const Text('JCP Admin')),
           TextButton(
             onPressed: () => context.go(AppRoutes.login),
             child: const Text('Sign in'),
@@ -282,6 +290,7 @@ class _WebsiteView extends StatelessWidget {
               header: header,
               onFindTemples: onFindTemples,
               colors: colors,
+              showAdmin: showAdmin,
             )),
             SliverToBoxAdapter(child: _Hero(hero: hero, colors: colors)),
             SliverToBoxAdapter(child: _QuickInfo(items: quickInfo, colors: colors)),
@@ -308,7 +317,7 @@ class _WebsiteView extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.tenantName, required this.header, required this.onFindTemples, required this.colors});
+  const _Header({required this.tenantName, required this.header, required this.onFindTemples, required this.colors, required this.showAdmin});
 
   final String tenantName;
   final Map<String, dynamic> header;
@@ -353,6 +362,8 @@ class _Header extends StatelessWidget {
                   child: Text(item['label'] as String? ?? ''),
                 )),
               IconButton(onPressed: onFindTemples, icon: const Icon(Icons.search)),
+              if (showAdmin)
+                IconButton(onPressed: () => context.go(AppRoutes.admin), icon: const Icon(Icons.admin_panel_settings)),
             ],
           ),
         ),
