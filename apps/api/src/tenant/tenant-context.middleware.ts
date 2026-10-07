@@ -16,7 +16,8 @@ export class TenantContextMiddleware implements NestMiddleware {
     response: Response,
     next: NextFunction,
   ): Promise<void> {
-    const tenant = await this.tenantService.resolve(request.hostname);
+    const requestedTenantId = request.header('x-jcp-tenant-id')?.trim();
+    const tenant = await this.tenantService.resolve(request.hostname, requestedTenantId);
 
     this.tenantContextStore.run(tenant, () => next());
   }
