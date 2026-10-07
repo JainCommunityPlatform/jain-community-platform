@@ -12,6 +12,7 @@ class HomePage extends StatelessWidget {
     required this.tenantRepository,
     required this.websiteRepository,
     required this.sessionController,
+    this.onTenantSelected,
     super.key,
   });
 
@@ -28,15 +29,15 @@ class HomePage extends StatelessWidget {
       builder: (context, _) => AnimatedBuilder(
         animation: sessionController,
         builder: (context, __) => TenantHomePage(
-        key: ValueKey(selection.tenantId),
-        selection: selection,
-        tenantRepository: tenantRepository,
-        websiteRepository: websiteRepository,
-        onSelectTenant: onTenantSelected,
-        sessionController: sessionController,
-      ),
+          key: ValueKey(selection.tenantId),
+          selection: selection,
+          tenantRepository: tenantRepository,
+          websiteRepository: websiteRepository,
+          onSelectTenant: onTenantSelected,
+          sessionController: sessionController,
         ),
       ),
+    ),
     );
   }
 }
