@@ -42,22 +42,25 @@ export class AuthorizationGuard implements CanActivate {
     }
 
     const tenant = this.tenantContext.get();
+    const currentUser = await this.identity.resolve(user);
+
+    const authorization: AuthorizationContext = {
+      userId: currentUser.id,
+      tenantId: tenant?.id ?? '',
+      platformRoles: currentUser.platformRoles,
+      membership: tenant
+        ? await this.membership.resolve(currentUser.id, tenant.id)
+        : null,
+    };
+
+    if (permission.startsWith('platform.')) {
+      this.policy.assertPlatformPermission(authorization, permission);
+      return true;
+    }
 
     if (!tenant) {
       throw new ForbiddenException('Tenant authorization context is required');
     }
-
-    const currentUser = await this.identity.resolve(user);
-    const membership = await this.membership.resolve(
-      currentUser.id,
-      tenant.id,
-    );
-
-    const authorization: AuthorizationContext = {
-      userId: currentUser.id,
-      tenantId: tenant.id,
-      membership,
-    };
 
     this.policy.assertPermission(authorization, permission);
     return true;
