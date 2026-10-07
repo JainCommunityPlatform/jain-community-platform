@@ -109,7 +109,7 @@ export class PlatformService {
     let values: string[][] = [];
     try {
       values = await resolveTxt(recordName);
-    } catch (_) {
+    } catch {
       return {
         verified: false,
         hostname: domain.hostname,
