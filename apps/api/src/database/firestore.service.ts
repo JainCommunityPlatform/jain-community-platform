@@ -358,7 +358,10 @@ export class FirestoreService implements OnModuleInit {
 
     if (!domainSnapshot.exists) return null;
 
-    const tenantId = domainSnapshot.data()?.tenantId as string | undefined;
+    const domain = domainSnapshot.data() ?? {};
+    if (domain.verified !== true) return null;
+
+    const tenantId = domain.tenantId as string | undefined;
     if (!tenantId) return null;
 
     const tenantSnapshot = await db.collection('tenants').doc(tenantId).get();
@@ -585,6 +588,8 @@ export class FirestoreService implements OnModuleInit {
     city?: string;
     state?: string;
     postalCode?: string;
+    domainVerified?: boolean;
+    domainVerificationToken?: string;
   }): Promise<{ id: string; slug: string; name: string; hostname: string }> {
     const db = this.getDb();
     const tenantRef = db.collection('tenants').doc(input.id);
@@ -624,6 +629,41 @@ export class FirestoreService implements OnModuleInit {
     });
 
     return { id: input.id, slug: input.slug, name: input.name, hostname: input.hostname };
+  }
+
+  async getTenantPrimaryDomainDetails(tenantId: string): Promise<{
+    hostname: string;
+    type?: string;
+    verified: boolean;
+    verificationToken?: string;
+  } | null> {
+    const snapshot = await this.getDb().collection('tenantDomains')
+      .where('tenantId', '==', tenantId)
+      .where('primary', '==', true)
+      .limit(1)
+      .get();
+    if (snapshot.empty) return null;
+    const data = snapshot.docs[0].data();
+    return {
+      hostname: data.hostname as string,
+      type: data.type as string | undefined,
+      verified: data.verified === true,
+      verificationToken: data.verificationToken as string | undefined,
+    };
+  }
+
+  async markTenantPrimaryDomainVerified(tenantId: string): Promise<void> {
+    const snapshot = await this.getDb().collection('tenantDomains')
+      .where('tenantId', '==', tenantId)
+      .where('primary', '==', true)
+      .limit(1)
+      .get();
+    if (snapshot.empty) throw new Error('Primary tenant domain not found');
+    await snapshot.docs[0].ref.update({
+      verified: true,
+      verifiedAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
   }
 
   async getPrimaryTenantDomain(tenantId: string): Promise<{ hostname: string; type?: string } | null> {
