@@ -561,19 +561,19 @@ export class FirestoreService implements OnModuleInit {
   }>> {
     const snapshot = await this.getDb().collection('tenants').get();
     const active = snapshot.docs
-      .filter((doc) => (doc.data().status as string | undefined) !== 'INACTIVE')
-      .map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) }));
+      .map((doc) => ({ id: doc.id, data: doc.data() as Record<string, unknown> }))
+      .filter((tenant) => (tenant.data.status as string | undefined) !== 'INACTIVE');
 
     const results = await Promise.all(active.map(async (tenant) => {
       const site = await this.getWebsiteConfig(tenant.id);
       return {
         id: tenant.id,
-        slug: tenant.slug as string,
-        name: tenant.name as string,
-        hostname: (tenant.primaryHostname as string | null) ?? '',
-        city: (tenant.city as string | null) ?? undefined,
-        state: (tenant.state as string | null) ?? undefined,
-        address: (tenant.address as string | null) ?? undefined,
+        slug: tenant.data.slug as string,
+        name: tenant.data.name as string,
+        hostname: (tenant.data.primaryHostname as string | null) ?? '',
+        city: (tenant.data.city as string | null) ?? undefined,
+        state: (tenant.data.state as string | null) ?? undefined,
+        address: (tenant.data.address as string | null) ?? undefined,
         primaryImageUrl: site?.hero?.imageUrl,
       };
     }));
