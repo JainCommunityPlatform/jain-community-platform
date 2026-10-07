@@ -75,11 +75,11 @@ class JainCommunityPlatformApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TenantScope(
-      tenant: tenant,
-      child: AnimatedBuilder(
-        animation: tenantSelection,
-        builder: (context, _) => MaterialApp.router(
+    return AnimatedBuilder(
+      animation: tenantSelection,
+      builder: (context, _) => TenantScope(
+        tenant: tenantSelection.selected ?? tenant,
+        child: MaterialApp.router(
           title: tenantSelection.selected?.name ?? 'MyJinalay',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
