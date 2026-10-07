@@ -94,6 +94,45 @@ export class PlatformService {
     };
   }
 
+
+  async verifyCustomDomain(tenantId: string) {
+    const domain = await this.firestore.getTenantPrimaryDomainDetails(tenantId);
+    if (!domain) throw new ConflictException('Primary tenant domain not found');
+    if (domain.type !== 'CUSTOM') throw new ConflictException('The primary domain is not a custom domain');
+    if (domain.verified) return { verified: true, hostname: domain.hostname };
+
+    const recordName = '_jcp-verify.' + domain.hostname;
+    let values: string[][] = [];
+    try {
+      values = await resolveTxt(recordName);
+    } catch (_) {
+      return {
+        verified: false,
+        hostname: domain.hostname,
+        message: 'DNS TXT verification record was not found yet',
+      };
+    }
+
+    const expected = domain.verificationToken;
+    const verified = !!expected && values.some((record) => record.join('').trim() === expected);
+    if (!verified) {
+      return {
+        verified: false,
+        hostname: domain.hostname,
+        message: 'DNS TXT record exists but does not match the expected verification token',
+      };
+    }
+
+    await this.firestore.markTenantPrimaryDomainVerified(tenantId);
+    await this.audit.record({
+      action: 'TENANT_DOMAIN_VERIFIED',
+      entity: 'TenantDomain',
+      entityId: tenantId,
+      metadata: { hostname: domain.hostname },
+    });
+    return { verified: true, hostname: domain.hostname };
+  }
+
   private buildPlatformHostname(slug: string): string {
     const baseDomain = this.config.get<string>('platform.tenantBaseDomain')?.trim();
     if (!baseDomain) {
