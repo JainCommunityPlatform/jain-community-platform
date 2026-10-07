@@ -121,13 +121,14 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
 
   Future<void> _uploadTo(TextEditingController target) async {
     try {
-      final file = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
       );
-      if (file == null) return;
-      final bytes = await file.readAsBytes();
-      if (bytes.isEmpty) return;
+      if (result == null || result.files.isEmpty) return;
+      final file = result.files.single;
+      final bytes = file.bytes ?? await file.readAsBytes();
+      if (bytes == null || bytes.isEmpty) return;
       final url = await widget.repository.uploadImage(bytes, file.name);
       target.text = url;
       if (mounted) setState(() => _message = 'चित्र अपलोड हो गया।');
