@@ -53,7 +53,7 @@ describe('AuthController', () => {
     const identity = { resolve: jest.fn() } as unknown as UserIdentityService;
     const controller = new AuthController(authStore, membershipStore, identity);
 
-    expect(() => controller.getCurrentUser()).toThrow(UnauthorizedException);
+    return expect(controller.getCurrentUser()).rejects.toThrow(UnauthorizedException);
   });
 
   it('returns the global user id even when no tenant is resolved', () => {
