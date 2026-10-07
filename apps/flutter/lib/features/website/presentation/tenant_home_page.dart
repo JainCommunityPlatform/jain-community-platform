@@ -675,7 +675,7 @@ class _Seva extends StatelessWidget {
                       if ((item['subtitle'] as String?)?.isNotEmpty ?? false)
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
-                          child: Text(item['subtitle'] as String?, textAlign: TextAlign.center,
+                          child: Text(item['subtitle'] as String, textAlign: TextAlign.center,
                               style: const TextStyle(fontSize: 12)),
                         ),
                     ],
