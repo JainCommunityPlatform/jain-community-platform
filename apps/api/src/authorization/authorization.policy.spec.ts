@@ -110,6 +110,7 @@ describe('AuthorizationPolicy', () => {
 
 
   it('allows a platform admin to manage tenants without tenant membership', () => {
+    const policy = new AuthorizationPolicy();
     expect(() => policy.assertPlatformPermission({
       userId: 'platform-user',
       tenantId: '',
@@ -119,6 +120,7 @@ describe('AuthorizationPolicy', () => {
   });
 
   it('rejects a tenant administrator from platform administration', () => {
+    const policy = new AuthorizationPolicy();
     expect(() => policy.assertPlatformPermission({
       userId: 'tenant-admin',
       tenantId: 'tenant-a',
