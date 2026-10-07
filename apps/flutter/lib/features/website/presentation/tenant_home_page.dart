@@ -261,11 +261,13 @@ class _WebsiteView extends StatelessWidget {
     required this.tenant,
     required this.site,
     required this.onFindTemples,
+    required this.showAdmin,
   });
 
   final dynamic tenant;
   final Map<String, dynamic> site;
   final VoidCallback onFindTemples;
+  final bool showAdmin;
 
   @override
   Widget build(BuildContext context) {
@@ -324,6 +326,7 @@ class _Header extends StatelessWidget {
   final Map<String, dynamic> header;
   final VoidCallback onFindTemples;
   final ColorScheme colors;
+  final bool showAdmin;
 
   @override
   Widget build(BuildContext context) {
