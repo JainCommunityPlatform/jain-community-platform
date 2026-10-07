@@ -560,9 +560,9 @@ export class FirestoreService implements OnModuleInit {
     primaryImageUrl?: string;
   }>> {
     const snapshot = await this.getDb().collection('tenants').get();
-    const active: Array<{ id: string } & Record<string, unknown>> = snapshot.docs
-      .map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) }))
-      .filter((tenant) => (tenant.status as string | undefined) !== 'INACTIVE');
+    const active = snapshot.docs
+      .filter((doc) => (doc.data().status as string | undefined) !== 'INACTIVE')
+      .map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) }));
 
     const results = await Promise.all(active.map(async (tenant) => {
       const site = await this.getWebsiteConfig(tenant.id);
