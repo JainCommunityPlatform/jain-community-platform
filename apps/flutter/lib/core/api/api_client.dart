@@ -47,6 +47,14 @@ class ApiClient {
     return _decodeObject(response);
   }
 
+  Future<Map<String, dynamic>> put(
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
+    final response = await _send('PUT', path, body: body);
+    return _decodeObject(response);
+  }
+
   Future<Map<String, dynamic>> patch(
     String path, {
     Map<String, dynamic>? body,
@@ -126,6 +134,7 @@ class ApiClient {
     final Future<http.Response> request = switch (method) {
       'GET' => _client.get(uri, headers: headers),
       'POST' => _client.post(uri, headers: headers, body: encodedBody),
+      'PUT' => _client.put(uri, headers: headers, body: encodedBody),
       'PATCH' => _client.patch(uri, headers: headers, body: encodedBody),
       'DELETE' => _client.delete(uri, headers: headers),
       _ => throw ArgumentError('Unsupported HTTP method: $method'),
