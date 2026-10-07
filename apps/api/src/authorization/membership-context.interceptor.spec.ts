@@ -9,6 +9,7 @@ describe('MembershipContextInterceptor', () => {
       resolve: jest.fn().mockResolvedValue({
         id: 'user-a',
         authSubject: 'subject-a',
+        platformRoles: [],
       }),
     };
     const membership = {
@@ -56,6 +57,7 @@ describe('MembershipContextInterceptor', () => {
       {
         userId: 'user-a',
         tenantId: 'tenant-a',
+        platformRoles: [],
         membership: {
           userId: 'user-a',
           tenantId: 'tenant-a',
@@ -67,7 +69,11 @@ describe('MembershipContextInterceptor', () => {
   });
 
   it('does not invent membership when the request has no resolved tenant', async () => {
-    const identity = { resolve: jest.fn() };
+    const identity = { resolve: jest.fn().mockResolvedValue({
+      id: 'user-a',
+      authSubject: 'subject-a',
+      platformRoles: [],
+    }) };
     const membership = { resolve: jest.fn() };
     const tenantContext = { get: jest.fn().mockReturnValue(null) };
     const membershipContext = {
@@ -94,10 +100,10 @@ describe('MembershipContextInterceptor', () => {
       ),
     ).resolves.toEqual({ ok: true });
 
-    expect(identity.resolve).not.toHaveBeenCalled();
+    expect(identity.resolve).toHaveBeenCalled();
     expect(membership.resolve).not.toHaveBeenCalled();
     expect(membershipContext.run).toHaveBeenCalledWith(
-      null,
+      expect.objectContaining({ userId: 'user-a', tenantId: '', platformRoles: [], membership: null }),
       expect.any(Function),
     );
   });
