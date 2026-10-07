@@ -11,7 +11,7 @@ export class FirestoreTenantResolver implements TenantResolver {
     const normalized = normalizeHostname(hostname);
     if (normalized) {
       const tenant = await this.firestore.getTenantByHostname(normalized);
-      if (tenant) return { id: tenant.id, name: tenant.name, hostname: tenant.hostname };
+      if (tenant && tenant.status !== 'INACTIVE') return { id: tenant.id, name: tenant.name, hostname: tenant.hostname };
     }
 
     if (!tenantId?.trim()) return null;
