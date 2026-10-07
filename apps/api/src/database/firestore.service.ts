@@ -71,6 +71,8 @@ export class FirestoreService implements OnModuleInit {
 
     if (this.config.get<boolean>('firebase.bootstrapEnabled', false)) {
       await this.ensureBootstrapTenant();
+    } else {
+      await this.ensureBootstrapPlatformAdmin();
     }
   }
 
@@ -755,6 +757,20 @@ export class FirestoreService implements OnModuleInit {
       tenantId,
       updatedAt: Timestamp.now(),
     }, { merge: true });
+  }
+
+  private async ensureBootstrapPlatformAdmin(): Promise<void> {
+    const subject = this.config.get<string>('firebase.bootstrapPlatformAdminSubject')?.trim();
+    if (!subject) return;
+
+    const user = await this.upsertUser({
+      subject,
+      email: this.config.get<string>('firebase.bootstrapAdminEmail'),
+      displayName: this.config.get<string>('firebase.bootstrapAdminName'),
+    });
+    if (!user.platformRoles.includes('PLATFORM_ADMIN')) {
+      await this.setPlatformRoles(user.id, ['PLATFORM_ADMIN']);
+    }
   }
 
   private async ensureBootstrapTenant(): Promise<void> {
