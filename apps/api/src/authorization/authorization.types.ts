@@ -17,11 +17,13 @@ export type Permission =
   | 'finance.read'
   | 'finance.write'
   | 'finance.approve'
-  | 'audit.read';
+  | 'audit.read'
+  | 'platform.tenant.manage';
 
 export interface AuthorizationContext {
   userId: string;
   tenantId: string;
+  platformRoles: string[];
   membership: {
     userId: string;
     tenantId: string;
