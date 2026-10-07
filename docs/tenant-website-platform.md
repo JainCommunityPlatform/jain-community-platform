@@ -45,7 +45,7 @@ The configuration is intentionally data-driven and shared across web and mobile.
 
 ## Deployment requirements
 
-The CI pipeline is the validation gate for the reusable tenant capability.
+The CI pipeline is the validation gate for the reusable tenant capability and remains mandatory before merge.
 
 For generated tenant subdomains, configure:
 
