@@ -63,7 +63,7 @@ class _PlatformAdminPageState extends State<PlatformAdminPage> {
         if (_state.text.trim().isNotEmpty) 'state': _state.text.trim(),
         if (_postalCode.text.trim().isNotEmpty) 'postalCode': _postalCode.text.trim(),
       });
-      _message = 'Temple onboarded: \${result['hostname']}. Admin: \${result['adminStatus']}.';
+      _message = 'Temple onboarded: ' + (result['hostname']?.toString() ?? '') + '. Admin: ' + (result['adminStatus']?.toString() ?? '') + '.';
       _lastTenantId = result['id'] as String?;
       _domainVerification = result['domainVerification'] is Map
           ? Map<String, dynamic>.from(result['domainVerification'] as Map)
