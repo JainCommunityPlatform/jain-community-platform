@@ -33,7 +33,10 @@ void main() {
         ),
       );
 
-      expect(find.text('Sign-in failed. Please try again.'), findsOneWidget);
+      expect(
+        find.text('Sign-in failed. Tap the dialog for technical details.'),
+        findsOneWidget,
+      );
       expect(find.text('Continue with Google'), findsOneWidget);
     },
   );
