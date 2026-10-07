@@ -1,3 +1,6 @@
+jest.mock('node:dns/promises', () => ({ resolveTxt: jest.fn() }));
+
+import { resolveTxt } from 'node:dns/promises';
 import { PlatformService } from './platform.service';
 
 describe('PlatformService', () => {
@@ -59,3 +62,38 @@ describe('PlatformService', () => {
     expect(firestore.createTenantAdminInvite).not.toHaveBeenCalled();
   });
 });
+
+
+  it('reports a missing DNS TXT record without enabling the domain', async () => {
+    (resolveTxt as jest.Mock).mockRejectedValue(new Error('NXDOMAIN'));
+    const service = new PlatformService(firestore as never, audit as never, config as never);
+    firestore.getTenantPrimaryDomainDetails.mockResolvedValue({
+      hostname: 'temple.example.com',
+      type: 'CUSTOM',
+      verified: false,
+      verificationToken: 'token',
+    });
+
+    await expect(service.verifyCustomDomain('t1')).resolves.toMatchObject({
+      verified: false,
+      hostname: 'temple.example.com',
+    });
+  });
+
+  it('verifies a matching DNS TXT token', async () => {
+    (resolveTxt as jest.Mock).mockResolvedValue([['token']]);
+    firestore.getTenantPrimaryDomainDetails.mockResolvedValue({
+      hostname: 'temple.example.com',
+      type: 'CUSTOM',
+      verified: false,
+      verificationToken: 'token',
+    });
+    firestore.markTenantPrimaryDomainVerified = jest.fn().mockResolvedValue(undefined);
+    const service = new PlatformService(firestore as never, audit as never, config as never);
+
+    await expect(service.verifyCustomDomain('t1')).resolves.toEqual({
+      verified: true,
+      hostname: 'temple.example.com',
+    });
+    expect(firestore.markTenantPrimaryDomainVerified).toHaveBeenCalledWith('t1');
+  });
