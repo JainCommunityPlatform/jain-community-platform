@@ -123,9 +123,9 @@ describe('FirestoreService identity/profile persistence', () => {
   it('resolves tenants and membership lifecycle', async () => {
     const { instance, db } = service();
     expect(await instance.getTenantByHostname('missing.test')).toBeNull();
-    db.set('tenantDomains','one.test',{tenantId:'t1'});
-    db.set('tenants','t1',{name:'One'});
-    expect(await instance.getTenantByHostname('one.test')).toEqual({id:'t1',name:'One',hostname:'one.test'});
+    db.set('tenantDomains','one.test',{tenantId:'t1',verified:true});
+    db.set('tenants','t1',{name:'One',status:'ACTIVE'});
+    expect(await instance.getTenantByHostname('one.test')).toEqual({id:'t1',name:'One',hostname:'one.test',status:'ACTIVE',verified:true});
     expect(await instance.getMembership('u1','t1')).toBeNull();
     await instance.createMembership({userId:'u1',tenantId:'t1',role:'TENANT_ADMIN'});
     await instance.updateMembership('u1','t1','CONTENT_MANAGER');
@@ -133,4 +133,67 @@ describe('FirestoreService identity/profile persistence', () => {
     await instance.deleteMembership('u1','t1');
     expect(await instance.getMembership('u1','t1')).toBeNull();
   });
+  it('supports reusable tenant website onboarding, directory and media configuration records', async () => {
+    const { instance, db } = service();
+
+    const tenant = await instance.createTenant({
+      id: 't2',
+      slug: 'two',
+      name: 'Two',
+      hostname: 'two.jcp.test',
+      address: 'Address',
+      city: 'Pune',
+      domainVerified: true,
+    });
+    expect(tenant).toEqual({ id: 't2', slug: 'two', name: 'Two', hostname: 'two.jcp.test' });
+
+    await instance.setWebsiteConfig('t2', {
+      tenantId: 't2',
+      version: 1,
+      theme: { primary: '#F57C00', secondary: '#8B2E1B', background: '#FFF4DE', surface: '#FFFDF8', accent: '#E65100' },
+      header: { navItems: [], languages: ['हिन्दी'] },
+      hero: { title: 'Two', imageUrl: 'https://example.test/two.jpg' },
+      quickInfo: [],
+      about: { title: 'Two', body: 'About' },
+      templeDirectory: { enabled: true, title: 'Temples', showSearch: true, limit: 6 },
+      events: { enabled: true, title: 'Events', items: [] },
+      gallery: { enabled: true, title: 'Gallery', items: [] },
+      seva: { enabled: true, title: 'Seva', items: [] },
+      contact: {},
+      footer: {},
+    } as any);
+
+    expect((await instance.getWebsiteConfig('t2'))?.hero.title).toBe('Two');
+
+    const directory = await instance.listPublicTenants();
+    expect(directory.find((item) => item.id === 't2')).toMatchObject({
+      name: 'Two',
+      hostname: 'two.jcp.test',
+      primaryImageUrl: 'https://example.test/two.jpg',
+    });
+
+    await instance.setPlatformRoles('u2', ['PLATFORM_ADMIN']);
+    expect((await instance.getUser('u2'))?.platformRoles).toEqual(['PLATFORM_ADMIN']);
+
+    await instance.createTenantAdminInvite({ tenantId: 't2', email: 'admin@example.com' });
+    const admin = await instance.upsertUser({ subject: 'google:admin', email: 'admin@example.com' });
+    expect((await instance.getMembership(admin.id, 't2'))?.role).toBe('TENANT_ADMIN');
+
+    const domain = await instance.getTenantPrimaryDomainDetails('t2');
+    expect(domain?.verified).toBe(true);
+    db.set('tenantDomains', 'two.jcp.test', {
+      tenantId: 't2',
+      hostname: 'two.jcp.test',
+      type: 'CUSTOM',
+      primary: true,
+      verified: false,
+      verificationToken: 'token',
+    });
+    expect((await instance.getTenantPrimaryDomainDetails('t2'))?.verificationToken).toBe('token');
+    await instance.markTenantPrimaryDomainVerified('t2');
+    expect((await instance.getTenantPrimaryDomainDetails('t2'))?.verified).toBe(true);
+
+    expect(instance.getFirebaseApp()).toBeDefined();
+  });
+
 });
