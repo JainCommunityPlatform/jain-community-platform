@@ -45,6 +45,8 @@ The configuration is intentionally data-driven and shared across web and mobile.
 
 ## Deployment requirements
 
+The CI pipeline is the validation gate for the reusable tenant capability.
+
 For generated tenant subdomains, configure:
 
 - JCP_TENANT_BASE_DOMAIN;
