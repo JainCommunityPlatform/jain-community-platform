@@ -102,10 +102,6 @@ class AppRouter {
     }
     if (!isPrivateRoute) return null;
 
-    if (_tenant == null) {
-      return AppRoutes.home;
-    }
-
     if (!session.isAuthenticated) {
       return AppRoutes.login;
     }
