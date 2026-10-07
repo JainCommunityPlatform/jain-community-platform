@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 
 import { AuthenticationGuard } from '../auth/authentication.guard';
 import { AuthorizationGuard } from '../authorization/authorization.guard';
@@ -34,3 +34,9 @@ export class PlatformController {
     return this.platform.createTenant(dto, actor.id);
   }
 }
+
+
+  @Post('tenants/:tenantId/domain/verify')
+  async verifyDomain(@Param('tenantId') tenantId: string) {
+    return this.platform.verifyCustomDomain(tenantId);
+  }
