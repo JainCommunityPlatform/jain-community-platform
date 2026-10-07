@@ -87,8 +87,7 @@ class AppSessionController extends ChangeNotifier {
   }
 
   Future<void> refreshCurrentSession() async {
-    final user = _auth.currentUser;
-    if (user == null) return;
+    if (!_auth.isSignedIn) return;
     _status = AppSessionStatus.initializing;
     _error = null;
     notifyListeners();
