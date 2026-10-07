@@ -121,7 +121,7 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
 
   Future<void> _uploadTo(TextEditingController target) async {
     try {
-      final file = await FilePicker.pickFile(
+      final file = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
       );
