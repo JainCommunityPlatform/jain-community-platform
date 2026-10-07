@@ -12,21 +12,18 @@ import '../../features/tenant/data/tenant_repository.dart';
 import '../../features/website/data/website_repository.dart';
 import '../../features/website/presentation/website_editor_page.dart';
 import '../api/api_client.dart';
-import '../session/app_session.dart';
 import '../session/app_session_controller.dart';
 import '../tenant/tenant_selection_controller.dart';
 import 'app_routes.dart';
 
 class AppRouter {
   AppRouter({
-    AppSession session = const AppSession(),
     required TenantSelectionController tenantSelection,
     required TenantRepository tenantRepository,
     required AppSessionController sessionController,
     required ProfileRepository profileRepository,
     required ApiClient api,
-  }) {
-        _tenantSelection = tenantSelection,
+  })  : _tenantSelection = tenantSelection,
         _tenantRepository = tenantRepository,
         _sessionController = sessionController,
         _profileRepository = profileRepository,
