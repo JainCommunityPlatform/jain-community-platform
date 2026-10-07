@@ -45,6 +45,7 @@ class AppRouter {
             tenantRepository: _tenantRepository,
             websiteRepository: websiteRepository,
             onTenantSelected: (_) => _sessionController.refreshCurrentSession(),
+            sessionController: _sessionController,
           ),
         ),
         GoRoute(
