@@ -133,6 +133,146 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
     }
   }
 
+
+  List<Map<String, dynamic>> _items(String section) {
+    final value = _map(_site?[section])['items'];
+    if (value is! List) return [];
+    return value.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
+  }
+
+  Future<Map<String, dynamic>?> _editItem({
+    required String title,
+    required Map<String, dynamic> initial,
+    required List<String> fields,
+    String? imageField,
+  }) async {
+    final controllers = <String, TextEditingController>{
+      for (final field in fields)
+        field: TextEditingController(text: initial[field]?.toString() ?? ''),
+    };
+
+    try {
+      return await showDialog<Map<String, dynamic>>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, setDialogState) => AlertDialog(
+            title: Text(title),
+            content: SingleChildScrollView(
+              child: SizedBox(
+                width: 520,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final field in fields) ...[
+                      TextField(
+                        controller: controllers[field],
+                        maxLines: field == 'description' || field == 'body' ? 4 : 1,
+                        decoration: InputDecoration(labelText: _label(field)),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    if (imageField != null)
+                      Row(
+                        children: [
+                          Expanded(child: Text(
+                            controllers[imageField]?.text.isEmpty ?? true
+                                ? 'चित्र अभी चुना नहीं गया'
+                                : 'चित्र URL तैयार है',
+                          )),
+                          OutlinedButton.icon(
+                            onPressed: () async {
+                              final file = await FilePicker.pickFile(
+                                type: FileType.custom,
+                                allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+                              );
+                              if (file == null) return;
+                              final bytes = await file.readAsBytes();
+                              if (bytes.isEmpty) return;
+                              try {
+                                final url = await widget.repository.uploadImage(bytes, file.name);
+                                controllers[imageField]?.text = url;
+                                setDialogState(() {});
+                              } catch (error) {
+                                if (dialogContext.mounted) {
+                                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                    SnackBar(content: Text('Upload failed: $error')),
+                                  );
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.upload),
+                            label: const Text('Upload'),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancel')),
+              FilledButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop({
+                    for (final field in fields)
+                      field: controllers[field]!.text.trim(),
+                  });
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          ),
+        ),
+      );
+    } finally {
+      for (final controller in controllers.values) {
+        controller.dispose();
+      }
+    }
+  }
+
+  Future<void> _addOrEditItem({
+    required String section,
+    required String title,
+    required Map<String, dynamic> emptyItem,
+    required List<String> fields,
+    String? imageField,
+    int? index,
+  }) async {
+    final items = _items(section);
+    final initial = index == null ? emptyItem : items[index];
+    final result = await _editItem(
+      title: title,
+      initial: initial,
+      fields: fields,
+      imageField: imageField,
+    );
+    if (result == null || !mounted) return;
+
+    final next = [...items];
+    if (index == null) {
+      next.add(result);
+    } else {
+      next[index] = result;
+    }
+    setState(() {
+      final sectionMap = _map(_site![section]);
+      sectionMap['items'] = next;
+      _site![section] = sectionMap;
+    });
+  }
+
+  void _removeItem(String section, int index) {
+    final items = _items(section);
+    if (index < 0 || index >= items.length) return;
+    setState(() {
+      final next = [...items]..removeAt(index);
+      final sectionMap = _map(_site![section]);
+      sectionMap['items'] = next;
+      _site![section] = sectionMap;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -180,6 +320,86 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
               _field(_email, 'ईमेल'),
               _field(_mapUrl, 'Map URL'),
             ],
+          ),
+          _ListEditorSection(
+            title: 'आज की जानकारी / Quick info',
+            items: _items('quickInfo'),
+            itemTitle: (item) => item['title']?.toString() ?? 'Card',
+            onAdd: () => _addOrEditItem(
+              section: 'quickInfo',
+              title: 'Quick info card',
+              emptyItem: {'type': 'today', 'title': '', 'value': '', 'secondary': ''},
+              fields: ['type', 'title', 'value', 'secondary'],
+            ),
+            onEdit: (index) => _addOrEditItem(
+              section: 'quickInfo',
+              title: 'Quick info card',
+              emptyItem: {},
+              fields: ['type', 'title', 'value', 'secondary'],
+              index: index,
+            ),
+            onDelete: (index) => _removeItem('quickInfo', index),
+          ),
+          _ListEditorSection(
+            title: 'चालू एवं आगामी कार्यक्रम',
+            items: _items('events'),
+            itemTitle: (item) => item['title']?.toString() ?? 'कार्यक्रम',
+            onAdd: () => _addOrEditItem(
+              section: 'events',
+              title: 'कार्यक्रम',
+              emptyItem: {'id': DateTime.now().millisecondsSinceEpoch.toString(), 'title': '', 'badge': 'आगामी', 'dateLabel': '', 'description': '', 'imageUrl': ''},
+              fields: ['title', 'badge', 'dateLabel', 'description', 'imageUrl', 'ctaLabel', 'ctaUrl'],
+              imageField: 'imageUrl',
+            ),
+            onEdit: (index) => _addOrEditItem(
+              section: 'events',
+              title: 'कार्यक्रम',
+              emptyItem: {},
+              fields: ['title', 'badge', 'dateLabel', 'description', 'imageUrl', 'ctaLabel', 'ctaUrl'],
+              imageField: 'imageUrl',
+              index: index,
+            ),
+            onDelete: (index) => _removeItem('events', index),
+          ),
+          _ListEditorSection(
+            title: 'मंदिर गैलरी',
+            items: _items('gallery'),
+            itemTitle: (item) => item['title']?.toString() ?? 'Gallery image',
+            onAdd: () => _addOrEditItem(
+              section: 'gallery',
+              title: 'Gallery image',
+              emptyItem: {'id': DateTime.now().millisecondsSinceEpoch.toString(), 'title': '', 'imageUrl': '', 'alt': ''},
+              fields: ['title', 'imageUrl', 'alt'],
+              imageField: 'imageUrl',
+            ),
+            onEdit: (index) => _addOrEditItem(
+              section: 'gallery',
+              title: 'Gallery image',
+              emptyItem: {},
+              fields: ['title', 'imageUrl', 'alt'],
+              imageField: 'imageUrl',
+              index: index,
+            ),
+            onDelete: (index) => _removeItem('gallery', index),
+          ),
+          _ListEditorSection(
+            title: 'सेवा में सहभागी बनें',
+            items: _items('seva'),
+            itemTitle: (item) => item['label']?.toString() ?? 'सेवा',
+            onAdd: () => _addOrEditItem(
+              section: 'seva',
+              title: 'सेवा',
+              emptyItem: {'id': DateTime.now().millisecondsSinceEpoch.toString(), 'icon': 'local_florist', 'label': '', 'subtitle': '', 'target': ''},
+              fields: ['icon', 'label', 'subtitle', 'target'],
+            ),
+            onEdit: (index) => _addOrEditItem(
+              section: 'seva',
+              title: 'सेवा',
+              emptyItem: {},
+              fields: ['icon', 'label', 'subtitle', 'target'],
+              index: index,
+            ),
+            onDelete: (index) => _removeItem('seva', index),
           ),
           _EditorSection(
             title: 'Shared tenant configuration',
@@ -242,8 +462,77 @@ class _Message extends StatelessWidget {
   );
 }
 
+String _label(String field) => switch (field) {
+  'imageUrl' => 'Image URL',
+  'dateLabel' => 'Date / time label',
+  'ctaLabel' => 'Button text',
+  'ctaUrl' => 'Button target URL',
+  'alt' => 'Alt text',
+  'secondary' => 'Secondary text',
+  _ => field,
+};
+
 Map<String, dynamic> _map(dynamic value) {
   if (value is Map<String, dynamic>) return value;
   if (value is Map) return Map<String, dynamic>.from(value);
   return {};
+}
+
+
+class _ListEditorSection extends StatelessWidget {
+  const _ListEditorSection({
+    required this.title,
+    required this.items,
+    required this.itemTitle,
+    required this.onAdd,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final String title;
+  final List<Map<String, dynamic>> items;
+  final String Function(Map<String, dynamic>) itemTitle;
+  final VoidCallback onAdd;
+  final ValueChanged<int> onEdit;
+  final ValueChanged<int> onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800))),
+                OutlinedButton.icon(onPressed: onAdd, icon: const Icon(Icons.add), label: const Text('Add')),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (items.isEmpty)
+              const Text('अभी कोई item नहीं है।')
+            else
+              ...List.generate(items.length, (index) {
+                final item = items[index];
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.drag_indicator),
+                  title: Text(itemTitle(item)),
+                  subtitle: Text(item['imageUrl']?.toString().isNotEmpty == true ? 'Image configured' : ''),
+                  trailing: Wrap(
+                    children: [
+                      IconButton(onPressed: () => onEdit(index), icon: const Icon(Icons.edit)),
+                      IconButton(onPressed: () => onDelete(index), icon: const Icon(Icons.delete_outline)),
+                    ],
+                  ),
+                );
+              }),
+          ],
+        ),
+      ),
+    );
+  }
 }
