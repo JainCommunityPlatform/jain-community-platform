@@ -1,5 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { resolveTxt } from 'node:dns/promises';
 import { ConfigService } from '@nestjs/config';
 
 import { AuditService } from '../audit/audit.service';
@@ -40,6 +41,8 @@ export class PlatformService {
       city: dto.city?.trim(),
       state: dto.state?.trim(),
       postalCode: dto.postalCode?.trim(),
+      domainVerified: !dto.customHostname,
+      domainVerificationToken: dto.customHostname ? randomUUID() : undefined,
     });
 
     await this.firestore.setWebsiteConfig(
@@ -82,6 +85,12 @@ export class PlatformService {
       hostname,
       adminStatus,
       websiteReady: true,
+      domainVerification: dto.customHostname ? {
+        hostname,
+        txtRecordName: '_jcp-verify.' + hostname,
+        txtRecordValue: await this.firestore.getTenantPrimaryDomainDetails(tenantId).then((domain) => domain?.verificationToken),
+        verified: false,
+      } : null,
     };
   }
 
@@ -101,3 +110,42 @@ function normalizeHostname(hostname?: string): string | undefined {
   const normalized = hostname.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
   return normalized.replace(/^www\./, '') || undefined;
 }
+
+
+  async verifyCustomDomain(tenantId: string) {
+    const domain = await this.firestore.getTenantPrimaryDomainDetails(tenantId);
+    if (!domain) throw new ConflictException('Primary tenant domain not found');
+    if (domain.type !== 'CUSTOM') throw new ConflictException('The primary domain is not a custom domain');
+    if (domain.verified) return { verified: true, hostname: domain.hostname };
+
+    const recordName = '_jcp-verify.' + domain.hostname;
+    let values: string[][] = [];
+    try {
+      values = await resolveTxt(recordName);
+    } catch (_) {
+      return {
+        verified: false,
+        hostname: domain.hostname,
+        message: 'DNS TXT verification record was not found yet',
+      };
+    }
+
+    const expected = domain.verificationToken;
+    const verified = !!expected && values.some((record) => record.join('').trim() === expected);
+    if (!verified) {
+      return {
+        verified: false,
+        hostname: domain.hostname,
+        message: 'DNS TXT record exists but does not match the expected verification token',
+      };
+    }
+
+    await this.firestore.markTenantPrimaryDomainVerified(tenantId);
+    await this.audit.record({
+      action: 'TENANT_DOMAIN_VERIFIED',
+      entity: 'TenantDomain',
+      entityId: tenantId,
+      metadata: { hostname: domain.hostname },
+    });
+    return { verified: true, hostname: domain.hostname };
+  }
