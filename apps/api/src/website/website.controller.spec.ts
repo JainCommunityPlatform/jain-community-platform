@@ -1,3 +1,6 @@
+jest.mock('../auth/authentication.guard', () => ({ AuthenticationGuard: class {} }));
+jest.mock('../authorization/authorization.guard', () => ({ AuthorizationGuard: class {} }));
+
 import { WebsiteController } from './website.controller';
 
 describe('WebsiteController', () => {
