@@ -57,6 +57,7 @@ class FakeDb {
 function service(db = new FakeDb()) {
   const instance = new FirestoreService({ get: jest.fn() } as never);
   (instance as any).firestore = db;
+  (instance as any).app = {};
   return { instance, db };
 }
 
