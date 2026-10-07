@@ -27,7 +27,7 @@ describe('TenantContextMiddleware', () => {
       next,
     );
 
-    expect(tenantService.resolve).toHaveBeenCalledWith('TENANT.EXAMPLE.COM');
+    expect(tenantService.resolve).toHaveBeenCalledWith('TENANT.EXAMPLE.COM', undefined);
     expect(tenantContextStore.run).toHaveBeenCalledWith(tenant, expect.any(Function));
     expect(next).toHaveBeenCalledTimes(1);
   });
