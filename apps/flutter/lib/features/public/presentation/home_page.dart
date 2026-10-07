@@ -16,6 +16,7 @@ class HomePage extends StatelessWidget {
   final TenantSelectionController selection;
   final TenantRepository tenantRepository;
   final WebsiteRepository websiteRepository;
+  final Future<void> Function(TenantSummary)? onTenantSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +27,7 @@ class HomePage extends StatelessWidget {
         selection: selection,
         tenantRepository: tenantRepository,
         websiteRepository: websiteRepository,
+        onSelectTenant: onTenantSelected,
       ),
     );
   }
