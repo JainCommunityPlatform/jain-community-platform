@@ -36,29 +36,38 @@ export class MembershipContextInterceptor implements NestInterceptor {
 
     const tenant = this.tenantContext.get();
 
-    if (!tenant) {
-      return defer(() =>
-        this.membershipContext.run(null, () => next.handle()),
-      );
-    }
-
     return from(this.identity.resolve(user)).pipe(
-      switchMap((currentUser) =>
-        from(this.membership.resolve(currentUser.id, tenant.id)).pipe(
+      switchMap((currentUser) => {
+        if (!tenant) {
+          return defer(() =>
+            this.membershipContext.run(
+              {
+                userId: currentUser.id,
+                tenantId: '',
+                platformRoles: currentUser.platformRoles,
+                membership: null,
+              },
+              () => next.handle(),
+            ),
+          );
+        }
+
+        return from(this.membership.resolve(currentUser.id, tenant.id)).pipe(
           switchMap((membership) =>
             defer(() =>
               this.membershipContext.run(
                 {
                   userId: currentUser.id,
                   tenantId: tenant.id,
+                  platformRoles: currentUser.platformRoles,
                   membership,
                 },
                 () => next.handle(),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 }
