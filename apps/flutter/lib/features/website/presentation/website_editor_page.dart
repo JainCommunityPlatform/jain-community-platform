@@ -121,13 +121,14 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
 
   Future<void> _uploadTo(TextEditingController target) async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+        withData: true,
       );
       if (result == null || result.files.isEmpty) return;
       final file = result.files.single;
-      final bytes = file.bytes ?? await file.readAsBytes();
+      final bytes = file.bytes;
       if (bytes == null || bytes.isEmpty) return;
       final url = await widget.repository.uploadImage(bytes, file.name);
       target.text = url;
@@ -263,6 +264,7 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
                               final file = await FilePicker.pickFile(
                                 type: FileType.custom,
                                 allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+                                withData: true,
                               );
                               if (file == null) return;
                               final bytes = await file.readAsBytes();
