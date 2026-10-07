@@ -25,7 +25,7 @@ class AppRouter {
     required AppSessionController sessionController,
     required ProfileRepository profileRepository,
     required ApiClient api,
-  })  : _session = session,
+  }) {
         _tenantSelection = tenantSelection,
         _tenantRepository = tenantRepository,
         _sessionController = sessionController,
@@ -93,7 +93,6 @@ class AppRouter {
     );
   }
 
-  final AppSession _session;
   final TenantSelectionController _tenantSelection;
   final TenantRepository _tenantRepository;
   final AppSessionController _sessionController;
