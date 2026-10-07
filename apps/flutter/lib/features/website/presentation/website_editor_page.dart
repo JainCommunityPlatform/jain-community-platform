@@ -38,6 +38,7 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
   final _surfaceColor = TextEditingController();
   final _accentColor = TextEditingController();
   final _languages = TextEditingController();
+  final _logoUrl = TextEditingController();
   final _directoryTitle = TextEditingController();
   final _directorySubtitle = TextEditingController();
   final _directoryLimit = TextEditingController();
@@ -60,7 +61,7 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
     for (final controller in [
       _heroTitle, _heroSubtitle, _heroDescription, _heroCta, _heroImage,
       _aboutTitle, _aboutBody, _aboutImage, _address, _phone, _whatsapp, _email, _mapUrl,
-      _primaryColor, _secondaryColor, _backgroundColor, _surfaceColor, _accentColor, _languages,
+      _primaryColor, _secondaryColor, _backgroundColor, _surfaceColor, _accentColor, _languages, _logoUrl,
       _directoryTitle, _directorySubtitle, _directoryLimit, _eventsTitle, _galleryTitle, _sevaTitle,
     ]) {
       controller.dispose();
@@ -100,6 +101,7 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
       _surfaceColor.text = theme['surface'] as String? ?? '#FFFDF8';
       _accentColor.text = theme['accent'] as String? ?? '#E65100';
       _languages.text = (header['languages'] as List<dynamic>? ?? const []).join(', ');
+      _logoUrl.text = header['logoUrl'] as String? ?? '';
       _directoryTitle.text = directory['title'] as String? ?? 'मंदिर खोजें';
       _directorySubtitle.text = directory['subtitle'] as String? ?? '';
       _directoryLimit.text = (directory['limit'] ?? 6).toString();
@@ -150,6 +152,7 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
     };
     next['header'] = {
       ..._map(current['header']),
+      'logoUrl': _logoUrl.text.trim(),
       'languages': _languages.text.split(',').map((v) => v.trim()).where((v) => v.isNotEmpty).toList(),
     };
 
@@ -377,6 +380,7 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
               _field(_surfaceColor, 'Surface color (#RRGGBB)'),
               _field(_accentColor, 'Accent color (#RRGGBB)'),
               _field(_languages, 'Languages, comma separated'),
+              _ImageField(controller: _logoUrl, label: 'Temple logo', onUpload: () => _uploadTo(_logoUrl)),
             ],
           ),
           _EditorSection(
