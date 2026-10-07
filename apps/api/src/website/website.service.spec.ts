@@ -53,3 +53,22 @@ describe('WebsiteService', () => {
     await expect(service.getCurrent()).rejects.toThrow('Tenant context not found');
   });
 });
+
+
+  it('enforces website content limits', async () => {
+    firestore.getWebsiteConfig.mockResolvedValue(defaultWebsiteConfig('tenant-1', 'Temple One'));
+    const service = new WebsiteService(firestore as never, tenantContext as never, audit as never);
+
+    await expect(service.updateCurrent({
+      gallery: {
+        items: Array.from({ length: 31 }, (_, index) => ({
+          id: String(index),
+          imageUrl: 'https://example.test/image.jpg',
+        })),
+      },
+    })).rejects.toThrow('at most 30 gallery images');
+
+    await expect(service.updateCurrent({
+      templeDirectory: { limit: 13 },
+    })).rejects.toThrow('between 1 and 12');
+  });
