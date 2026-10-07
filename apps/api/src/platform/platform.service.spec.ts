@@ -4,7 +4,7 @@ import { resolveTxt } from 'node:dns/promises';
 import { PlatformService } from './platform.service';
 
 describe('PlatformService', () => {
-  const firestore = {
+  const firestore: Record<string, jest.Mock> = {
     getTenantBySlug: jest.fn(),
     getTenantByHostname: jest.fn(),
     createTenant: jest.fn(),
@@ -12,6 +12,8 @@ describe('PlatformService', () => {
     assignTenantAdmin: jest.fn(),
     findUserByEmail: jest.fn(),
     createTenantAdminInvite: jest.fn(),
+    getTenantPrimaryDomainDetails: jest.fn(),
+    markTenantPrimaryDomainVerified: jest.fn(),
   };
   const audit = { record: jest.fn() };
   const config = { get: jest.fn() };
@@ -22,6 +24,7 @@ describe('PlatformService', () => {
     firestore.getTenantBySlug.mockResolvedValue(null);
     firestore.getTenantByHostname.mockResolvedValue(null);
     firestore.createTenant.mockImplementation(async (input: Record<string, unknown>) => input);
+    firestore.getTenantPrimaryDomainDetails.mockResolvedValue(null);
   });
 
   it('creates a reusable tenant with a platform subdomain and default website configuration', async () => {
@@ -61,18 +64,16 @@ describe('PlatformService', () => {
     expect(firestore.assignTenantAdmin).toHaveBeenCalledWith('user-1', expect.any(String));
     expect(firestore.createTenantAdminInvite).not.toHaveBeenCalled();
   });
-});
-
 
   it('reports a missing DNS TXT record without enabling the domain', async () => {
     (resolveTxt as jest.Mock).mockRejectedValue(new Error('NXDOMAIN'));
-    const service = new PlatformService(firestore as never, audit as never, config as never);
     firestore.getTenantPrimaryDomainDetails.mockResolvedValue({
       hostname: 'temple.example.com',
       type: 'CUSTOM',
       verified: false,
       verificationToken: 'token',
     });
+    const service = new PlatformService(firestore as never, audit as never, config as never);
 
     await expect(service.verifyCustomDomain('t1')).resolves.toMatchObject({
       verified: false,
@@ -88,7 +89,6 @@ describe('PlatformService', () => {
       verified: false,
       verificationToken: 'token',
     });
-    firestore.markTenantPrimaryDomainVerified = jest.fn().mockResolvedValue(undefined);
     const service = new PlatformService(firestore as never, audit as never, config as never);
 
     await expect(service.verifyCustomDomain('t1')).resolves.toEqual({
@@ -97,3 +97,4 @@ describe('PlatformService', () => {
     });
     expect(firestore.markTenantPrimaryDomainVerified).toHaveBeenCalledWith('t1');
   });
+});
