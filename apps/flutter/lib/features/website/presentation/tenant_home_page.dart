@@ -935,7 +935,7 @@ bool _bool(dynamic value, bool fallback) => value is bool ? value : fallback;
 Color _hex(dynamic value, Color fallback) {
   if (value is! String) return fallback;
   final raw = value.replaceFirst('#', '');
-  final normalized = raw.length == 6 ? 'FF' + raw : raw;
+  final normalized = raw.length == 6 ? 'FF$raw' : raw;
   final parsed = int.tryParse(normalized, radix: 16);
   return parsed == null ? fallback : Color(parsed);
 }
