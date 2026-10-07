@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/routing/app_routes.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({
     this.onSignInWithGoogle,
     this.isLoading = false,
@@ -14,6 +14,40 @@ class LoginPage extends StatelessWidget {
   final Future<void> Function()? onSignInWithGoogle;
   final bool isLoading;
   final Object? error;
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  String? _shownError;
+
+  @override
+  void didUpdateWidget(covariant LoginPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final error = widget.error;
+    if (error != null && error.toString() != _shownError) {
+      _shownError = error.toString();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Google Sign-In failed'),
+            content: SingleChildScrollView(
+              child: SelectableText('Technical details:\n\n$error'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -121,7 +155,7 @@ class LoginPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    if (error != null) ...[
+                    if (widget.error != null) ...[
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(14),
@@ -130,7 +164,7 @@ class LoginPage extends StatelessWidget {
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Text(
-                          'Sign-in failed. Please try again.',
+                          'Sign-in failed. Tap the dialog for technical details.',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: colors.onErrorContainer),
                         ),
@@ -138,17 +172,17 @@ class LoginPage extends StatelessWidget {
                       const SizedBox(height: 14),
                     ],
                     FilledButton.icon(
-                      onPressed: isLoading || onSignInWithGoogle == null
+                      onPressed: widget.isLoading || widget.onSignInWithGoogle == null
                           ? null
-                          : onSignInWithGoogle,
+                          : widget.onSignInWithGoogle,
                       icon: const Icon(Icons.g_mobiledata, size: 28),
                       label: Text(
-                        isLoading ? 'Signing in…' : 'Continue with Google',
+                        widget.isLoading ? 'Signing in…' : 'Continue with Google',
                       ),
                     ),
                     const SizedBox(height: 10),
                     TextButton(
-                      onPressed: isLoading
+                      onPressed: widget.isLoading
                           ? null
                           : () => context.go(AppRoutes.home),
                       child: const Text('Explore without signing in'),
