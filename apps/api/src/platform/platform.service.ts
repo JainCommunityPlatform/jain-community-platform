@@ -1,4 +1,5 @@
 import { ConflictException, Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
 
 import { AuditService } from '../audit/audit.service';
@@ -28,7 +29,7 @@ export class PlatformService {
     const existingDomain = await this.firestore.getTenantByHostname(hostname);
     if (existingDomain) throw new ConflictException('Tenant hostname is already in use');
 
-    const tenantId = crypto.randomUUID();
+    const tenantId = randomUUID();
     const tenant = await this.firestore.createTenant({
       id: tenantId,
       slug: dto.slug,
