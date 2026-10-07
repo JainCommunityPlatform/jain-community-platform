@@ -32,6 +32,22 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
   final _whatsapp = TextEditingController();
   final _email = TextEditingController();
   final _mapUrl = TextEditingController();
+  final _primaryColor = TextEditingController();
+  final _secondaryColor = TextEditingController();
+  final _backgroundColor = TextEditingController();
+  final _surfaceColor = TextEditingController();
+  final _accentColor = TextEditingController();
+  final _languages = TextEditingController();
+  final _directoryTitle = TextEditingController();
+  final _directorySubtitle = TextEditingController();
+  final _directoryLimit = TextEditingController();
+  final _eventsTitle = TextEditingController();
+  final _galleryTitle = TextEditingController();
+  final _sevaTitle = TextEditingController();
+  bool _directoryEnabled = true;
+  bool _eventsEnabled = true;
+  bool _galleryEnabled = true;
+  bool _sevaEnabled = true;
 
   @override
   void initState() {
@@ -44,6 +60,8 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
     for (final controller in [
       _heroTitle, _heroSubtitle, _heroDescription, _heroCta, _heroImage,
       _aboutTitle, _aboutBody, _aboutImage, _address, _phone, _whatsapp, _email, _mapUrl,
+      _primaryColor, _secondaryColor, _backgroundColor, _surfaceColor, _accentColor, _languages,
+      _directoryTitle, _directorySubtitle, _directoryLimit, _eventsTitle, _galleryTitle, _sevaTitle,
     ]) {
       controller.dispose();
     }
@@ -57,6 +75,12 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
       final hero = _map(site['hero']);
       final about = _map(site['about']);
       final contact = _map(site['contact']);
+      final theme = _map(site['theme']);
+      final header = _map(site['header']);
+      final directory = _map(site['templeDirectory']);
+      final events = _map(site['events']);
+      final gallery = _map(site['gallery']);
+      final seva = _map(site['seva']);
       _heroTitle.text = hero['title'] as String? ?? widget.tenantName;
       _heroSubtitle.text = hero['subtitle'] as String? ?? '';
       _heroDescription.text = hero['description'] as String? ?? '';
@@ -70,6 +94,22 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
       _whatsapp.text = contact['whatsapp'] as String? ?? '';
       _email.text = contact['email'] as String? ?? '';
       _mapUrl.text = contact['mapUrl'] as String? ?? '';
+      _primaryColor.text = theme['primary'] as String? ?? '#F57C00';
+      _secondaryColor.text = theme['secondary'] as String? ?? '#8B2E1B';
+      _backgroundColor.text = theme['background'] as String? ?? '#FFF4DE';
+      _surfaceColor.text = theme['surface'] as String? ?? '#FFFDF8';
+      _accentColor.text = theme['accent'] as String? ?? '#E65100';
+      _languages.text = (header['languages'] as List<dynamic>? ?? const []).join(', ');
+      _directoryTitle.text = directory['title'] as String? ?? 'मंदिर खोजें';
+      _directorySubtitle.text = directory['subtitle'] as String? ?? '';
+      _directoryLimit.text = (directory['limit'] ?? 6).toString();
+      _eventsTitle.text = events['title'] as String? ?? 'चालू एवं आगामी कार्यक्रम';
+      _galleryTitle.text = gallery['title'] as String? ?? 'हमारे मंदिर की एक झलक';
+      _sevaTitle.text = seva['title'] as String? ?? 'सेवा में सहभागी बनें';
+      _directoryEnabled = directory['enabled'] as bool? ?? true;
+      _eventsEnabled = events['enabled'] as bool? ?? true;
+      _galleryEnabled = gallery['enabled'] as bool? ?? true;
+      _sevaEnabled = seva['enabled'] as bool? ?? true;
     } catch (error) {
       _message = 'लोड नहीं हो सका: $error';
     } finally {
@@ -100,6 +140,19 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
     setState(() { _saving = true; _message = null; });
 
     final next = Map<String, dynamic>.from(current);
+    next['theme'] = {
+      ..._map(current['theme']),
+      'primary': _primaryColor.text.trim(),
+      'secondary': _secondaryColor.text.trim(),
+      'background': _backgroundColor.text.trim(),
+      'surface': _surfaceColor.text.trim(),
+      'accent': _accentColor.text.trim(),
+    };
+    next['header'] = {
+      ..._map(current['header']),
+      'languages': _languages.text.split(',').map((v) => v.trim()).where((v) => v.isNotEmpty).toList(),
+    };
+
     next['hero'] = {
       ..._map(current['hero']),
       'title': _heroTitle.text.trim(),
@@ -113,6 +166,28 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
       'title': _aboutTitle.text.trim(),
       'body': _aboutBody.text.trim(),
       'imageUrl': _aboutImage.text.trim(),
+    };
+    next['templeDirectory'] = {
+      ..._map(current['templeDirectory']),
+      'enabled': _directoryEnabled,
+      'title': _directoryTitle.text.trim(),
+      'subtitle': _directorySubtitle.text.trim(),
+      'limit': int.tryParse(_directoryLimit.text.trim()) ?? 6,
+    };
+    next['events'] = {
+      ..._map(current['events']),
+      'enabled': _eventsEnabled,
+      'title': _eventsTitle.text.trim(),
+    };
+    next['gallery'] = {
+      ..._map(current['gallery']),
+      'enabled': _galleryEnabled,
+      'title': _galleryTitle.text.trim(),
+    };
+    next['seva'] = {
+      ..._map(current['seva']),
+      'enabled': _sevaEnabled,
+      'title': _sevaTitle.text.trim(),
     };
     next['contact'] = {
       ..._map(current['contact']),
@@ -293,6 +368,48 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
         padding: const EdgeInsets.all(20),
         children: [
           if (_message != null) _Message(message: _message!),
+          _EditorSection(
+            title: 'Theme & header',
+            children: [
+              _field(_primaryColor, 'Primary color (#RRGGBB)'),
+              _field(_secondaryColor, 'Secondary color (#RRGGBB)'),
+              _field(_backgroundColor, 'Background color (#RRGGBB)'),
+              _field(_surfaceColor, 'Surface color (#RRGGBB)'),
+              _field(_accentColor, 'Accent color (#RRGGBB)'),
+              _field(_languages, 'Languages, comma separated'),
+            ],
+          ),
+          _EditorSection(
+            title: 'Section controls',
+            children: [
+              SwitchListTile(
+                value: _directoryEnabled,
+                onChanged: (value) => setState(() => _directoryEnabled = value),
+                title: const Text('मंदिर खोजें section'),
+              ),
+              _field(_directoryTitle, 'Temple directory title'),
+              _field(_directorySubtitle, 'Temple directory subtitle'),
+              _field(_directoryLimit, 'Temple directory card limit'),
+              SwitchListTile(
+                value: _eventsEnabled,
+                onChanged: (value) => setState(() => _eventsEnabled = value),
+                title: const Text('कार्यक्रम section'),
+              ),
+              _field(_eventsTitle, 'Events section title'),
+              SwitchListTile(
+                value: _galleryEnabled,
+                onChanged: (value) => setState(() => _galleryEnabled = value),
+                title: const Text('Gallery section'),
+              ),
+              _field(_galleryTitle, 'Gallery section title'),
+              SwitchListTile(
+                value: _sevaEnabled,
+                onChanged: (value) => setState(() => _sevaEnabled = value),
+                title: const Text('Seva section'),
+              ),
+              _field(_sevaTitle, 'Seva section title'),
+            ],
+          ),
           _EditorSection(
             title: 'Hero / मुख्य भाग',
             children: [
