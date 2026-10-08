@@ -9,7 +9,14 @@ class AppLanguageController extends ChangeNotifier {
     Locale('gu'),
   ];
 
-  Locale _locale = const Locale('hi');
+  AppLanguageController({Locale initialLocale = const Locale('hi')})
+      : _locale = supported.any(
+          (item) => item.languageCode == initialLocale.languageCode,
+        )
+            ? Locale(initialLocale.languageCode)
+            : const Locale('hi');
+
+  Locale _locale;
   Locale get locale => _locale;
 
   Future<void> load() async {
@@ -17,6 +24,7 @@ class AppLanguageController extends ChangeNotifier {
     final code = preferences.getString('jcp.language');
     if (code != null && supported.any((item) => item.languageCode == code)) {
       _locale = Locale(code);
+      notifyListeners();
     }
   }
 
