@@ -39,10 +39,18 @@ class AppLanguageScope extends InheritedNotifier<AppLanguageController> {
     super.key,
   }) : super(notifier: controller);
 
-  static AppLanguageController of(BuildContext context) {
+  static AppLanguageController? maybeOf(BuildContext context) {
     final scope =
         context.dependOnInheritedWidgetOfExactType<AppLanguageScope>();
-    assert(scope != null, 'AppLanguageScope is missing above this context.');
-    return scope!.notifier!;
+    return scope?.notifier;
+  }
+
+  static AppLanguageController of(BuildContext context) {
+    final controller = maybeOf(context);
+    assert(
+      controller != null,
+      'AppLanguageScope is missing above this context.',
+    );
+    return controller!;
   }
 }
