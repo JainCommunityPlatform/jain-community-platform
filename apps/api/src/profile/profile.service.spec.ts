@@ -22,6 +22,12 @@ describe('ProfileService', () => {
     identity.resolve.mockResolvedValue({ id: 'user-1', authSubject: 'auth-1', email: 'a@b.test' });
   });
 
+  it('delegates registration migration to Firestore', async () => {
+    firestore.migrateRegistrationsToUsers = jest.fn().mockResolvedValue({ dryRun:true });
+    await expect(service.migrateRegistrationsToUsers({ dryRun:true, limit:5 })).resolves.toEqual({ dryRun:true });
+    expect(firestore.migrateRegistrationsToUsers).toHaveBeenCalledWith({ dryRun:true, limit:5 });
+  });
+
   it('returns a profile and indicates when contact linking is required', async () => {
     firestore.getUser.mockResolvedValue({ id:'user-1', authSubject:'auth-1', email:'a@b.test', phoneNumbers:[] });
     await expect(service.getCurrent({ subject:'auth-1' })).resolves.toMatchObject({ id:'user-1', needsPhoneLink:true, phoneNumbers:[] });
