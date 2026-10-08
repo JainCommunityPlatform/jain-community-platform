@@ -24,6 +24,7 @@ class Query {
   constructor(private readonly db: FakeDb, private readonly collectionName: string, private readonly filters: Array<[string, string, any]> = []) {}
   where(field: string, op: string, value: any) { return new Query(this.db, this.collectionName, [...this.filters, [field, op, value]]); }
   orderBy() { return this; }
+  limit() { return this; }
   async get() {
     const docs = this.db.entries(this.collectionName)
       .filter(([, value]) => this.filters.every(([field, op, expected]) => op === '==' && value?.[field] === expected))
