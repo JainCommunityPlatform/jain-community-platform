@@ -11,8 +11,7 @@ void main() {
     Object? error,
     Future<void> Function()? onSignInWithGoogle,
   }) async {
-    final language = AppLanguageController();
-    await language.setLocale(const Locale('en'));
+    final language = AppLanguageController(initialLocale: const Locale('en'));
 
     await tester.pumpWidget(
       AppLanguageScope(
