@@ -3,51 +3,44 @@ import {
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { getAuth } from 'firebase-admin/auth';
 
+import { FirestoreService } from '../database/firestore.service';
 import { AuthenticatedUser, AuthenticationTokenVerifier } from './auth.types';
 
 @Injectable()
 export class JwtAuthenticationService implements AuthenticationTokenVerifier {
-  private readonly jwks: ReturnType<typeof createRemoteJWKSet> | null;
-  private readonly issuer: string | undefined;
-  private readonly audience: string | undefined;
-
-  constructor(private readonly config: ConfigService) {
-    const jwksUrl = this.config.get<string>('auth.jwksUrl');
-    this.issuer = this.config.get<string>('auth.issuer');
-    this.audience = this.config.get<string>('auth.audience');
-    this.jwks = jwksUrl ? createRemoteJWKSet(new URL(jwksUrl)) : null;
-  }
+  constructor(private readonly firestore: FirestoreService) {}
 
   async verify(token: string): Promise<AuthenticatedUser> {
-    if (!this.jwks || !this.issuer || !this.audience) {
-      throw new ServiceUnavailableException(
-        'Authentication provider is not configured',
-      );
+    if (!token.trim()) {
+      throw new UnauthorizedException('Bearer authentication is required');
     }
 
     try {
-      const { payload } = await jwtVerify(token, this.jwks, {
-        issuer: this.issuer,
-        audience: this.audience,
-        algorithms: ['RS256'],
-      });
+      const decoded = await getAuth(this.firestore.getFirebaseApp()).verifyIdToken(
+        token,
+      );
 
-      if (!payload.sub) {
+      if (!decoded.uid) {
         throw new UnauthorizedException('Authenticated token has no subject');
       }
 
       return {
-        subject: payload.sub,
-        email: typeof payload.email === 'string' ? payload.email : undefined,
+        subject: decoded.uid,
+        email: typeof decoded.email === 'string' ? decoded.email : undefined,
         displayName:
-          typeof payload.name === 'string' ? payload.name : undefined,
+          typeof decoded.name === 'string' ? decoded.name : undefined,
       };
     } catch (error) {
       if (error instanceof UnauthorizedException) {
         throw error;
+      }
+
+      if (error instanceof Error && error.message.includes('not initialized')) {
+        throw new ServiceUnavailableException(
+          'Authentication provider is not configured',
+        );
       }
 
       throw new UnauthorizedException('Invalid authentication token');
