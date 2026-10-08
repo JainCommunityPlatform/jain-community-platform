@@ -29,6 +29,12 @@ describe('ProfileService', () => {
     expect(firestore.migrateRegistrationsToUsers).toHaveBeenCalledWith({ dryRun:true, limit:5 });
   });
 
+  it('delegates registration migration with default options', async () => {
+    firestore.migrateRegistrationsToUsers.mockResolvedValue({ dryRun:false });
+    await expect(service.migrateRegistrationsToUsers()).resolves.toEqual({ dryRun:false });
+    expect(firestore.migrateRegistrationsToUsers).toHaveBeenCalledWith({});
+  });
+
   it('returns a profile and indicates when contact linking is required', async () => {
     firestore.getUser.mockResolvedValue({ id:'user-1', authSubject:'auth-1', email:'a@b.test', phoneNumbers:[] });
     await expect(service.getCurrent({ subject:'auth-1' })).resolves.toMatchObject({ id:'user-1', needsPhoneLink:true, phoneNumbers:[] });
@@ -68,6 +74,14 @@ describe('ProfileService', () => {
     await expect(service.resolveByContact('9876543210')).resolves.toMatchObject({ id:'user-1' });
     firestore.findUserByPhone.mockResolvedValue(null);
     await expect(service.resolveByContact('9876543210')).resolves.toBeNull();
+  });
+
+  it('covers admin changes with valid tenant membership', async () => {
+    firestore.getUser.mockResolvedValue({ id:'user-1', authSubject:'auth-1', phoneNumbers:[] });
+    firestore.getMembership.mockResolvedValue({ userId:'user-1', tenantId:'tenant-1' });
+    firestore.setPrimaryPhone.mockResolvedValue({ id:'user-1', authSubject:'auth-1', phoneNumbers:['9876543210'], primaryPhone:'9876543210' });
+    await expect(service.adminSetContact('user-1','9876543210','tenant-1')).resolves.toMatchObject({ primaryPhone:'9876543210' });
+    expect(firestore.getMembership).toHaveBeenCalledWith('user-1','tenant-1');
   });
 
   it('rejects missing profiles and enforces tenant membership for admin changes', async () => {
