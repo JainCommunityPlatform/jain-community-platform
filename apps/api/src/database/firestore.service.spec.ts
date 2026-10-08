@@ -51,11 +51,12 @@ class FakeDb {
   }
   async getAll(...refs: Ref[]) { return Promise.all(refs.map(ref => ref.get())); }
   batch() {
+    const db = this;
     return {
-      create: (ref: Ref, value: any) => this.set(ref.collectionName, ref.id, value),
-      update: (ref: Ref, value: any) => this.set(ref.collectionName, ref.id, { ...this.get(ref.collectionName, ref.id), ...value }),
-      set: (ref: Ref, value: any, options?: any) => this.set(ref.collectionName, ref.id, options?.merge ? { ...this.get(ref.collectionName, ref.id), ...value } : value),
-      delete: (ref: Ref) => this.delete(ref.collectionName, ref.id),
+      create: (ref: Ref, value: any) => db.set(ref.collectionName, ref.id, value),
+      update: (ref: Ref, value: any) => db.set(ref.collectionName, ref.id, { ...db.get(ref.collectionName, ref.id), ...value }),
+      set: (ref: Ref, value: any, options?: any) => db.set(ref.collectionName, ref.id, options?.merge ? { ...db.get(ref.collectionName, ref.id), ...value } : value),
+      delete: (ref: Ref) => db.delete(ref.collectionName, ref.id),
       commit: async () => {},
     };
   }
