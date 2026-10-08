@@ -61,6 +61,7 @@ class _TenantHomePageState extends State<TenantHomePage> {
         selection: widget.selection,
         onSelect: widget.onSelectTenant,
         showPlatformAdmin: widget.sessionController.session.isPlatformAdmin,
+        showSignIn: !widget.sessionController.session.isAuthenticated,
       );
     }
 
@@ -101,6 +102,7 @@ class TempleDirectoryPage extends StatefulWidget {
   final TenantSelectionController selection;
   final FutureOr<void> Function(TenantSummary)? onSelect;
   final bool showPlatformAdmin;
+  final bool showSignIn;
 
   @override
   State<TempleDirectoryPage> createState() => _TempleDirectoryPageState();
@@ -122,21 +124,34 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFFFF4DE),
       appBar: AppBar(
-        title: Text('MyJinalay'),
+        title: const Text('MyJinalay', style: TextStyle(fontWeight: FontWeight.w700)),
         actions: [
           if (widget.showPlatformAdmin)
-            TextButton(onPressed: () => context.go(AppRoutes.platformAdmin), child: const Text('JCP Admin')),
-          TextButton(
-            onPressed: () => context.go(AppRoutes.login),
-            child: Text(strings.signIn),
-          ),
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: TextButton.icon(
+                onPressed: () => context.go(AppRoutes.platformAdmin),
+                icon: const Icon(Icons.admin_panel_settings_outlined, size: 20),
+                label: const Text('JCP Admin'),
+              ),
+            ),
+          if (widget.showSignIn)
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: FilledButton.tonalIcon(
+                onPressed: () => context.go(AppRoutes.login),
+                icon: const Icon(Icons.login, size: 18),
+                label: Text(strings.signIn),
+              ),
+            ),
         ],
       ),
       body: FutureBuilder<List<TenantSummary>>(
         future: _future,
         builder: (context, snapshot) {
           final items = (snapshot.data ?? [])
-              .where((item) => item.name.toLowerCase().contains(_query.toLowerCase()) ||
+              .where((item) =>
+                  item.name.toLowerCase().contains(_query.toLowerCase()) ||
                   (item.city ?? '').toLowerCase().contains(_query.toLowerCase()))
               .toList();
 
@@ -144,47 +159,61 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1180),
               child: ListView(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.fromLTRB(18, 18, 18, 40),
                 children: [
-                  Text(strings.findTemples, style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 8),
-                  Text(_directoryDescription(strings)),
-                  const SizedBox(height: 20),
-                  TextField(
-                    onChanged: (value) => setState(() => _query = value),
-                    decoration: InputDecoration(
-                      hintText: strings.searchTemple,
-                      prefixIcon: const Icon(Icons.search),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
+                  _TempleDirectoryHero(strings: strings),
+                  const SizedBox(height: 18),
+                  Card(
+                    elevation: 0,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: TextField(
+                        onChanged: (value) => setState(() => _query = value),
+                        decoration: InputDecoration(
+                          hintText: strings.searchTemple,
+                          prefixIcon: const Icon(Icons.search),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 22),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          strings.temples,
+                          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                      if (snapshot.hasData)
+                        Text('${items.length}', style: Theme.of(context).textTheme.titleMedium),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
                   if (snapshot.hasError)
                     _ErrorPage(
-                      message: AppStrings.of(context).directoryLoadFailed,
+                      message: strings.directoryLoadFailed,
                       onRetry: () => setState(() => _future = widget.repository.listTemples()),
                     )
                   else if (!snapshot.hasData)
-                    const Center(child: Padding(
+                    const Padding(
                       padding: EdgeInsets.all(48),
-                      child: CircularProgressIndicator(),
-                    ))
+                      child: Center(child: CircularProgressIndicator()),
+                    )
                   else if (items.isEmpty)
-                    const Center(child: Padding(
-                      padding: EdgeInsets.all(48),
-                      child: Text('कोई मंदिर नहीं मिला।'),
-                    ))
+                    const _EmptyContent(message: 'कोई मंदिर नहीं मिला।')
                   else
                     LayoutBuilder(
                       builder: (context, constraints) {
-                        final columns = constraints.maxWidth >= 900
+                        final columns = constraints.maxWidth >= 1000
                             ? 4
-                            : constraints.maxWidth >= 600
+                            : constraints.maxWidth >= 650
                                 ? 3
                                 : 2;
                         return GridView.builder(
@@ -193,9 +222,9 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
                           itemCount: items.length,
                           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: columns,
-                            crossAxisSpacing: 14,
-                            mainAxisSpacing: 14,
-                            childAspectRatio: 0.82,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            childAspectRatio: 0.78,
                           ),
                           itemBuilder: (context, index) {
                             final temple = items[index];
@@ -215,6 +244,77 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _TempleDirectoryHero extends StatelessWidget {
+  const _TempleDirectoryHero({required this.strings});
+
+  final AppStrings strings;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colors.secondary,
+            colors.primary,
+            const Color(0xFFE8A32A),
+          ],
+        ),
+        boxShadow: const [
+          BoxShadow(blurRadius: 24, offset: Offset(0, 12)),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: const Icon(Icons.temple_hindu, color: Colors.white, size: 48),
+          ),
+          const SizedBox(width: 18),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '॥ जय जिनेन्द्र ॥',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.86),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  strings.findTemples,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 30,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  _directoryDescription(strings),
+                  style: const TextStyle(color: Colors.white70, height: 1.35),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
