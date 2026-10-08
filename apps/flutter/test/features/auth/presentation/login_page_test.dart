@@ -16,6 +16,7 @@ void main() {
         ),
       );
 
+      expect(find.text('Sign in'), findsOneWidget);
       expect(find.text('Signing in…'), findsOneWidget);
       expect(find.text('Continue with Google'), findsNothing);
     },
@@ -33,10 +34,7 @@ void main() {
         ),
       );
 
-      expect(
-        find.text('Sign-in failed. Tap the dialog for technical details.'),
-        findsOneWidget,
-      );
+      expect(find.text('Sign-in failed'), findsOneWidget);
       expect(find.text('Continue with Google'), findsOneWidget);
     },
   );
