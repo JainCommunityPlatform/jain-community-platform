@@ -209,7 +209,7 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
                       child: Center(child: CircularProgressIndicator()),
                     )
                   else if (items.isEmpty)
-                    const _EmptyContent(message: 'कोई मंदिर नहीं मिला।')
+                    _EmptyContent(message: strings.noTemples)
                   else
                     LayoutBuilder(
                       builder: (context, constraints) {
