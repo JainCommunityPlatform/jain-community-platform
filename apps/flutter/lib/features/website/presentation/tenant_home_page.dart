@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/i18n/app_language.dart';
+import '../../../core/i18n/app_strings.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../../core/session/app_session_controller.dart';
 import '../../../core/tenant/tenant_selection_controller.dart';
@@ -67,7 +69,7 @@ class _TenantHomePageState extends State<TenantHomePage> {
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return _ErrorPage(
-            message: 'मंदिर की वेबसाइट लोड नहीं हो सकी।',
+            message: AppStrings.of(context).siteLoadFailed,
             onRetry: () => setState(() => _siteFuture = widget.websiteRepository.getSite()),
           );
         }
@@ -116,16 +118,17 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     return Scaffold(
       backgroundColor: const Color(0xFFFFF4DE),
       appBar: AppBar(
-        title: const Text('MyJinalay'),
+        title: Text('MyJinalay'),
         actions: [
           if (widget.showPlatformAdmin)
             TextButton(onPressed: () => context.go(AppRoutes.platformAdmin), child: const Text('JCP Admin')),
           TextButton(
             onPressed: () => context.go(AppRoutes.login),
-            child: const Text('Sign in'),
+            child: Text(strings.signIn),
           ),
         ],
       ),
@@ -143,14 +146,14 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
               child: ListView(
                 padding: const EdgeInsets.all(24),
                 children: [
-                  const Text('मंदिर खोजें', style: TextStyle(fontSize: 34, fontWeight: FontWeight.w800)),
+                  Text(strings.findTemples, style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 8),
-                  const Text('JCP में उपलब्ध मंदिरों को खोजें और उनकी पूरी वेबसाइट देखें।'),
+                  Text(_directoryDescription(strings)),
                   const SizedBox(height: 20),
                   TextField(
                     onChanged: (value) => setState(() => _query = value),
                     decoration: InputDecoration(
-                      hintText: 'मंदिर का नाम या शहर खोजें...',
+                      hintText: strings.searchTemple,
                       prefixIcon: const Icon(Icons.search),
                       filled: true,
                       fillColor: Colors.white,
@@ -163,7 +166,7 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
                   const SizedBox(height: 20),
                   if (snapshot.hasError)
                     _ErrorPage(
-                      message: 'मंदिर सूची लोड नहीं हो सकी।',
+                      message: AppStrings.of(context).directoryLoadFailed,
                       onRetry: () => setState(() => _future = widget.repository.listTemples()),
                     )
                   else if (!snapshot.hasData)
@@ -336,6 +339,8 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final nav = _list(header['navItems']);
+    final language = AppLanguageScope.maybeOf(context);
+    final strings = AppStrings.of(context);
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFFFFFBF1),
@@ -372,7 +377,9 @@ class _Header extends StatelessWidget {
                 )),
               IconButton(onPressed: onFindTemples, icon: const Icon(Icons.search)),
               if (showSignIn)
-                TextButton(onPressed: () => context.go(AppRoutes.login), child: const Text('Sign in')),
+                TextButton(onPressed: () => context.go(AppRoutes.login), child: Text(strings.signIn)),
+              if (language != null)
+                _LanguageSelector(controller: language, strings: strings),
               if (showAdmin)
                 IconButton(onPressed: () => context.go(AppRoutes.admin), icon: const Icon(Icons.admin_panel_settings)),
             ],
@@ -659,37 +666,76 @@ class _Seva extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = _list(seva['items']);
+    final strings = AppStrings.of(context);
     return _Section(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SectionHeader(title: seva['title'] as String? ?? 'सेवा में सहभागी बनें', colors: colors),
+          _SectionHeader(
+            title: seva['title'] as String? ?? strings.seva,
+            colors: colors,
+          ),
           const SizedBox(height: 14),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: items.map((item) => SizedBox(
-              width: 190,
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    children: [
-                      Icon(_icon(item['icon'] as String?), color: colors.primary, size: 32),
-                      const SizedBox(height: 10),
-                      Text(item['label'] as String? ?? '', textAlign: TextAlign.center,
-                          style: const TextStyle(fontWeight: FontWeight.w800)),
-                      if ((item['subtitle'] as String?)?.isNotEmpty ?? false)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(item['subtitle'] as String, textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 12)),
-                        ),
-                    ],
-                  ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth < 520
+                  ? 2
+                  : constraints.maxWidth < 850
+                      ? 3
+                      : 4;
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: items.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: columns,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: constraints.maxWidth < 520 ? 1.15 : 1.35,
                 ),
-              ),
-            )).toList(),
+                itemBuilder: (_, index) {
+                  final item = items[index];
+                  return Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _icon(item['icon'] as String?),
+                            color: colors.primary,
+                            size: 30,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _sevaLabel(
+                              item['icon'] as String?,
+                              item['label'] as String?,
+                              strings,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          if ((item['subtitle'] as String?)?.isNotEmpty ?? false)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                item['subtitle'] as String,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
           ),
         ],
       ),
@@ -925,6 +971,55 @@ class _ErrorPage extends StatelessWidget {
     )),
   );
 }
+class _LanguageSelector extends StatelessWidget {
+  const _LanguageSelector({required this.controller, required this.strings});
+
+  final AppLanguageController controller;
+  final AppStrings strings;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<Locale>(
+      tooltip: strings.language,
+      icon: const Icon(Icons.translate),
+      onSelected: (locale) {
+        controller.setLocale(locale);
+      },
+      itemBuilder: (_) => AppLanguageController.supported
+          .map(
+            (locale) => PopupMenuItem<Locale>(
+              value: locale,
+              child: Row(
+                children: [
+                  if (locale.languageCode == controller.locale.languageCode)
+                    const Icon(Icons.check, size: 18)
+                  else
+                    const SizedBox(width: 18),
+                  const SizedBox(width: 8),
+                  Text(strings.languageName(locale.languageCode)),
+                ],
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+String _directoryDescription(AppStrings strings) => switch (strings.languageCode) {
+  'hi' => 'JCP में उपलब्ध मंदिरों को खोजें और उनकी पूरी वेबसाइट देखें।',
+  'mr' => 'JCP वरील मंदिरे शोधा आणि त्यांची संपूर्ण वेबसाइट पहा.',
+  'gu' => 'JCP પર ઉપલબ્ધ દેરાસરો શોધો અને તેમની સંપૂર્ણ વેબસાઇટ જુઓ.',
+  _ => 'Find temples available on JCP and explore their complete websites.',
+};
+
+String _sevaLabel(String? icon, String? fallback, AppStrings strings) => switch (icon) {
+  'favorite' => strings.foodSeva,
+  'groups' => strings.volunteer,
+  'temple_hindu' => strings.templeSeva,
+  'local_florist' => strings.pooja,
+  _ => fallback ?? '',
+};
 
 List<Map<String, dynamic>> _list(dynamic value) {
   if (value is! List) return [];

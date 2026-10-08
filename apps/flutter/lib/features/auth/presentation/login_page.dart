@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/i18n/app_strings.dart';
 import '../../../core/routing/app_routes.dart';
 
 class LoginPage extends StatefulWidget {
@@ -39,18 +40,19 @@ class _LoginPageState extends State<LoginPage> {
     _shownError = error.toString();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      final strings = AppStrings.of(context);
       showDialog<void>(
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
-          title: const Text('Google Sign-In failed'),
+          title: Text(strings.signInFailed),
           content: SingleChildScrollView(
-            child: SelectableText('Technical details:\n\n$error'),
+            child: SelectableText('${strings.technicalDetails}:\n\n$error'),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
+              child: Text(strings.ok),
             ),
           ],
         ),
@@ -61,6 +63,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final strings = AppStrings.of(context);
 
     return Scaffold(
       body: SafeArea(
@@ -173,7 +176,7 @@ class _LoginPageState extends State<LoginPage> {
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Text(
-                          'Sign-in failed. Tap the dialog for technical details.',
+                          strings.signInConnectionFailed,
                           textAlign: TextAlign.center,
                           style: TextStyle(color: colors.onErrorContainer),
                         ),
@@ -186,7 +189,7 @@ class _LoginPageState extends State<LoginPage> {
                           : widget.onSignInWithGoogle,
                       icon: const Icon(Icons.g_mobiledata, size: 28),
                       label: Text(
-                        widget.isLoading ? 'Signing in…' : 'Continue with Google',
+                        widget.isLoading ? strings.signingIn : strings.signInGoogle,
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -194,7 +197,7 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: widget.isLoading
                           ? null
                           : () => context.go(AppRoutes.home),
-                      child: const Text('Explore without signing in'),
+                      child: Text(strings.explore),
                     ),
                     const SizedBox(height: 8),
                     Text(

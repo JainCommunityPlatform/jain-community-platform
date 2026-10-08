@@ -22,7 +22,6 @@ abstract final class AppTheme {
       colorScheme: scheme,
       useMaterial3: true,
       scaffoldBackgroundColor: _cream,
-      fontFamily: 'Georgia',
       appBarTheme: const AppBarTheme(
         backgroundColor: _cream,
         foregroundColor: _brown,

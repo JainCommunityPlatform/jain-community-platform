@@ -84,7 +84,9 @@ class AppSessionController extends ChangeNotifier {
       }
     } catch (error) {
       _session = AppSession.signedOut;
-      _error = error;
+      _error = error is TimeoutException
+          ? error
+          : StateError('JCP session: $error');
       _status = AppSessionStatus.error;
     }
 
@@ -115,7 +117,11 @@ class AppSessionController extends ChangeNotifier {
     try {
       await _auth.signInWithGoogle().timeout(googleSignInTimeout);
     } catch (error) {
-      _setError(error);
+      _setError(
+        error is TimeoutException
+            ? error
+            : StateError('Google authentication: $error'),
+      );
     }
   }
 

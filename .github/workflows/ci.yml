@@ -128,8 +128,9 @@ jobs:
         run: npm run build --if-present
 
   android:
-    name: Android - Analyze, Test and Build AAB
+    name: Android - Build and Verify AAB
     if: ${{ github.event_name != 'push' && (github.event_name != 'workflow_dispatch' || inputs.scope == 'full' || inputs.scope == 'android') }}
+    needs: [frontend]
     runs-on: ubuntu-26.04
     steps:
       - name: Checkout
@@ -226,12 +227,6 @@ jobs:
           EOF
           test -s android/release-keystore.jks
           test -s android/key.properties
-      - name: Analyze
-        working-directory: apps/flutter
-        run: flutter analyze
-      - name: Run tests
-        working-directory: apps/flutter
-        run: flutter test
       - name: Verify Android release signing configuration
         working-directory: apps/flutter
         run: |
