@@ -13,6 +13,7 @@ describe('ProfileService', () => {
     findUserByPhone: jest.fn(),
     listUserActivities: jest.fn(),
     recordUserActivity: jest.fn(),
+    migrateRegistrationsToUsers: jest.fn(),
   };
   let service: ProfileService;
 
@@ -20,6 +21,18 @@ describe('ProfileService', () => {
     jest.clearAllMocks();
     service = new ProfileService(firestore as never, identity as never);
     identity.resolve.mockResolvedValue({ id: 'user-1', authSubject: 'auth-1', email: 'a@b.test' });
+  });
+
+  it('delegates registration migration to Firestore', async () => {
+    firestore.migrateRegistrationsToUsers.mockResolvedValue({ dryRun:true });
+    await expect(service.migrateRegistrationsToUsers({ dryRun:true, limit:5 })).resolves.toEqual({ dryRun:true });
+    expect(firestore.migrateRegistrationsToUsers).toHaveBeenCalledWith({ dryRun:true, limit:5 });
+  });
+
+  it('delegates registration migration with default options', async () => {
+    firestore.migrateRegistrationsToUsers.mockResolvedValue({ dryRun:false });
+    await expect(service.migrateRegistrationsToUsers()).resolves.toEqual({ dryRun:false });
+    expect(firestore.migrateRegistrationsToUsers).toHaveBeenCalledWith({});
   });
 
   it('returns a profile and indicates when contact linking is required', async () => {
@@ -49,6 +62,11 @@ describe('ProfileService', () => {
     await expect(service.linkCurrentContact({ subject:'auth-1' }, '9876543210')).rejects.toThrow('database unavailable');
   });
 
+  it('propagates non-Error link failures', async () => {
+    firestore.linkPhoneToUser.mockRejectedValue('database unavailable');
+    await expect(service.linkCurrentContact({ subject:'auth-1' }, '9876543210')).rejects.toBe('database unavailable');
+  });
+
   it('provisions and resolves profiles by mobile', async () => {
     firestore.provisionUserByPhone.mockResolvedValue({ id:'user-1', authSubject:'migration:1', phoneNumbers:['9876543210'], primaryPhone:'9876543210' });
     firestore.findUserByPhone.mockResolvedValue({ id:'user-1', authSubject:'migration:1', phoneNumbers:['9876543210'], primaryPhone:'9876543210' });
@@ -56,6 +74,14 @@ describe('ProfileService', () => {
     await expect(service.resolveByContact('9876543210')).resolves.toMatchObject({ id:'user-1' });
     firestore.findUserByPhone.mockResolvedValue(null);
     await expect(service.resolveByContact('9876543210')).resolves.toBeNull();
+  });
+
+  it('covers admin changes with valid tenant membership', async () => {
+    firestore.getUser.mockResolvedValue({ id:'user-1', authSubject:'auth-1', phoneNumbers:[] });
+    firestore.getMembership.mockResolvedValue({ userId:'user-1', tenantId:'tenant-1' });
+    firestore.setPrimaryPhone.mockResolvedValue({ id:'user-1', authSubject:'auth-1', phoneNumbers:['9876543210'], primaryPhone:'9876543210' });
+    await expect(service.adminSetContact('user-1','9876543210','tenant-1')).resolves.toMatchObject({ primaryPhone:'9876543210' });
+    expect(firestore.getMembership).toHaveBeenCalledWith('user-1','tenant-1');
   });
 
   it('rejects missing profiles and enforces tenant membership for admin changes', async () => {
