@@ -7,6 +7,8 @@ import { AuditService } from '../audit/audit.service';
 import { FirestoreService } from '../database/firestore.service';
 import { defaultWebsiteConfig } from '../website/website.types';
 import { CreateTenantDto } from './dto/create-tenant.dto';
+import { TenantAdminDto } from './dto/tenant-admin.dto';
+import { UpdateTenantDto } from './dto/update-tenant.dto';
 
 @Injectable()
 export class PlatformService {
@@ -95,6 +97,71 @@ export class PlatformService {
           }
         : null,
     };
+  }
+
+  async getTenant(tenantId: string) {
+    const tenant = await this.firestore.getTenantById(tenantId);
+    if (!tenant) throw new ConflictException('Tenant not found');
+    return {
+      ...tenant,
+      admins: await this.firestore.listTenantAdmins(tenantId),
+    };
+  }
+
+  async updateTenant(tenantId: string, dto: UpdateTenantDto, actorUserId: string) {
+    const tenant = await this.firestore.updateTenant(tenantId, dto);
+    await this.audit.record({
+      action: 'TENANT_UPDATED',
+      entity: 'Tenant',
+      entityId: tenantId,
+      metadata: {
+        actorUserId,
+        fields: Object.keys(dto),
+      },
+    });
+    return tenant;
+  }
+
+  async addTenantAdmin(tenantId: string, dto: TenantAdminDto, actorUserId: string) {
+    const tenant = await this.firestore.getTenantById(tenantId);
+    if (!tenant) throw new ConflictException('Tenant not found');
+
+    if (dto.userId?.trim()) {
+      const user = await this.firestore.getUser(dto.userId.trim());
+      if (!user) throw new ConflictException('User profile not found');
+      await this.firestore.assignTenantAdmin(user.id, tenantId);
+      await this.audit.record({
+        action: 'TENANT_ADMIN_ASSIGNED',
+        entity: 'TenantMembership',
+        entityId: user.id + '__' + tenantId,
+        metadata: { actorUserId, tenantId, userId: user.id },
+      });
+      return { status: 'assigned', userId: user.id, email: user.email ?? null };
+    }
+
+    const email = dto.email?.trim().toLowerCase();
+    if (!email) throw new ConflictException('Provide either a userId or email');
+
+    const user = await this.firestore.findUserByEmail(email);
+    if (user) {
+      await this.firestore.assignTenantAdmin(user.id, tenantId);
+      await this.audit.record({
+        action: 'TENANT_ADMIN_ASSIGNED',
+        entity: 'TenantMembership',
+        entityId: user.id + '__' + tenantId,
+        metadata: { actorUserId, tenantId, userId: user.id, email },
+      });
+      return { status: 'assigned', userId: user.id, email };
+    }
+
+    await this.firestore.createTenantAdminInvite({ tenantId, email });
+    await this.audit.record({
+      action: 'TENANT_ADMIN_INVITED',
+      entity: 'TenantAdminInvite',
+      entityId: tenantId,
+      metadata: { actorUserId, tenantId, email },
+    });
+    return { status: 'invited', userId: null, email };
   }
 
   async verifyCustomDomain(tenantId: string) {
