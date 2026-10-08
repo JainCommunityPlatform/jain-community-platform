@@ -168,6 +168,23 @@ describe('FirestoreService identity/profile persistence', () => {
     expect(db.get('registrations', 'KW26-2').jcpUserId).toBe(users[0][0]);
   });
 
+  it('reuses an existing phone-linked user and fills only missing profile fields', async () => {
+    const { instance, db } = service();
+    const user = await instance.provisionUserByPhone({ phone:'9860669870' });
+    db.set('registrations', 'KW26-existing', {
+      mobile: '+91 9860669870',
+      name: 'Existing Member',
+      address: 'Pune',
+    });
+
+    const result = await instance.migrateRegistrationsToUsers();
+    expect(result.existingUsersLinked).toBe(1);
+    expect(result.usersCreated).toBe(0);
+    expect((await instance.getUser(user.id))?.displayName).toBe('Existing Member');
+    expect((await instance.getUser(user.id))?.address).toBe('Pune');
+    expect(db.get('registrations', 'KW26-existing').userId).toBe(user.id);
+  });
+
   it('writes idempotent activities, tenants, memberships and audit records', async () => {
     const { instance, db } = service();
     await instance.recordUserActivity({ userId:'u1', tenantId:'t1', eventType:'K', eventId:'e1', title:'K', participatedAt:new Date('2026-10-01') });
