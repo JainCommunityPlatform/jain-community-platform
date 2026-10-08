@@ -151,7 +151,7 @@ describe('PlatformService', () => {
       .rejects.toThrow('JCP_TENANT_BASE_DOMAIN');
   });
 
-  it('verifies a matching DNS TXT token', async () =>
+  it('verifies a matching DNS TXT token', async () => {
     (resolveTxt as jest.Mock).mockResolvedValue([['token']]);
     firestore.getTenantPrimaryDomainDetails.mockResolvedValue({
       hostname: 'temple.example.com',
