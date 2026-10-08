@@ -67,7 +67,7 @@ describe('WebsiteService', () => {
     }));
   });
 
-  it('enforces website content limits', async () =>
+  it('enforces website content limits', async () => {
     firestore.getWebsiteConfig.mockResolvedValue(defaultWebsiteConfig('tenant-1', 'Temple One'));
     const service = new WebsiteService(firestore as never, tenantContext as never, audit as never);
 
