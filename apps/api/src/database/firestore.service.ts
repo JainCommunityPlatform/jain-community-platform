@@ -952,9 +952,10 @@ function hashActivity(userId: string, eventType: string, eventId: string): strin
 function uniquePhones(values: string[]): string[] { return [...new Set(values.filter(Boolean))]; }
 
 function normalizeIndianMobileForMigration(value: unknown): string | null {
-  const normalized = typeof value === 'string' || typeof value === 'number'
+  let normalized = typeof value === 'string' || typeof value === 'number'
     ? String(value).replace(/\D/g, '')
     : '';
+  if (normalized.length === 12 && normalized.startsWith('91')) normalized = normalized.slice(2);
   return /^[6-9][0-9]{9}$/.test(normalized) ? normalized : null;
 }
 
