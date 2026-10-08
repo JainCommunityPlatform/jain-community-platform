@@ -170,7 +170,7 @@ class _LoginPageState extends State<LoginPage> {
                     if (widget.isLoading)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 14),
-                        child: _AuthProgressBanner(message: strings.signingIn),
+                        child: _AuthProgressBanner(message: strings.signInProgressDetail),
                       ),
                     if (widget.error != null) ...[
                       Container(
