@@ -53,7 +53,21 @@ describe('WebsiteService', () => {
     await expect(service.getCurrent()).rejects.toThrow('Tenant context not found');
   });
 
-  it('enforces website content limits', async () => {
+  it('resets the current tenant configuration and audits the reset', async () => {
+    const service = new WebsiteService(firestore as never, tenantContext as never, audit as never);
+
+    await expect(service.resetCurrent()).resolves.toMatchObject({
+      tenantId: 'tenant-1',
+      hero: { title: 'Temple One' },
+    });
+    expect(firestore.setWebsiteConfig).toHaveBeenCalledWith('tenant-1', expect.any(Object));
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'WEBSITE_CONFIG_RESET',
+      entityId: 'tenant-1',
+    }));
+  });
+
+  it('enforces website content limits', async () =>
     firestore.getWebsiteConfig.mockResolvedValue(defaultWebsiteConfig('tenant-1', 'Temple One'));
     const service = new WebsiteService(firestore as never, tenantContext as never, audit as never);
 
