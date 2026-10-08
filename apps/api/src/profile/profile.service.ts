@@ -81,10 +81,6 @@ export class ProfileService {
     }
   }
 
-  async migrateRegistrationsToUsers(input: { dryRun?: boolean; limit?: number } = {}) {
-    return this.firestore.migrateRegistrationsToUsers(input);
-  }
-
   async activities(authenticated: AuthenticatedUser): Promise<UserActivity[]> {
     const user = await this.identity.resolve(authenticated);
     const activities = await this.firestore.listUserActivities(user.id);
