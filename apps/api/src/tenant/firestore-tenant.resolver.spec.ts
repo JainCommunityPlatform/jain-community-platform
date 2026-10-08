@@ -43,9 +43,50 @@ describe('FirestoreTenantResolver', () => {
     });
   });
 
-  it('returns null for an unknown hostname', async () => {
-    getTenantByHostname.mockResolvedValue(null);
+  it('rejects an unverified or inactive hostname', async () => {
+    getTenantByHostname.mockResolvedValueOnce({
+      id: 'tenant-1',
+      name: 'Bade Baba Kharadi',
+      hostname: 'badebabakharadi.com',
+      status: 'ACTIVE',
+      verified: false,
+    });
+    await expect(resolver.resolve('badebabakharadi.com')).resolves.toBeNull();
 
-    await expect(resolver.resolve('example.com')).resolves.toBeNull();
+    getTenantByHostname.mockResolvedValueOnce({
+      id: 'tenant-1',
+      name: 'Bade Baba Kharadi',
+      hostname: 'badebabakharadi.com',
+      status: 'INACTIVE',
+      verified: true,
+    });
+    await expect(resolver.resolve('badebabakharadi.com')).resolves.toBeNull();
+  });
+
+  it('resolves an active tenant by explicit mobile tenant id', async () => {
+    getTenantByHostname.mockResolvedValue(null);
+    const getTenantById = jest.fn().mockResolvedValue({
+      id: 'tenant-1',
+      name: 'Bade Baba Kharadi',
+      hostname: 'badebabakharadi.jcp.example',
+      status: 'ACTIVE',
+    });
+    const mobileResolver = new FirestoreTenantResolver({ getTenantByHostname, getTenantById } as never);
+
+    await expect(mobileResolver.resolve('api.jcp.example', 'tenant-1')).resolves.toEqual({
+      id: 'tenant-1',
+      name: 'Bade Baba Kharadi',
+      hostname: 'badebabakharadi.jcp.example',
+    });
+    expect(getTenantById).toHaveBeenCalledWith('tenant-1');
+  });
+
+  it('returns null for an unknown hostname and unknown tenant id', async () => {
+    getTenantByHostname.mockResolvedValue(null);
+    const getTenantById = jest.fn().mockResolvedValue(null);
+    const mobileResolver = new FirestoreTenantResolver({ getTenantByHostname, getTenantById } as never);
+
+    await expect(mobileResolver.resolve('example.com')).resolves.toBeNull();
+    await expect(mobileResolver.resolve('example.com', 'missing')).resolves.toBeNull();
   });
 });
