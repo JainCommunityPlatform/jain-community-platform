@@ -38,7 +38,7 @@ describe('PlatformController', () => {
   it('updates a tenant using the authenticated platform identity', async () => {
     const controller = new PlatformController(platform as never, auth as never, identity as never);
     await controller.updateTenant('t1', { name: 'Updated' });
-    expect(platform.updateTenant).toHaveBeenCalledWith({ name: 'Updated' }, 'user-1');
+    expect(platform.updateTenant).toHaveBeenCalledWith('t1', { name: 'Updated' }, 'user-1');
   });
 
   it('lists and adds tenant administrators', async () => {
