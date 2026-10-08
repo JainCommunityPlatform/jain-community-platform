@@ -40,6 +40,7 @@ class _LoginPageState extends State<LoginPage> {
     _shownError = error.toString();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      final strings = AppStrings.of(context);
       showDialog<void>(
         context: context,
         barrierDismissible: false,
