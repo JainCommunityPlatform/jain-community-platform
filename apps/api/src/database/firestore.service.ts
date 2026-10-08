@@ -282,6 +282,128 @@ export class FirestoreService implements OnModuleInit {
     });
   }
 
+  async migrateRegistrationsToUsers(input: { dryRun?: boolean; limit?: number } = {}): Promise<{
+    dryRun: boolean;
+    registrationsScanned: number;
+    registrationsLinked: number;
+    registrationsSkipped: number;
+    uniqueMobiles: number;
+    existingUsersLinked: number;
+    usersCreated: number;
+    duplicateRegistrationLinks: number;
+  }> {
+    const db = this.getDb();
+    const dryRun = input.dryRun === true;
+    const snapshot = await db.collection('registrations').get();
+    const docs = input.limit && input.limit > 0
+      ? snapshot.docs.slice(0, input.limit)
+      : snapshot.docs;
+
+    const groups = new Map<string, {
+      phone: string;
+      docs: FirebaseFirestore.QueryDocumentSnapshot[];
+      displayName?: string;
+      address?: string;
+    }>();
+
+    let registrationsSkipped = 0;
+
+    for (const doc of docs) {
+      const data = doc.data();
+      const phone = normalizeIndianMobileForMigration(data.mobile);
+      if (!phone) {
+        registrationsSkipped += 1;
+        continue;
+      }
+
+      const existing = groups.get(phone);
+      if (existing) {
+        existing.docs.push(doc);
+        if (!existing.displayName && typeof data.name === 'string' && data.name.trim()) {
+          existing.displayName = data.name.trim();
+        }
+        if (!existing.address && typeof data.address === 'string' && data.address.trim()) {
+          existing.address = data.address.trim();
+        }
+        continue;
+      }
+
+      groups.set(phone, {
+        phone,
+        docs: [doc],
+        displayName: typeof data.name === 'string' && data.name.trim() ? data.name.trim() : undefined,
+        address: typeof data.address === 'string' && data.address.trim() ? data.address.trim() : undefined,
+      });
+    }
+
+    const result = {
+      dryRun,
+      registrationsScanned: docs.length,
+      registrationsLinked: 0,
+      registrationsSkipped,
+      uniqueMobiles: groups.size,
+      existingUsersLinked: 0,
+      usersCreated: 0,
+      duplicateRegistrationLinks: 0,
+    };
+
+    const batchWrites: Array<{ ref: FirebaseFirestore.DocumentReference; data: Record<string, unknown> }> = [];
+
+    for (const group of groups.values()) {
+      const existingUser = await this.findUserByPhone(group.phone);
+
+      if (dryRun) {
+        if (existingUser) result.existingUsersLinked += 1;
+        else result.usersCreated += 1;
+      } else {
+        let user = existingUser;
+        if (user) {
+          result.existingUsersLinked += 1;
+          const profilePatch: { displayName?: string; address?: string } = {};
+          if (!user.displayName && group.displayName) profilePatch.displayName = group.displayName;
+          if (!user.address && group.address) profilePatch.address = group.address;
+          if (Object.keys(profilePatch).length) {
+            user = await this.updateUserProfile(user.id, profilePatch);
+          }
+        } else {
+          user = await this.provisionUserByPhone({
+            phone: group.phone,
+            displayName: group.displayName,
+            address: group.address,
+          });
+          result.usersCreated += 1;
+        }
+
+        const linkedAt = Timestamp.now();
+        for (const doc of group.docs) {
+          batchWrites.push({
+            ref: doc.ref,
+            data: {
+              userId: user.id,
+              jcpUserId: user.id,
+              identityMigration: 'registrations-to-users-v1',
+              identityLinkedAt: linkedAt,
+            },
+          });
+        }
+        result.registrationsLinked += group.docs.length;
+        result.duplicateRegistrationLinks += Math.max(0, group.docs.length - 1);
+      }
+    }
+
+    if (!dryRun) {
+      for (let i = 0; i < batchWrites.length; i += 400) {
+        const batch = db.batch();
+        for (const write of batchWrites.slice(i, i + 400)) {
+          batch.set(write.ref, write.data, { merge: true });
+        }
+        await batch.commit();
+      }
+    }
+
+    return result;
+  }
+
   async listUserActivities(userId: string): Promise<FirestoreUserActivity[]> {
     const db = this.getDb();
     const [activitySnapshot, kshamawaniSnapshot, pratibhaSnapshot] = await Promise.all([
