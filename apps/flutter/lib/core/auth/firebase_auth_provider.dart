@@ -98,7 +98,11 @@ class FirebaseAuthService implements FirebaseAuthProvider {
     } on TimeoutException {
       rethrow;
     } on GoogleSignInException catch (error) {
-      throw StateError('Google Sign-In failed: ${error.code}');
+      final description = error.description?.trim();
+      final detail = description == null || description.isEmpty
+          ? ''
+          : ': $description';
+      throw StateError('Google Sign-In failed: ${error.code.name}$detail');
     }
   }
 
