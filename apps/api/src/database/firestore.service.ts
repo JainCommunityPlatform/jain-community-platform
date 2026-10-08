@@ -953,7 +953,7 @@ function uniquePhones(values: string[]): string[] { return [...new Set(values.fi
 
 function normalizeIndianMobileForMigration(value: unknown): string | null {
   const normalized = typeof value === 'string' || typeof value === 'number'
-    ? String(value).replace(/\\D/g, '')
+    ? String(value).replace(/\D/g, '')
     : '';
   return /^[6-9][0-9]{9}$/.test(normalized) ? normalized : null;
 }
