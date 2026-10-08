@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/api/api_client.dart';
 import 'core/api/api_environment.dart';
 import 'core/auth/firebase_auth_provider.dart';
 import 'core/firebase/firebase_bootstrap.dart';
+import 'core/i18n/app_language.dart';
 import 'core/routing/app_router.dart';
 import 'core/session/app_session_controller.dart';
 import 'core/session/auth_session_service.dart';
@@ -19,6 +21,9 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await FirebaseBootstrap().initialize();
+
+  final language = AppLanguageController();
+  await language.load();
 
   final baseUrl = ApiEnvironment.baseUrl;
   final publicApi = ApiClient(baseUrl: baseUrl);
@@ -57,6 +62,7 @@ Future<void> main() async {
       ),
       tenant: tenantSelection.selected,
       tenantSelection: tenantSelection,
+      language: language,
     ),
   );
 }
@@ -66,24 +72,32 @@ class JainCommunityPlatformApp extends StatelessWidget {
     required this.router,
     required this.tenantSelection,
     this.tenant,
+    required this.language,
     super.key,
   });
 
   final AppRouter router;
   final TenantContext? tenant;
   final TenantSelectionController tenantSelection;
+  final AppLanguageController language;
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: tenantSelection,
-      builder: (context, _) => TenantScope(
-        tenant: tenantSelection.selected ?? tenant,
-        child: MaterialApp.router(
-          title: tenantSelection.selected?.name ?? 'MyJinalay',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.light(),
-          routerConfig: router.router,
+      builder: (context, _) => AppLanguageScope(
+        controller: language,
+        child: TenantScope(
+          tenant: tenantSelection.selected ?? tenant,
+          child: MaterialApp.router(
+            title: tenantSelection.selected?.name ?? 'MyJinalay',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light(),
+            locale: language.locale,
+            supportedLocales: AppLanguageController.supported,
+            localizationsDelegates: GlobalMaterialLocalizations.delegates,
+            routerConfig: router.router,
+          ),
         ),
       ),
     );
