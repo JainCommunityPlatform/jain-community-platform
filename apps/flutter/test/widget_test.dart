@@ -86,6 +86,11 @@ class FakeSessionService extends AuthSessionService {
   Future<AppSession> loadCurrentSession() async => value;
 }
 
+Future<void> _pumpRouter(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 100));
+}
+
 Future<(AppRouter, TenantSelectionController, AppSessionController)> _router({
   AppSession session = AppSession.signedOut,
 }) async {
@@ -118,7 +123,7 @@ void main() {
       tenant: temple,
       tenantSelection: selection,
     ));
-    await tester.pumpAndSettle();
+    await _pumpRouter(tester);
 
     expect(find.text('Shree Adinath Jinalay'), findsOneWidget);
     controller.dispose();
@@ -132,10 +137,10 @@ void main() {
       tenant: temple,
       tenantSelection: selection,
     ));
-    await tester.pumpAndSettle();
+    await _pumpRouter(tester);
 
     await tester.tap(find.widgetWithText(TextButton, 'Sign in'));
-    await tester.pumpAndSettle();
+    await _pumpRouter(tester);
 
     expect(router.router.state.uri.path, '/login');
     expect(find.text('Continue with Google'), findsOneWidget);
@@ -152,7 +157,7 @@ void main() {
       tenantSelection: selection,
     ));
     router.router.go('/admin');
-    await tester.pumpAndSettle();
+    await _pumpRouter(tester);
 
     expect(find.text('Continue with Google'), findsOneWidget);
     controller.dispose();
@@ -169,9 +174,9 @@ void main() {
       tenant: temple,
       tenantSelection: selection,
     ));
-    await tester.pumpAndSettle();
+    await _pumpRouter(tester);
     router.router.go('/admin');
-    await tester.pumpAndSettle();
+    await _pumpRouter(tester);
 
     expect(find.text('Temple Admin'), findsOneWidget);
     controller.dispose();
@@ -192,19 +197,19 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: MemberHomePage()));
 
     await tester.tap(find.text('Temples'));
-    await tester.pumpAndSettle();
+    await _pumpRouter(tester);
     expect(find.text('Explore Temples'), findsOneWidget);
 
     await tester.tap(find.text('Events'));
-    await tester.pumpAndSettle();
+    await _pumpRouter(tester);
     expect(find.text('Events & Community'), findsOneWidget);
 
     await tester.tap(find.text('Donations'));
-    await tester.pumpAndSettle();
+    await _pumpRouter(tester);
     expect(find.text('Support & Donate'), findsOneWidget);
 
     await tester.tap(find.text('Profile'));
-    await tester.pumpAndSettle();
+    await _pumpRouter(tester);
     expect(find.text('MyJinalay Member'), findsOneWidget);
   });
 
