@@ -104,7 +104,6 @@ class TempleDirectoryPage extends StatefulWidget {
   final FutureOr<void> Function(TenantSummary)? onSelect;
   final bool showPlatformAdmin;
   final bool showSignIn;
-  final bool showSignIn;
 
   @override
   State<TempleDirectoryPage> createState() => _TempleDirectoryPageState();
