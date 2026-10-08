@@ -1,19 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:jain_community_platform/core/i18n/app_language.dart';
 import 'package:jain_community_platform/features/auth/presentation/login_page.dart';
 
 void main() {
+  Future<void> pumpEnglishLogin(
+    WidgetTester tester, {
+    bool isLoading = false,
+    Object? error,
+    Future<void> Function()? onSignInWithGoogle,
+  }) async {
+    final language = AppLanguageController();
+    await language.setLocale(const Locale('en'));
+
+    await tester.pumpWidget(
+      AppLanguageScope(
+        controller: language,
+        child: MaterialApp(
+          home: LoginPage(
+            isLoading: isLoading,
+            error: error,
+            onSignInWithGoogle: onSignInWithGoogle,
+          ),
+        ),
+      ),
+    );
+  }
+
   testWidgets(
     'shows a disabled signing-in state while authentication is running',
     (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: LoginPage(
-            isLoading: true,
-            onSignInWithGoogle: null,
-          ),
-        ),
+      await pumpEnglishLogin(
+        tester,
+        isLoading: true,
+        onSignInWithGoogle: null,
       );
 
       expect(find.text('Sign in'), findsOneWidget);
@@ -25,13 +46,10 @@ void main() {
   testWidgets(
     'shows a recoverable error state after authentication fails',
     (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: LoginPage(
-            error: StateError('authentication failed'),
-            onSignInWithGoogle: () async {},
-          ),
-        ),
+      await pumpEnglishLogin(
+        tester,
+        error: StateError('authentication failed'),
+        onSignInWithGoogle: () async {},
       );
 
       expect(find.text('Sign-in failed'), findsOneWidget);
