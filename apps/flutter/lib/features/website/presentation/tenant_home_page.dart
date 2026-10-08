@@ -665,15 +665,23 @@ class _Seva extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = _list(seva['items']);
+    final strings = AppStrings.of(context);
     return _Section(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SectionHeader(title: seva['title'] as String? ?? strings.seva, colors: colors),
+          _SectionHeader(
+            title: seva['title'] as String? ?? strings.seva,
+            colors: colors,
+          ),
           const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
-              final columns = constraints.maxWidth < 520 ? 2 : constraints.maxWidth < 850 ? 3 : 4;
+              final columns = constraints.maxWidth < 520
+                  ? 2
+                  : constraints.maxWidth < 850
+                      ? 3
+                      : 4;
               return GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -687,25 +695,46 @@ class _Seva extends StatelessWidget {
                 itemBuilder: (_, index) {
                   final item = items[index];
                   return Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    children: [
-                      Icon(_icon(item['icon'] as String?), color: colors.primary, size: 32),
-                      const SizedBox(height: 10),
-                      Text(_sevaLabel(item['icon'] as String?, item['label'] as String?, strings), textAlign: TextAlign.center,
-                          style: const TextStyle(fontWeight: FontWeight.w800)),
-                      if ((item['subtitle'] as String?)?.isNotEmpty ?? false)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(item['subtitle'] as String, textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 12)),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            )).toList(),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _icon(item['icon'] as String?),
+                            color: colors.primary,
+                            size: 30,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _sevaLabel(
+                              item['icon'] as String?,
+                              item['label'] as String?,
+                              strings,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          if ((item['subtitle'] as String?)?.isNotEmpty ?? false)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                item['subtitle'] as String,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
           ),
         ],
       ),
@@ -941,7 +970,7 @@ class _ErrorPage extends StatelessWidget {
     )),
   );
 }
-\nclass _LanguageSelector extends StatelessWidget {
+class _LanguageSelector extends StatelessWidget {
   const _LanguageSelector({required this.controller, required this.strings});
 
   final AppLanguageController controller;
