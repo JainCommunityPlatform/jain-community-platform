@@ -21,7 +21,6 @@ import 'package:jain_community_platform/features/profile/data/profile_repository
 import 'package:jain_community_platform/features/tenant/data/tenant_repository.dart';
 import 'package:jain_community_platform/features/website/data/website_repository.dart';
 import 'package:jain_community_platform/features/website/presentation/tenant_home_page.dart';
-import 'package:jain_community_platform/main.dart';
 
 const temple = TenantContext(
   id: 'tenant-1',
