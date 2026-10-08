@@ -37,7 +37,9 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
   final _backgroundColor = TextEditingController();
   final _surfaceColor = TextEditingController();
   final _accentColor = TextEditingController();
-  final _languages = TextEditingController();
+  final _availableLanguages = const ['हिन्दी', 'मराठी', 'English', 'ગુજરાતી'];
+  final Set<String> _selectedLanguages = {'हिन्दी', 'मराठी', 'English'};
+  bool _uploading = false;
   final _logoUrl = TextEditingController();
   final _directoryTitle = TextEditingController();
   final _directorySubtitle = TextEditingController();
@@ -61,7 +63,7 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
     for (final controller in [
       _heroTitle, _heroSubtitle, _heroDescription, _heroCta, _heroImage,
       _aboutTitle, _aboutBody, _aboutImage, _address, _phone, _whatsapp, _email, _mapUrl,
-      _primaryColor, _secondaryColor, _backgroundColor, _surfaceColor, _accentColor, _languages, _logoUrl,
+      _primaryColor, _secondaryColor, _backgroundColor, _surfaceColor, _accentColor, _logoUrl,
       _directoryTitle, _directorySubtitle, _directoryLimit, _eventsTitle, _galleryTitle, _sevaTitle,
     ]) {
       controller.dispose();
@@ -100,7 +102,16 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
       _backgroundColor.text = theme['background'] as String? ?? '#FFF4DE';
       _surfaceColor.text = theme['surface'] as String? ?? '#FFFDF8';
       _accentColor.text = theme['accent'] as String? ?? '#E65100';
-      _languages.text = (header['languages'] as List<dynamic>? ?? const []).join(', ');
+      _selectedLanguages
+        ..clear()
+        ..addAll(
+          (header['languages'] as List<dynamic>? ?? const [])
+              .map((value) => value.toString())
+              .where(_availableLanguages.contains),
+        );
+      if (_selectedLanguages.isEmpty) {
+        _selectedLanguages.addAll(['हिन्दी', 'मराठी', 'English']);
+      }
       _logoUrl.text = header['logoUrl'] as String? ?? '';
       _directoryTitle.text = directory['title'] as String? ?? 'मंदिर खोजें';
       _directorySubtitle.text = directory['subtitle'] as String? ?? '';
@@ -130,11 +141,14 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
       final file = result.files.single;
       final bytes = file.bytes;
       if (bytes == null || bytes.isEmpty) return;
+      if (mounted) setState(() => _uploading = true);
       final url = await widget.repository.uploadImage(bytes, file.name);
       target.text = url;
       if (mounted) setState(() => _message = 'चित्र अपलोड हो गया।');
     } catch (error) {
       if (mounted) setState(() => _message = 'चित्र अपलोड नहीं हुआ: $error');
+    } finally {
+      if (mounted) setState(() => _uploading = false);
     }
   }
 
@@ -155,7 +169,7 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
     next['header'] = {
       ..._map(current['header']),
       'logoUrl': _logoUrl.text.trim(),
-      'languages': _languages.text.split(',').map((v) => v.trim()).where((v) => v.isNotEmpty).toList(),
+      'languages': _selectedLanguages.toList(),
     };
 
     next['hero'] = {
@@ -362,7 +376,7 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
       appBar: AppBar(
         title: const Text('Temple Website Editor'),
         actions: [
-          if (_saving)
+          if (_saving || _uploading)
             const Padding(
               padding: EdgeInsets.all(16),
               child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)),
@@ -374,16 +388,40 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          if (_uploading)
+            const _BusyBanner(message: 'Uploading image securely…'),
           if (_message != null) _Message(message: _message!),
           _EditorSection(
             title: 'Theme & header',
             children: [
-              _field(_primaryColor, 'Primary color (#RRGGBB)'),
-              _field(_secondaryColor, 'Secondary color (#RRGGBB)'),
-              _field(_backgroundColor, 'Background color (#RRGGBB)'),
-              _field(_surfaceColor, 'Surface color (#RRGGBB)'),
-              _field(_accentColor, 'Accent color (#RRGGBB)'),
-              _field(_languages, 'Languages, comma separated'),
+              _colorField(_primaryColor, 'Primary color'),
+              _colorField(_secondaryColor, 'Secondary color'),
+              _colorField(_backgroundColor, 'Background color'),
+              _colorField(_surfaceColor, 'Surface color'),
+              _colorField(_accentColor, 'Accent color'),
+              const Text(
+                'Languages available on this temple website',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _availableLanguages.map((language) {
+                  final selected = _selectedLanguages.contains(language);
+                  return FilterChip(
+                    selected: selected,
+                    label: Text(language),
+                    onSelected: (value) => setState(() {
+                      if (value) {
+                        _selectedLanguages.add(language);
+                      } else if (_selectedLanguages.length > 1) {
+                        _selectedLanguages.remove(language);
+                      }
+                    }),
+                  );
+                }).toList(),
+              ),
               _ImageField(controller: _logoUrl, label: 'Temple logo', onUpload: () => _uploadTo(_logoUrl)),
             ],
           ),
@@ -660,4 +698,114 @@ class _ListEditorSection extends StatelessWidget {
       ),
     );
   }
+}
+
+class _BusyBanner extends StatelessWidget {
+  const _BusyBanner({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(bottom: 14),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.primaryContainer,
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: Row(
+      children: [
+        const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+        const SizedBox(width: 12),
+        Expanded(child: Text(message)),
+      ],
+    ),
+  );
+}
+
+Widget _colorField(TextEditingController controller, String label) => StatefulBuilder(
+  builder: (context, setState) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: TextField(
+        controller: controller,
+        onChanged: (_) => setState(() {}),
+        decoration: InputDecoration(
+          labelText: '$label (#RRGGBB)',
+          prefixIcon: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: _parseEditorColor(controller.text),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.black26),
+              ),
+            ),
+          ),
+          suffixIcon: IconButton(
+            tooltip: 'Choose from Jain palette',
+            icon: const Icon(Icons.palette_outlined),
+            onPressed: () async {
+              final selected = await showDialog<String>(
+                context: context,
+                builder: (dialogContext) => SimpleDialog(
+                  title: const Text('Choose a color'),
+                  children: const [
+                    _PaletteOption(name: 'Jain saffron', value: '#F57C00'),
+                    _PaletteOption(name: 'Deep maroon', value: '#8B2E1B'),
+                    _PaletteOption(name: 'Cream', value: '#FFF4DE'),
+                    _PaletteOption(name: 'Warm surface', value: '#FFFDF8'),
+                    _PaletteOption(name: 'Accent orange', value: '#E65100'),
+                    _PaletteOption(name: 'Temple gold', value: '#C58B24'),
+                  ],
+                ),
+              );
+              if (selected != null) {
+                controller.text = selected;
+                setState(() {});
+              }
+            },
+          ),
+        ),
+      ),
+    );
+  },
+);
+
+Color _parseEditorColor(String value) {
+  final raw = value.trim().replaceFirst('#', '');
+  final normalized = raw.length == 6 ? 'FF$raw' : raw;
+  final parsed = int.tryParse(normalized, radix: 16);
+  return parsed == null ? Colors.transparent : Color(parsed);
+}
+
+class _PaletteOption extends StatelessWidget {
+  const _PaletteOption({required this.name, required this.value});
+
+  final String name;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => SimpleDialogOption(
+    onPressed: () => Navigator.of(context).pop(value),
+    child: Row(
+      children: [
+        Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: _parseEditorColor(value),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.black26),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(name),
+        const Spacer(),
+        Text(value),
+      ],
+    ),
+  );
 }

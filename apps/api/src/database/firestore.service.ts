@@ -10,10 +10,8 @@ import {
   initializeApp,
 } from 'firebase-admin/app';
 import {
-  DocumentReference,
   DocumentSnapshot,
   Firestore,
-  QueryDocumentSnapshot,
   Timestamp,
   getFirestore,
 } from 'firebase-admin/firestore';
@@ -299,128 +297,6 @@ export class FirestoreService implements OnModuleInit {
       transaction.set(indexRef, { userId, phone }, { merge: true });
       return { ...user, phoneNumbers: phones, primaryPhone: phone };
     });
-  }
-
-  async migrateRegistrationsToUsers(input: { dryRun?: boolean; limit?: number } = {}): Promise<{
-    dryRun: boolean;
-    registrationsScanned: number;
-    registrationsLinked: number;
-    registrationsSkipped: number;
-    uniqueMobiles: number;
-    existingUsersLinked: number;
-    usersCreated: number;
-    duplicateRegistrationLinks: number;
-  }> {
-    const db = this.getDb();
-    const dryRun = input.dryRun === true;
-    const snapshot = await db.collection('registrations').get();
-    const docs = input.limit && input.limit > 0
-      ? snapshot.docs.slice(0, input.limit)
-      : snapshot.docs;
-
-    const groups = new Map<string, {
-      phone: string;
-      docs: QueryDocumentSnapshot[];
-      displayName?: string;
-      address?: string;
-    }>();
-
-    let registrationsSkipped = 0;
-
-    for (const doc of docs) {
-      const data = doc.data();
-      const phone = normalizeIndianMobileForMigration(data.mobile);
-      if (!phone) {
-        registrationsSkipped += 1;
-        continue;
-      }
-
-      const existing = groups.get(phone);
-      if (existing) {
-        existing.docs.push(doc);
-        if (!existing.displayName && typeof data.name === 'string' && data.name.trim()) {
-          existing.displayName = data.name.trim();
-        }
-        if (!existing.address && typeof data.address === 'string' && data.address.trim()) {
-          existing.address = data.address.trim();
-        }
-        continue;
-      }
-
-      groups.set(phone, {
-        phone,
-        docs: [doc],
-        displayName: typeof data.name === 'string' && data.name.trim() ? data.name.trim() : undefined,
-        address: typeof data.address === 'string' && data.address.trim() ? data.address.trim() : undefined,
-      });
-    }
-
-    const result = {
-      dryRun,
-      registrationsScanned: docs.length,
-      registrationsLinked: 0,
-      registrationsSkipped,
-      uniqueMobiles: groups.size,
-      existingUsersLinked: 0,
-      usersCreated: 0,
-      duplicateRegistrationLinks: 0,
-    };
-
-    const batchWrites: Array<{ ref: DocumentReference; data: Record<string, unknown> }> = [];
-
-    for (const group of groups.values()) {
-      const existingUser = await this.findUserByPhone(group.phone);
-
-      if (dryRun) {
-        if (existingUser) result.existingUsersLinked += 1;
-        else result.usersCreated += 1;
-      } else {
-        let user = existingUser;
-        if (user) {
-          result.existingUsersLinked += 1;
-          const profilePatch: { displayName?: string; address?: string } = {};
-          if (!user.displayName && group.displayName) profilePatch.displayName = group.displayName;
-          if (!user.address && group.address) profilePatch.address = group.address;
-          if (Object.keys(profilePatch).length) {
-            user = await this.updateUserProfile(user.id, profilePatch);
-          }
-        } else {
-          user = await this.provisionUserByPhone({
-            phone: group.phone,
-            displayName: group.displayName,
-            address: group.address,
-          });
-          result.usersCreated += 1;
-        }
-
-        const linkedAt = Timestamp.now();
-        for (const doc of group.docs) {
-          batchWrites.push({
-            ref: doc.ref,
-            data: {
-              userId: user.id,
-              jcpUserId: user.id,
-              identityMigration: 'registrations-to-users-v1',
-              identityLinkedAt: linkedAt,
-            },
-          });
-        }
-        result.registrationsLinked += group.docs.length;
-        result.duplicateRegistrationLinks += Math.max(0, group.docs.length - 1);
-      }
-    }
-
-    if (!dryRun) {
-      for (let i = 0; i < batchWrites.length; i += 400) {
-        const batch = db.batch();
-        for (const write of batchWrites.slice(i, i + 400)) {
-          batch.set(write.ref, write.data, { merge: true });
-        }
-        await batch.commit();
-      }
-    }
-
-    return result;
   }
 
   async listUserActivities(userId: string): Promise<FirestoreUserActivity[]> {
@@ -776,6 +652,98 @@ export class FirestoreService implements OnModuleInit {
     return { id: input.id, slug: input.slug, name: input.name, hostname: input.hostname };
   }
 
+  async updateTenant(tenantId: string, input: {
+    name?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    customHostname?: string;
+  }): Promise<{
+    id: string;
+    slug: string;
+    name: string;
+    hostname: string;
+    status: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+  }> {
+    const db = this.getDb();
+    const tenantRef = db.collection('tenants').doc(tenantId);
+    const snapshot = await tenantRef.get();
+    if (!snapshot.exists) throw new Error('Tenant not found');
+
+    const current = snapshot.data() ?? {};
+    const nextHostname = input.customHostname?.trim()
+      ? normalizeHostname(input.customHostname)
+      : undefined;
+
+    if (nextHostname && nextHostname !== current.primaryHostname) {
+      const domain = await db.collection('tenantDomains').doc(nextHostname).get();
+      if (domain.exists && domain.data()?.tenantId !== tenantId) {
+        throw new Error('Tenant hostname is already in use');
+      }
+    }
+
+    const patch: Record<string, unknown> = {
+      ...(input.name?.trim() ? { name: input.name.trim() } : {}),
+      ...(input.address !== undefined ? { address: input.address.trim() } : {}),
+      ...(input.city !== undefined ? { city: input.city.trim() } : {}),
+      ...(input.state !== undefined ? { state: input.state.trim() } : {}),
+      ...(input.postalCode !== undefined ? { postalCode: input.postalCode.trim() } : {}),
+      updatedAt: Timestamp.now(),
+    };
+
+    if (nextHostname) {
+      patch.primaryHostname = nextHostname;
+      const oldDomain = current.primaryHostname
+        ? db.collection('tenantDomains').doc(current.primaryHostname as string)
+        : null;
+      const newDomain = db.collection('tenantDomains').doc(nextHostname);
+      await db.runTransaction(async (transaction) => {
+        const newDomainSnapshot = await transaction.get(newDomain);
+        if (newDomainSnapshot.exists && newDomainSnapshot.data()?.tenantId !== tenantId) {
+          throw new Error('Tenant hostname is already in use');
+        }
+        transaction.set(tenantRef, patch, { merge: true });
+        if (oldDomain && current.primaryHostname !== nextHostname) {
+          transaction.delete(oldDomain);
+        }
+        transaction.set(newDomain, {
+          tenantId,
+          hostname: nextHostname,
+          type: 'CUSTOM',
+          verified: false,
+          primary: true,
+          updatedAt: Timestamp.now(),
+        }, { merge: true });
+      });
+    } else {
+      await tenantRef.set(patch, { merge: true });
+    }
+
+    const updated = await tenantRef.get();
+    const data = updated.data() ?? {};
+    return {
+      id: updated.id,
+      slug: data.slug as string,
+      name: data.name as string,
+      hostname: data.primaryHostname as string,
+      status: (data.status as string) ?? 'ACTIVE',
+      address: (data.address as string | null) ?? undefined,
+      city: (data.city as string | null) ?? undefined,
+      state: (data.state as string | null) ?? undefined,
+      postalCode: (data.postalCode as string | null) ?? undefined,
+    };
+  }
+
+  async listTenantAdmins(tenantId: string): Promise<FirestoreMembership[]> {
+    const memberships = await this.listMemberships(tenantId);
+    return memberships.filter((membership) => membership.role === 'TENANT_ADMIN');
+  }
+
   async getTenantPrimaryDomainDetails(tenantId: string): Promise<{
     hostname: string;
     type?: string;
@@ -968,13 +936,6 @@ function hashPhone(phone: string): string { return createHash('sha256').update(p
 function hashActivity(userId: string, eventType: string, eventId: string): string { return createHash('sha256').update(userId + ':' + eventType + ':' + eventId).digest('hex'); }
 function uniquePhones(values: string[]): string[] { return [...new Set(values.filter(Boolean))]; }
 
-function normalizeIndianMobileForMigration(value: unknown): string | null {
-  let normalized = typeof value === 'string' || typeof value === 'number'
-    ? String(value).replace(/\D/g, '')
-    : '';
-  if (normalized.length === 12 && normalized.startsWith('91')) normalized = normalized.slice(2);
-  return /^[6-9][0-9]{9}$/.test(normalized) ? normalized : null;
-}
 
 function normalizeHostname(hostname: string | undefined): string | null {
   if (!hostname) return null;

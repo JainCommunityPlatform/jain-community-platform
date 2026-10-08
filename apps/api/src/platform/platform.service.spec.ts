@@ -13,6 +13,10 @@ describe('PlatformService', () => {
     findUserByEmail: jest.fn(),
     createTenantAdminInvite: jest.fn(),
     getTenantPrimaryDomainDetails: jest.fn(),
+    getTenantById: jest.fn(),
+    listTenantAdmins: jest.fn(),
+    updateTenant: jest.fn(),
+    getUser: jest.fn(),
     markTenantPrimaryDomainVerified: jest.fn(),
   };
   const audit = { record: jest.fn() };
@@ -25,6 +29,95 @@ describe('PlatformService', () => {
     firestore.getTenantByHostname.mockResolvedValue(null);
     firestore.createTenant.mockImplementation(async (input: Record<string, unknown>) => input);
     firestore.getTenantPrimaryDomainDetails.mockResolvedValue(null);
+    firestore.findUserByEmail.mockResolvedValue(null);
+    firestore.getTenantById.mockResolvedValue(null);
+    firestore.getUser.mockResolvedValue(null);
+  });
+
+  it('updates a tenant and records the actor', async () => {
+    firestore.updateTenant.mockResolvedValue({
+      id: 't1',
+      slug: 'temple-one',
+      name: 'Updated Temple',
+      hostname: 'temple-one.jcp.example',
+    });
+    const service = new PlatformService(firestore as never, audit as never, config as never);
+
+    await expect(service.updateTenant('t1', { name: 'Updated Temple', city: 'Pune' }, 'platform-user'))
+      .resolves.toMatchObject({ name: 'Updated Temple' });
+    expect(firestore.updateTenant).toHaveBeenCalledWith('t1', { name: 'Updated Temple', city: 'Pune' });
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'TENANT_UPDATED',
+      entityId: 't1',
+    }));
+  });
+
+  it('assigns a tenant admin by email or creates an invite', async () => {
+    firestore.getTenantById.mockResolvedValue({ id: 't1', name: 'Temple', slug: 'temple', hostname: 'temple.jcp.example' });
+    firestore.findUserByEmail.mockResolvedValue(null);
+    const service = new PlatformService(firestore as never, audit as never, config as never);
+
+    await expect(service.addTenantAdmin('t1', { email: 'ADMIN@example.com' }, 'platform-user'))
+      .resolves.toMatchObject({ status: 'invited', email: 'admin@example.com' });
+    expect(firestore.createTenantAdminInvite).toHaveBeenCalledWith({
+      tenantId: 't1',
+      email: 'admin@example.com',
+    });
+  });
+
+  it('loads a tenant with its administrators', async () => {
+    firestore.getTenantById
+      .mockResolvedValueOnce({
+        id: 't1',
+        slug: 'temple-one',
+        name: 'Temple One',
+        hostname: 'temple-one.jcp.example',
+      })
+      .mockResolvedValueOnce(null);
+    firestore.listTenantAdmins.mockResolvedValue([{ id: 'm1', userId: 'u1', tenantId: 't1', role: 'TENANT_ADMIN' }]);
+
+    const service = new PlatformService(firestore as never, audit as never, config as never);
+    await expect(service.getTenant('t1')).resolves.toMatchObject({
+      id: 't1',
+      admins: [{ userId: 'u1' }],
+    });
+    await expect(service.getTenant('missing')).rejects.toThrow('Tenant not found');
+  });
+
+  it('assigns an existing user by email', async () => {
+    firestore.getTenantById.mockResolvedValue({
+      id: 't1', slug: 'temple-one', name: 'Temple One', hostname: 'temple-one.jcp.example',
+    });
+    firestore.findUserByEmail.mockResolvedValue({ id: 'u1', email: 'admin@example.com' });
+    const service = new PlatformService(firestore as never, audit as never, config as never);
+
+    await expect(service.addTenantAdmin('t1', { email: ' ADMIN@EXAMPLE.COM ' }, 'actor'))
+      .resolves.toMatchObject({ status: 'assigned', userId: 'u1' });
+    expect(firestore.assignTenantAdmin).toHaveBeenCalledWith('u1', 't1');
+  });
+
+  it('assigns an existing user by id and rejects unknown users', async () => {
+    firestore.getTenantById.mockResolvedValue({
+      id: 't1', slug: 'temple-one', name: 'Temple One', hostname: 'temple-one.jcp.example',
+    });
+    firestore.getUser.mockResolvedValue({ id: 'u2', email: 'u2@example.com' });
+    const service = new PlatformService(firestore as never, audit as never, config as never);
+
+    await expect(service.addTenantAdmin('t1', { userId: 'u2' }, 'actor'))
+      .resolves.toMatchObject({ status: 'assigned', userId: 'u2' });
+
+    firestore.getUser.mockResolvedValue(null);
+    await expect(service.addTenantAdmin('t1', { userId: 'missing' }, 'actor'))
+      .rejects.toThrow('User profile not found');
+  });
+
+  it('rejects a tenant admin request without an email or user id', async () => {
+    firestore.getTenantById.mockResolvedValue({
+      id: 't1', slug: 'temple-one', name: 'Temple One', hostname: 'temple-one.jcp.example',
+    });
+    const service = new PlatformService(firestore as never, audit as never, config as never);
+    await expect(service.addTenantAdmin('t1', {}, 'actor'))
+      .rejects.toThrow('Provide either a userId or email');
   });
 
   it('creates a reusable tenant with a platform subdomain and default website configuration', async () => {

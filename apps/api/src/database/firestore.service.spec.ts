@@ -154,66 +154,53 @@ describe('FirestoreService identity/profile persistence', () => {
     expect(result.map(item => item.eventType)).toEqual(['PRATIBHA_SAMMAN', 'KSHAMAWANI', 'OTHER']);
   });
 
-  it('migrates registrations into canonical users and links duplicate registrations', async () => {
+  it('updates tenant profile fields and handles custom hostname changes', async () => {
     const { instance, db } = service();
-    db.set('registrations', 'KW26-1', {
-      mobile: '9860669870',
-      name: 'Member One',
-      address: 'Pune',
-      eventId: 'kshamawani-2026',
+    db.set('tenants', 't1', {
+      slug: 'temple-one',
+      name: 'Temple One',
+      primaryHostname: 'temple-one.jcp.test',
+      status: 'ACTIVE',
     });
-    db.set('registrations', 'KW26-2', {
-      mobile: '+91 9860669870',
-      name: 'Member One',
-      eventId: 'kshamawani-2026',
-    });
-    db.set('registrations', 'KW26-3', {
-      mobile: '123',
-      name: 'Invalid',
+    db.set('tenantDomains', 'temple-one.jcp.test', {
+      tenantId: 't1',
+      hostname: 'temple-one.jcp.test',
+      primary: true,
+      verified: true,
     });
 
-    const preview = await instance.migrateRegistrationsToUsers({ dryRun: true });
-    expect(preview).toMatchObject({
-      registrationsScanned: 3,
-      registrationsSkipped: 1,
-      uniqueMobiles: 1,
-      usersCreated: 1,
-      registrationsLinked: 0,
+    const updated = await instance.updateTenant('t1', {
+      name: 'Updated Temple',
+      city: 'Pune',
+      customHostname: 'updated.example.com',
     });
 
-    const result = await instance.migrateRegistrationsToUsers();
-    expect(result).toMatchObject({
-      registrationsLinked: 2,
-      registrationsSkipped: 1,
-      uniqueMobiles: 1,
-      usersCreated: 1,
-      duplicateRegistrationLinks: 1,
+    expect(updated).toMatchObject({
+      id: 't1',
+      name: 'Updated Temple',
+      hostname: 'updated.example.com',
+      city: 'Pune',
     });
+    expect(db.get('tenantDomains', 'updated.example.com')?.tenantId).toBe('t1');
+    expect(db.get('tenantDomains', 'temple-one.jcp.test')).toBeUndefined();
 
-    const users = db.entries('users');
-    expect(users).toHaveLength(1);
-    const user = users[0][1];
-    expect(user.displayName).toBe('Member One');
-    expect(user.primaryPhone).toBe('9860669870');
-    expect(db.get('registrations', 'KW26-1').userId).toBe(users[0][0]);
-    expect(db.get('registrations', 'KW26-2').jcpUserId).toBe(users[0][0]);
+    const unchanged = await instance.updateTenant('t1', { address: 'New address' });
+    expect(unchanged.address).toBe('New address');
+    await expect(instance.updateTenant('missing', { name: 'Missing' })).rejects.toThrow('Tenant not found');
   });
 
-  it('reuses an existing phone-linked user and fills only missing profile fields', async () => {
+  it('rejects changing a tenant hostname to another tenant domain', async () => {
     const { instance, db } = service();
-    const user = await instance.provisionUserByPhone({ phone:'9860669870' });
-    db.set('registrations', 'KW26-existing', {
-      mobile: '+91 9860669870',
-      name: 'Existing Member',
-      address: 'Pune',
+    db.set('tenants', 't1', {
+      slug: 'one',
+      name: 'One',
+      primaryHostname: 'one.jcp.test',
+      status: 'ACTIVE',
     });
+    db.set('tenantDomains', 'two.jcp.test', { tenantId: 't2', hostname: 'two.jcp.test' });
 
-    const result = await instance.migrateRegistrationsToUsers();
-    expect(result.existingUsersLinked).toBe(1);
-    expect(result.usersCreated).toBe(0);
-    expect((await instance.getUser(user.id))?.displayName).toBe('Existing Member');
-    expect((await instance.getUser(user.id))?.address).toBe('Pune');
-    expect(db.get('registrations', 'KW26-existing').userId).toBe(user.id);
+    await expect(instance.updateTenant('t1', { customHostname: 'two.jcp.test' }))
+      .rejects.toThrow('Tenant hostname is already in use');
   });
 
   it('writes idempotent activities, tenants, memberships and audit records', async () => {

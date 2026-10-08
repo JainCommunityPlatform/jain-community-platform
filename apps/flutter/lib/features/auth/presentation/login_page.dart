@@ -167,6 +167,11 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     const SizedBox(height: 24),
+                    if (widget.isLoading)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: _AuthProgressBanner(message: strings.signInProgressDetail),
+                      ),
                     if (widget.error != null) ...[
                       Container(
                         width: double.infinity,
@@ -187,7 +192,13 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: widget.isLoading || widget.onSignInWithGoogle == null
                           ? null
                           : widget.onSignInWithGoogle,
-                      icon: const Icon(Icons.g_mobiledata, size: 28),
+                      icon: widget.isLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.g_mobiledata, size: 28),
                       label: Text(
                         widget.isLoading ? strings.signingIn : strings.signInGoogle,
                       ),
@@ -275,4 +286,31 @@ class _JainFlag extends StatelessWidget {
       ),
     );
   }
+}
+
+class _AuthProgressBanner extends StatelessWidget {
+  const _AuthProgressBanner({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.primaryContainer,
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: Row(
+      children: [
+        const SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        const SizedBox(width: 12),
+        Expanded(child: Text(message)),
+      ],
+    ),
+  );
 }

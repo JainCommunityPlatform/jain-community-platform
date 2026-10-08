@@ -24,10 +24,19 @@ export class FirebaseStorageService {
     contentType: string;
     buffer: Buffer;
   }): Promise<UploadedMedia> {
-    const bucketName = this.config.get<string>('firebase.storageBucket')?.trim();
-    if (!bucketName) {
+    const configuredBucket = this.config.get<string>('firebase.storageBucket')?.trim();
+    const projectId = this.config.get<string>('firebase.projectId')?.trim();
+    const bucketNames = [
+      configuredBucket,
+      projectId ? `${projectId}.firebasestorage.app` : undefined,
+      projectId ? `${projectId}.appspot.com` : undefined,
+    ].filter((value, index, values): value is string =>
+      Boolean(value) && values.indexOf(value) === index,
+    );
+
+    if (bucketNames.length === 0) {
       throw new ServiceUnavailableException(
-        'Firebase Storage is not configured. Set FIREBASE_STORAGE_BUCKET.',
+        'Firebase Storage is not configured. Set FIREBASE_PROJECT_ID or FIREBASE_STORAGE_BUCKET.',
       );
     }
 
@@ -41,27 +50,40 @@ export class FirebaseStorageService {
 
     const safeName = input.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
     const path = 'tenants/' + input.tenantId + '/website/' + Date.now() + '-' + safeName;
-    const bucket = getStorage(this.firestore.getFirebaseApp()).bucket(bucketName);
-    const file = bucket.file(path);
+    const storage = getStorage(this.firestore.getFirebaseApp());
+    let lastError: unknown;
 
-    await file.save(input.buffer, {
-      resumable: false,
-      metadata: {
-        contentType: input.contentType,
-        cacheControl: 'public,max-age=31536000,immutable',
-      },
-    });
+    for (const bucketName of bucketNames) {
+      try {
+        const bucket = storage.bucket(bucketName);
+        const file = bucket.file(path);
 
-    const [url] = await file.getSignedUrl({
-      action: 'read',
-      expires: '2036-01-01',
-    });
+        await file.save(input.buffer, {
+          resumable: false,
+          metadata: {
+            contentType: input.contentType,
+            cacheControl: 'public,max-age=31536000,immutable',
+          },
+        });
 
-    return {
-      path,
-      url,
-      contentType: input.contentType,
-      size: input.buffer.length,
-    };
+        const [url] = await file.getSignedUrl({
+          action: 'read',
+          expires: '2036-01-01',
+        });
+
+        return {
+          path,
+          url,
+          contentType: input.contentType,
+          size: input.buffer.length,
+        };
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    throw new ServiceUnavailableException(
+      `Firebase Storage upload failed for the configured project buckets: ${lastError instanceof Error ? lastError.message : String(lastError)}`,
+    );
   }
 }

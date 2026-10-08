@@ -9,10 +9,21 @@ import { FirebaseStorageService } from './firebase-storage.service';
 describe('FirebaseStorageService', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('rejects uploads when storage is not configured', async () => {
+  it('uses the Firebase project default bucket when no explicit bucket is configured', async () => {
+    const file = {
+      save: jest.fn().mockResolvedValue(undefined),
+      getSignedUrl: jest.fn().mockResolvedValue(['https://example.test/default.jpg']),
+    };
+    const bucket = { file: jest.fn().mockReturnValue(file) };
+    (getStorage as jest.Mock).mockReturnValue({ bucket: jest.fn().mockReturnValue(bucket) });
+
     const service = new FirebaseStorageService(
-      { getFirebaseApp: jest.fn() } as never,
-      { get: jest.fn().mockReturnValue(undefined) } as never,
+      { getFirebaseApp: jest.fn().mockReturnValue({}) } as never,
+      {
+        get: jest.fn((key: string) =>
+          key === 'firebase.projectId' ? 'jain-community-platform' : undefined,
+        ),
+      } as never,
     );
 
     await expect(service.uploadTenantImage({
@@ -20,7 +31,85 @@ describe('FirebaseStorageService', () => {
       filename: 'hero.jpg',
       contentType: 'image/jpeg',
       buffer: Buffer.from('image'),
-    })).rejects.toThrow('FIREBASE_STORAGE_BUCKET');
+    })).resolves.toMatchObject({ url: 'https://example.test/default.jpg' });
+
+    expect((getStorage as jest.Mock).mock.results[0].value.bucket)
+      .toHaveBeenCalledWith('jain-community-platform.firebasestorage.app');
+  });
+
+  it('falls back to the legacy bucket when the current Firebase bucket is unavailable', async () => {
+    const file = {
+      save: jest.fn()
+        .mockRejectedValueOnce(new Error('new bucket unavailable'))
+        .mockResolvedValueOnce(undefined),
+      getSignedUrl: jest.fn().mockResolvedValue(['https://example.test/legacy.jpg']),
+    };
+    const bucket = { file: jest.fn().mockReturnValue(file) };
+    const storage = {
+      bucket: jest.fn()
+        .mockImplementationOnce(() => bucket)
+        .mockImplementationOnce(() => bucket),
+    };
+    (getStorage as jest.Mock).mockReturnValue(storage);
+
+    const service = new FirebaseStorageService(
+      { getFirebaseApp: jest.fn().mockReturnValue({}) } as never,
+      {
+        get: jest.fn((key: string) =>
+          key === 'firebase.projectId' ? 'jain-community-platform' : undefined,
+        ),
+      } as never,
+    );
+
+    await expect(service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'hero.jpg',
+      contentType: 'image/jpeg',
+      buffer: Buffer.from('image'),
+    })).resolves.toMatchObject({ url: 'https://example.test/legacy.jpg' });
+
+    expect(storage.bucket).toHaveBeenNthCalledWith(2, 'jain-community-platform.appspot.com');
+  });
+
+  it('reports a useful error when every candidate bucket fails', async () => {
+    const file = {
+      save: jest.fn().mockRejectedValue(new Error('permission denied')),
+      getSignedUrl: jest.fn(),
+    };
+    const bucket = { file: jest.fn().mockReturnValue(file) };
+    (getStorage as jest.Mock).mockReturnValue({
+      bucket: jest.fn().mockReturnValue(bucket),
+    });
+
+    const service = new FirebaseStorageService(
+      { getFirebaseApp: jest.fn().mockReturnValue({}) } as never,
+      {
+        get: jest.fn((key: string) =>
+          key === 'firebase.projectId' ? 'jain-community-platform' : undefined,
+        ),
+      } as never,
+    );
+
+    await expect(service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'hero.jpg',
+      contentType: 'image/jpeg',
+      buffer: Buffer.from('image'),
+    })).rejects.toThrow('Firebase Storage upload failed');
+  });
+
+  it('rejects images larger than 10 MB', async () => {
+    const service = new FirebaseStorageService(
+      { getFirebaseApp: jest.fn() } as never,
+      { get: jest.fn().mockReturnValue('bucket') } as never,
+    );
+
+    await expect(service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'hero.jpg',
+      contentType: 'image/jpeg',
+      buffer: Buffer.alloc(10 * 1024 * 1024 + 1),
+    })).rejects.toThrow('10 MB limit');
   });
 
   it('uploads a tenant-scoped image and returns a signed URL', async () => {
