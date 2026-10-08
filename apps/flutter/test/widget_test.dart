@@ -3,11 +3,13 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:jain_community_platform/core/api/api_client.dart';
 import 'package:jain_community_platform/core/auth/firebase_auth_provider.dart';
 import 'package:jain_community_platform/core/routing/app_router.dart';
+import 'package:jain_community_platform/core/routing/app_routes.dart';
 import 'package:jain_community_platform/core/session/app_session.dart';
 import 'package:jain_community_platform/core/session/app_session_controller.dart';
 import 'package:jain_community_platform/core/session/auth_session_service.dart';
