@@ -123,11 +123,14 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
+    final language = AppLanguageScope.maybeOf(context);
     return Scaffold(
       backgroundColor: const Color(0xFFFFF4DE),
       appBar: AppBar(
         title: const Text('MyJinalay', style: TextStyle(fontWeight: FontWeight.w700)),
         actions: [
+          if (language != null)
+            _LanguageSelector(controller: language, strings: strings),
           if (widget.showPlatformAdmin)
             Padding(
               padding: const EdgeInsets.only(right: 4),
