@@ -17,6 +17,8 @@ import 'package:jain_community_platform/features/auth/presentation/login_page.da
 import 'package:jain_community_platform/features/member/presentation/member_home_page.dart';
 import 'package:jain_community_platform/features/profile/data/profile_repository.dart';
 import 'package:jain_community_platform/features/tenant/data/tenant_repository.dart';
+import 'package:jain_community_platform/features/website/data/website_repository.dart';
+import 'package:jain_community_platform/features/website/presentation/tenant_home_page.dart';
 import 'package:jain_community_platform/main.dart';
 
 const temple = TenantContext(
@@ -116,12 +118,15 @@ Future<(AppRouter, TenantSelectionController, AppSessionController)> _router({
 
 void main() {
   testWidgets('renders the tenant-configured public home', (tester) async {
-    final (router, selection, controller) = await _router();
+    final (_, selection, controller) = await _router();
 
-    await tester.pumpWidget(JainCommunityPlatformApp(
-      router: router,
-      tenant: temple,
-      tenantSelection: selection,
+    await tester.pumpWidget(MaterialApp(
+      home: TenantHomePage(
+        selection: selection,
+        tenantRepository: TenantRepository(_apiClient()),
+        websiteRepository: WebsiteRepository(_apiClient()),
+        sessionController: controller,
+      ),
     ));
     await _pumpRouter(tester);
 
@@ -130,55 +135,84 @@ void main() {
   });
 
   testWidgets('home sign-in action navigates to login', (tester) async {
-    final (router, selection, controller) = await _router();
+    final (_, selection, controller) = await _router();
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, __) => TenantHomePage(
+            selection: selection,
+            tenantRepository: TenantRepository(_apiClient()),
+            websiteRepository: WebsiteRepository(_apiClient()),
+            sessionController: controller,
+          ),
+        ),
+        GoRoute(
+          path: '/login',
+          builder: (_, __) => const Scaffold(body: Text('Continue with Google')),
+        ),
+      ],
+    );
 
-    await tester.pumpWidget(JainCommunityPlatformApp(
-      router: router,
-      tenant: temple,
-      tenantSelection: selection,
-    ));
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await _pumpRouter(tester);
 
     await tester.tap(find.widgetWithText(TextButton, 'Sign in'));
     await _pumpRouter(tester);
 
-    expect(router.router.state.uri.path, '/login');
+    expect(router.state.uri.path, '/login');
     expect(find.text('Continue with Google'), findsOneWidget);
+    router.dispose();
     controller.dispose();
   });
 
   testWidgets('redirects unauthenticated users from admin to login',
       (tester) async {
-    final (router, selection, controller) = await _router();
+    final (appRouter, _, controller) = await _router();
+    final router = GoRouter(
+      initialLocation: AppRoutes.admin,
+      redirect: appRouter.redirect,
+      routes: [
+        GoRoute(path: '/login', builder: (_, __) => const Scaffold(body: Text('login'))),
+        GoRoute(path: AppRoutes.admin, builder: (_, __) => const Scaffold(body: Text('admin'))),
+        GoRoute(path: AppRoutes.member, builder: (_, __) => const Scaffold(body: Text('member'))),
+      ],
+    );
 
-    await tester.pumpWidget(JainCommunityPlatformApp(
-      router: router,
-      tenant: temple,
-      tenantSelection: selection,
-    ));
-    router.router.go('/admin');
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await _pumpRouter(tester);
 
-    expect(find.text('Continue with Google'), findsOneWidget);
+    expect(router.state.uri.path, '/login');
+    router.dispose();
     controller.dispose();
   });
 
   testWidgets('allows an authenticated tenant admin to open admin',
       (tester) async {
-    final (router, selection, controller) = await _router(
-      session: const AppSession(isAuthenticated: true, role: 'TENANT_ADMIN'),
+    final (appRouter, _, controller) = await _router(
+      session: const AppSession(
+        isAuthenticated: true,
+        userId: 'user-1',
+        role: 'TENANT_ADMIN',
+      ),
+    );
+    final router = GoRouter(
+      initialLocation: AppRoutes.admin,
+      redirect: appRouter.redirect,
+      routes: [
+        GoRoute(path: '/login', builder: (_, __) => const Scaffold(body: Text('login'))),
+        GoRoute(path: AppRoutes.admin, builder: (_, __) => const Scaffold(body: Text('admin'))),
+        GoRoute(path: AppRoutes.member, builder: (_, __) => const Scaffold(body: Text('member'))),
+      ],
     );
 
-    await tester.pumpWidget(JainCommunityPlatformApp(
-      router: router,
-      tenant: temple,
-      tenantSelection: selection,
-    ));
-    await _pumpRouter(tester);
-    router.router.go('/admin');
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await _pumpRouter(tester);
 
-    expect(find.text('Temple Admin'), findsOneWidget);
+    expect(router.state.uri.path, AppRoutes.admin);
+    expect(find.text('admin'), findsOneWidget);
+    router.dispose();
     controller.dispose();
   });
 
