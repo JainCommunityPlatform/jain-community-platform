@@ -776,6 +776,98 @@ export class FirestoreService implements OnModuleInit {
     return { id: input.id, slug: input.slug, name: input.name, hostname: input.hostname };
   }
 
+  async updateTenant(tenantId: string, input: {
+    name?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    customHostname?: string;
+  }): Promise<{
+    id: string;
+    slug: string;
+    name: string;
+    hostname: string;
+    status: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+  }> {
+    const db = this.getDb();
+    const tenantRef = db.collection('tenants').doc(tenantId);
+    const snapshot = await tenantRef.get();
+    if (!snapshot.exists) throw new Error('Tenant not found');
+
+    const current = snapshot.data() ?? {};
+    const nextHostname = input.customHostname?.trim()
+      ? normalizeHostname(input.customHostname)
+      : undefined;
+
+    if (nextHostname && nextHostname !== current.primaryHostname) {
+      const domain = await db.collection('tenantDomains').doc(nextHostname).get();
+      if (domain.exists && domain.data()?.tenantId !== tenantId) {
+        throw new Error('Tenant hostname is already in use');
+      }
+    }
+
+    const patch: Record<string, unknown> = {
+      ...(input.name?.trim() ? { name: input.name.trim() } : {}),
+      ...(input.address !== undefined ? { address: input.address.trim() } : {}),
+      ...(input.city !== undefined ? { city: input.city.trim() } : {}),
+      ...(input.state !== undefined ? { state: input.state.trim() } : {}),
+      ...(input.postalCode !== undefined ? { postalCode: input.postalCode.trim() } : {}),
+      updatedAt: Timestamp.now(),
+    };
+
+    if (nextHostname) {
+      patch.primaryHostname = nextHostname;
+      const oldDomain = current.primaryHostname
+        ? db.collection('tenantDomains').doc(current.primaryHostname as string)
+        : null;
+      const newDomain = db.collection('tenantDomains').doc(nextHostname);
+      await db.runTransaction(async (transaction) => {
+        const newDomainSnapshot = await transaction.get(newDomain);
+        if (newDomainSnapshot.exists && newDomainSnapshot.data()?.tenantId !== tenantId) {
+          throw new Error('Tenant hostname is already in use');
+        }
+        transaction.set(tenantRef, patch, { merge: true });
+        if (oldDomain && current.primaryHostname !== nextHostname) {
+          transaction.delete(oldDomain);
+        }
+        transaction.set(newDomain, {
+          tenantId,
+          hostname: nextHostname,
+          type: 'CUSTOM',
+          verified: false,
+          primary: true,
+          updatedAt: Timestamp.now(),
+        }, { merge: true });
+      });
+    } else {
+      await tenantRef.set(patch, { merge: true });
+    }
+
+    const updated = await tenantRef.get();
+    const data = updated.data() ?? {};
+    return {
+      id: updated.id,
+      slug: data.slug as string,
+      name: data.name as string,
+      hostname: data.primaryHostname as string,
+      status: (data.status as string) ?? 'ACTIVE',
+      address: (data.address as string | null) ?? undefined,
+      city: (data.city as string | null) ?? undefined,
+      state: (data.state as string | null) ?? undefined,
+      postalCode: (data.postalCode as string | null) ?? undefined,
+    };
+  }
+
+  async listTenantAdmins(tenantId: string): Promise<FirestoreMembership[]> {
+    const memberships = await this.listMemberships(tenantId);
+    return memberships.filter((membership) => membership.role === 'TENANT_ADMIN');
+  }
+
   async getTenantPrimaryDomainDetails(tenantId: string): Promise<{
     hostname: string;
     type?: string;
