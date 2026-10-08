@@ -105,6 +105,37 @@ describe('FirestoreService identity/profile persistence', () => {
     expect(second.primaryPhone).toBe('9876543210');
   });
 
+  it('repairs an orphaned phone index during phone-first provisioning', async () => {
+    const { instance, db } = service();
+    const phone = '9876543210';
+    const phoneIndexId = '7619ee8cea49187f309616e30ecf54be072259b43760f1f550a644945d5572f2';
+    db.set('userPhoneIndexes', phoneIndexId, {
+      userId: 'deleted-user',
+      phone,
+    });
+
+    const user = await instance.provisionUserByPhone({ phone, displayName: 'Recovered Member' });
+
+    expect(user.primaryPhone).toBe(phone);
+    expect((await instance.findUserByPhone(phone))?.id).toBe(user.id);
+    expect(db.get('userPhoneIndexes', phoneIndexId)?.userId).toBe(user.id);
+  });
+
+  it('repairs the phone index from an existing migration auth index', async () => {
+    const { instance, db } = service();
+    const phone = '9123456789';
+    const phoneIndexId = 'bdf9248c72997bbb4ea647f0e650b0126bfa977ca0661ce4c12f9725e466353b';
+    const authIndexId = 'a6ad1d235e70f9f57cc3497c926458ed860f908fbc2c55d3612a385f571e5feb';
+    const user = await instance.provisionUserByPhone({ phone, displayName: 'Existing Member' });
+    db.set('userPhoneIndexes', phoneIndexId, { userId: 'deleted-user', phone });
+
+    const repaired = await instance.provisionUserByPhone({ phone, displayName: 'Ignored' });
+
+    expect(repaired.id).toBe(user.id);
+    expect(db.get('userPhoneIndexes', phoneIndexId)?.userId).toBe(user.id);
+    expect(db.get('userAuthIndexes', authIndexId)?.userId).toBe(user.id);
+  });
+
   it('changes primary phone and prevents collisions', async () => {
     const { instance } = service();
     const a = await instance.provisionUserByPhone({ phone: '9876543210' });

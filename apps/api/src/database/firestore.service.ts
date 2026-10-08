@@ -236,14 +236,31 @@ export class FirestoreService implements OnModuleInit {
   async provisionUserByPhone(input: { phone: string; displayName?: string; address?: string }): Promise<FirestoreUser> {
     const db = this.getDb();
     const indexRef = db.collection('userPhoneIndexes').doc(hashPhone(input.phone));
+    const subject = 'migration:' + hashPhone(input.phone);
+    const authIndexRef = db.collection('userAuthIndexes').doc(hashSubject(subject));
+
     return db.runTransaction(async (transaction) => {
-      const index = await transaction.get(indexRef);
-      if (index.exists) {
-        const existing = await transaction.get(db.collection('users').doc(index.data()?.userId as string));
-        if (existing.exists) return this.toUser(existing.id, existing.data() ?? {});
+      const [index, authIndex] = await Promise.all([
+        transaction.get(indexRef),
+        transaction.get(authIndexRef),
+      ]);
+
+      const indexedUserId = index.exists ? index.data()?.userId as string | undefined : undefined;
+      const authIndexedUserId = authIndex.exists ? authIndex.data()?.userId as string | undefined : undefined;
+
+      for (const candidateUserId of [indexedUserId, authIndexedUserId]) {
+        if (!candidateUserId) continue;
+        const existing = await transaction.get(db.collection('users').doc(candidateUserId));
+        if (existing.exists) {
+          // Repair either stale index so both identity indexes converge on the
+          // same canonical user rather than attempting a duplicate create.
+          transaction.set(indexRef, { userId: existing.id, phone: input.phone }, { merge: true });
+          transaction.set(authIndexRef, { userId: existing.id, authSubject: subject }, { merge: true });
+          return this.toUser(existing.id, existing.data() ?? {});
+        }
       }
+
       const userId = randomUUID();
-      const subject = 'migration:' + hashPhone(input.phone);
       const now = Timestamp.now();
       transaction.create(db.collection('users').doc(userId), {
         authSubject: subject,
@@ -254,8 +271,8 @@ export class FirestoreService implements OnModuleInit {
         createdAt: now,
         updatedAt: now,
       });
-      transaction.create(indexRef, { userId, phone: input.phone, createdAt: now });
-      transaction.create(db.collection('userAuthIndexes').doc(hashSubject(subject)), { userId, authSubject: subject });
+      transaction.set(indexRef, { userId, phone: input.phone, createdAt: now }, { merge: true });
+      transaction.set(authIndexRef, { userId, authSubject: subject }, { merge: true });
       return { id:userId, authSubject:subject, displayName:input.displayName, address:input.address, primaryPhone:input.phone, phoneNumbers:[input.phone], platformRoles: [] };
     });
   }
