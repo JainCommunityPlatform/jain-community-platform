@@ -13,6 +13,9 @@ describe('PlatformService', () => {
     findUserByEmail: jest.fn(),
     createTenantAdminInvite: jest.fn(),
     getTenantPrimaryDomainDetails: jest.fn(),
+    getTenantById: jest.fn(),
+    listTenantAdmins: jest.fn(),
+    updateTenant: jest.fn(),
     markTenantPrimaryDomainVerified: jest.fn(),
   };
   const audit = { record: jest.fn() };
@@ -25,6 +28,37 @@ describe('PlatformService', () => {
     firestore.getTenantByHostname.mockResolvedValue(null);
     firestore.createTenant.mockImplementation(async (input: Record<string, unknown>) => input);
     firestore.getTenantPrimaryDomainDetails.mockResolvedValue(null);
+  });
+
+  it('updates a tenant and records the actor', async () => {
+    firestore.updateTenant.mockResolvedValue({
+      id: 't1',
+      slug: 'temple-one',
+      name: 'Updated Temple',
+      hostname: 'temple-one.jcp.example',
+    });
+    const service = new PlatformService(firestore as never, audit as never, config as never);
+
+    await expect(service.updateTenant('t1', { name: 'Updated Temple', city: 'Pune' }, 'platform-user'))
+      .resolves.toMatchObject({ name: 'Updated Temple' });
+    expect(firestore.updateTenant).toHaveBeenCalledWith('t1', { name: 'Updated Temple', city: 'Pune' });
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'TENANT_UPDATED',
+      entityId: 't1',
+    }));
+  });
+
+  it('assigns a tenant admin by email or creates an invite', async () => {
+    firestore.getTenantById.mockResolvedValue({ id: 't1', name: 'Temple', slug: 'temple', hostname: 'temple.jcp.example' });
+    firestore.findUserByEmail.mockResolvedValue(null);
+    const service = new PlatformService(firestore as never, audit as never, config as never);
+
+    await expect(service.addTenantAdmin('t1', { email: 'ADMIN@example.com' }, 'platform-user'))
+      .resolves.toMatchObject({ status: 'invited', email: 'admin@example.com' });
+    expect(firestore.createTenantAdminInvite).toHaveBeenCalledWith({
+      tenantId: 't1',
+      email: 'admin@example.com',
+    });
   });
 
   it('creates a reusable tenant with a platform subdomain and default website configuration', async () => {
