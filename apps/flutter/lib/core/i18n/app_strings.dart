@@ -19,6 +19,7 @@ class AppStrings {
       'signIn': 'Sign in',
       'signInGoogle': 'Continue with Google',
       'signingIn': 'Signing in…',
+      'signInProgressDetail': 'Connecting securely to JCP…',
       'explore': 'Explore without signing in',
       'language': 'Language',
       'english': 'English',
@@ -62,6 +63,7 @@ class AppStrings {
       'signIn': 'साइन इन',
       'signInGoogle': 'Google से जारी रखें',
       'signingIn': 'साइन इन हो रहा है…',
+      'signInProgressDetail': 'JCP से सुरक्षित रूप से कनेक्ट हो रहा है…',
       'explore': 'बिना साइन इन के देखें',
       'language': 'भाषा',
       'english': 'English',
@@ -105,6 +107,7 @@ class AppStrings {
       'signIn': 'साइन इन',
       'signInGoogle': 'Google ने पुढे जा',
       'signingIn': 'साइन इन होत आहे…',
+      'signInProgressDetail': 'JCP शी सुरक्षितपणे कनेक्ट होत आहे…',
       'explore': 'साइन इन न करता पहा',
       'language': 'भाषा',
       'english': 'English',
@@ -148,6 +151,7 @@ class AppStrings {
       'signIn': 'સાઇન ઇન',
       'signInGoogle': 'Google સાથે ચાલુ રાખો',
       'signingIn': 'સાઇન ઇન થઈ રહ્યું છે…',
+      'signInProgressDetail': 'JCP સાથે સુરક્ષિત રીતે કનેક્ટ થઈ રહ્યું છે…',
       'explore': 'સાઇન ઇન વગર જુઓ',
       'language': 'ભાષા',
       'english': 'English',
@@ -195,6 +199,7 @@ class AppStrings {
   String get signIn => get('signIn');
   String get signInGoogle => get('signInGoogle');
   String get signingIn => get('signingIn');
+  String get signInProgressDetail => get('signInProgressDetail');
   String get explore => get('explore');
   String get language => get('language');
   String get english => get('english');
