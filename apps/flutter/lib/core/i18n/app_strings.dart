@@ -7,8 +7,12 @@ class AppStrings {
 
   final String languageCode;
 
-  static AppStrings of(BuildContext context) =>
-      AppStrings(AppLanguageScope.of(context).locale.languageCode);
+  static AppStrings of(BuildContext context) {
+    // Keep reusable widgets renderable in isolated tests/previews where the
+    // application-level language scope is intentionally not mounted.
+    final language = AppLanguageScope.maybeOf(context);
+    return AppStrings(language?.locale.languageCode ?? 'en');
+  }
 
   static const _values = <String, Map<String, String>>{
     'en': {
