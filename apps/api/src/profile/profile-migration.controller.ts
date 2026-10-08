@@ -17,17 +17,6 @@ export class ProfileMigrationController {
     return this.profiles.provisionByContact(body);
   }
 
-  @Post('registrations-to-users')
-  async registrationsToUsers(
-    @Headers('x-jcp-internal-token') key: string | undefined,
-    @Body() body: { dryRun?: boolean; limit?: number },
-  ) {
-    this.assertIntegrationKey(key);
-    return this.profiles.migrateRegistrationsToUsers({
-      dryRun: body.dryRun === true,
-      limit: body.limit,
-    });
-  }
 
   @Post('activities')
   async activity(@Headers('x-jcp-internal-token') key: string | undefined, @Body() body: { userId: string; tenantId?: string; eventType: string; eventId: string; title: string; participatedAt: string }) {
