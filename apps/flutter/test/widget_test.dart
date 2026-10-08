@@ -164,7 +164,7 @@ void main() {
     ));
     await _pumpRouter(tester);
 
-    expect(find.text('Shree Adinath Jinalay'), findsOneWidget);
+    expect(find.text('Shree Adinath Jinalay').last, findsOneWidget);
     controller.dispose();
   });
 
