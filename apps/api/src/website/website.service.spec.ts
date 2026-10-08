@@ -83,5 +83,21 @@ describe('WebsiteService', () => {
     await expect(service.updateCurrent({
       templeDirectory: { limit: 13 },
     })).rejects.toThrow('between 1 and 12');
+
+    await expect(service.updateCurrent({
+      quickInfo: Array.from({ length: 9 }, () => ({ type: 'today', title: 'x', value: 'x' })),
+    })).rejects.toThrow('at most 8 quick information cards');
+
+    await expect(service.updateCurrent({
+      events: { items: Array.from({ length: 21 }, (_, index) => ({ id: String(index), title: 'x' })) },
+    })).rejects.toThrow('at most 20 event cards');
+
+    await expect(service.updateCurrent({
+      seva: { items: Array.from({ length: 13 }, (_, index) => ({ id: String(index), icon: 'favorite', label: 'x' })) },
+    })).rejects.toThrow('at most 12 seva actions');
+
+    await expect(service.updateCurrent({
+      hero: { title: '   ' },
+    })).rejects.toThrow('Website hero title is required');
   });
 });
