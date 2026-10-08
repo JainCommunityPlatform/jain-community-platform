@@ -154,6 +154,55 @@ describe('FirestoreService identity/profile persistence', () => {
     expect(result.map(item => item.eventType)).toEqual(['PRATIBHA_SAMMAN', 'KSHAMAWANI', 'OTHER']);
   });
 
+  it('updates tenant profile fields and handles custom hostname changes', async () => {
+    const { instance, db } = service();
+    db.set('tenants', 't1', {
+      slug: 'temple-one',
+      name: 'Temple One',
+      primaryHostname: 'temple-one.jcp.test',
+      status: 'ACTIVE',
+    });
+    db.set('tenantDomains', 'temple-one.jcp.test', {
+      tenantId: 't1',
+      hostname: 'temple-one.jcp.test',
+      primary: true,
+      verified: true,
+    });
+
+    const updated = await instance.updateTenant('t1', {
+      name: 'Updated Temple',
+      city: 'Pune',
+      customHostname: 'updated.example.com',
+    });
+
+    expect(updated).toMatchObject({
+      id: 't1',
+      name: 'Updated Temple',
+      hostname: 'updated.example.com',
+      city: 'Pune',
+    });
+    expect(db.get('tenantDomains', 'updated.example.com')?.tenantId).toBe('t1');
+    expect(db.get('tenantDomains', 'temple-one.jcp.test')).toBeUndefined();
+
+    const unchanged = await instance.updateTenant('t1', { address: 'New address' });
+    expect(unchanged.address).toBe('New address');
+    await expect(instance.updateTenant('missing', { name: 'Missing' })).rejects.toThrow('Tenant not found');
+  });
+
+  it('rejects changing a tenant hostname to another tenant domain', async () => {
+    const { instance, db } = service();
+    db.set('tenants', 't1', {
+      slug: 'one',
+      name: 'One',
+      primaryHostname: 'one.jcp.test',
+      status: 'ACTIVE',
+    });
+    db.set('tenantDomains', 'two.jcp.test', { tenantId: 't2', hostname: 'two.jcp.test' });
+
+    await expect(instance.updateTenant('t1', { customHostname: 'two.jcp.test' }))
+      .rejects.toThrow('Tenant hostname is already in use');
+  });
+
   it('writes idempotent activities, tenants, memberships and audit records', async () => {
     const { instance, db } = service();
     await instance.recordUserActivity({ userId:'u1', tenantId:'t1', eventType:'K', eventId:'e1', title:'K', participatedAt:new Date('2026-10-01') });
