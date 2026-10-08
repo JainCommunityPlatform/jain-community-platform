@@ -21,7 +21,11 @@ class AppSessionController extends ChangeNotifier {
     this.sessionLoadTimeout = const Duration(seconds: 20),
     this.googleSignInTimeout = const Duration(seconds: 35),
   })  : _auth = auth,
-        _sessionService = sessionService;
+        _sessionService = sessionService,
+        _session = initialSession,
+        _status = initialSession.isAuthenticated
+            ? AppSessionStatus.authenticated
+            : AppSessionStatus.signedOut;
 
   final FirebaseAuthProvider _auth;
   final AuthSessionService _sessionService;
