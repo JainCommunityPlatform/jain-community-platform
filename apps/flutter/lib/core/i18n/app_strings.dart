@@ -49,6 +49,14 @@ class AppStrings {
       'googleUnknown': 'Google Sign-In failed. Please try again.',
       'technicalDetails': 'Technical details',
       'ok': 'OK',
+      'completeProfile': 'Complete your profile',
+      'linkMobileTitle': 'Link your mobile number',
+      'linkMobileDescription': 'We use your mobile number to connect you with your existing Jain community profile and event participation.',
+      'mobileNumber': 'Mobile number',
+      'invalidMobile': 'Enter a valid 10 digit mobile number.',
+      'linking': 'Linking…',
+      'linkMobile': 'Link mobile number',
+      'linkFailed': 'Unable to link this number. Please try again.',
     },
     'hi': {
       'signIn': 'साइन इन',
@@ -84,6 +92,14 @@ class AppStrings {
       'googleUnknown': 'Google Sign-In विफल हुआ। कृपया फिर प्रयास करें।',
       'technicalDetails': 'तकनीकी विवरण',
       'ok': 'ठीक है',
+      'completeProfile': 'अपनी प्रोफ़ाइल पूरी करें',
+      'linkMobileTitle': 'अपना मोबाइल नंबर जोड़ें',
+      'linkMobileDescription': 'आपके मौजूदा जैन समुदाय प्रोफ़ाइल और कार्यक्रम सहभागिता से जोड़ने के लिए मोबाइल नंबर का उपयोग किया जाता है।',
+      'mobileNumber': 'मोबाइल नंबर',
+      'invalidMobile': 'कृपया 10 अंकों का सही मोबाइल नंबर दर्ज करें।',
+      'linking': 'जोड़ा जा रहा है…',
+      'linkMobile': 'मोबाइल नंबर जोड़ें',
+      'linkFailed': 'नंबर जोड़ा नहीं जा सका। कृपया फिर प्रयास करें।',
     },
     'mr': {
       'signIn': 'साइन इन',
@@ -119,6 +135,14 @@ class AppStrings {
       'googleUnknown': 'Google Sign-In अयशस्वी. पुन्हा प्रयत्न करा.',
       'technicalDetails': 'तांत्रिक तपशील',
       'ok': 'ठीक आहे',
+      'completeProfile': 'तुमची प्रोफाइल पूर्ण करा',
+      'linkMobileTitle': 'तुमचा मोबाइल नंबर जोडा',
+      'linkMobileDescription': 'तुमच्या विद्यमान जैन समुदाय प्रोफाइल आणि कार्यक्रम सहभागाशी जोडण्यासाठी मोबाइल नंबर वापरला जातो.',
+      'mobileNumber': 'मोबाइल नंबर',
+      'invalidMobile': 'कृपया 10 अंकी योग्य मोबाइल नंबर टाका.',
+      'linking': 'जोडले जात आहे…',
+      'linkMobile': 'मोबाइल नंबर जोडा',
+      'linkFailed': 'नंबर जोडता आला नाही. पुन्हा प्रयत्न करा.',
     },
     'gu': {
       'signIn': 'સાઇન ઇન',
@@ -154,6 +178,14 @@ class AppStrings {
       'googleUnknown': 'Google Sign-In નિષ્ફળ થયું. ફરી પ્રયાસ કરો.',
       'technicalDetails': 'તકનીકી વિગતો',
       'ok': 'બરાબર',
+      'completeProfile': 'તમારી પ્રોફાઇલ પૂર્ણ કરો',
+      'linkMobileTitle': 'તમારો મોબાઇલ નંબર જોડો',
+      'linkMobileDescription': 'તમારા હાલના જૈન સમુદાય પ્રોફાઇલ અને કાર્યક્રમ ભાગીદારી સાથે જોડવા માટે મોબાઇલ નંબરનો ઉપયોગ થાય છે.',
+      'mobileNumber': 'મોબાઇલ નંબર',
+      'invalidMobile': 'કૃપા કરીને 10 અંકનો યોગ્ય મોબાઇલ નંબર દાખલ કરો.',
+      'linking': 'જોડાઈ રહ્યું છે…',
+      'linkMobile': 'મોબાઇલ નંબર જોડો',
+      'linkFailed': 'નંબર જોડી શકાયો નથી. કૃપા કરીને ફરી પ્રયાસ કરો.',
     },
   };
 
@@ -191,6 +223,14 @@ class AppStrings {
   String get googleUnknown => get('googleUnknown');
   String get technicalDetails => get('technicalDetails');
   String get ok => get('ok');
+  String get completeProfile => get('completeProfile');
+  String get linkMobileTitle => get('linkMobileTitle');
+  String get linkMobileDescription => get('linkMobileDescription');
+  String get mobileNumber => get('mobileNumber');
+  String get invalidMobile => get('invalidMobile');
+  String get linking => get('linking');
+  String get linkMobile => get('linkMobile');
+  String get linkFailed => get('linkFailed');
 
   String languageName(String code) => switch (code) {
         'hi' => hindi,
