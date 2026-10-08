@@ -91,7 +91,41 @@ class FakeSessionService extends AuthSessionService {
 
 Future<void> _pumpRouter(WidgetTester tester) async {
   await tester.pump();
-  await tester.pump(const Duration(milliseconds: 100));
+  await tester.pumpAndSettle();
+}
+
+class FakeWebsiteRepository extends WebsiteRepository {
+  FakeWebsiteRepository() : super(ApiClient(baseUrl: Uri.parse('https://example.test/')));
+
+  @override
+  Future<Map<String, dynamic>> getSite() async => {
+    'tenantId': 'tenant-1',
+    'theme': {
+      'primary': '#F57C00',
+      'secondary': '#8B2E1B',
+      'background': '#FFF4DE',
+      'surface': '#FFFDF8',
+      'accent': '#E65100',
+    },
+    'header': {'navItems': [], 'languages': ['हिन्दी']},
+    'hero': {
+      'title': 'Shree Adinath Jinalay',
+      'subtitle': 'शांति, श्रद्धा और सेवा का संगम',
+    },
+    'quickInfo': [],
+    'about': {'title': 'मंदिर', 'body': 'परिचय'},
+    'templeDirectory': {
+      'enabled': true,
+      'title': 'मंदिर खोजें',
+      'showSearch': true,
+      'limit': 6,
+    },
+    'events': {'enabled': true, 'title': 'कार्यक्रम', 'items': []},
+    'gallery': {'enabled': true, 'title': 'गैलरी', 'items': []},
+    'seva': {'enabled': true, 'title': 'सेवा', 'items': []},
+    'contact': {},
+    'footer': {'tagline': 'MyJinalay'},
+  };
 }
 
 Future<(AppRouter, TenantSelectionController, AppSessionController)> _router({
@@ -144,7 +178,7 @@ void main() {
           builder: (_, __) => TenantHomePage(
             selection: selection,
             tenantRepository: TenantRepository(_apiClient()),
-            websiteRepository: WebsiteRepository(_apiClient()),
+            websiteRepository: FakeWebsiteRepository(),
             sessionController: controller,
           ),
         ),
