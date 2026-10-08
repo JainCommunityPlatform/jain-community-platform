@@ -10,8 +10,10 @@ import {
   initializeApp,
 } from 'firebase-admin/app';
 import {
+  DocumentReference,
   DocumentSnapshot,
   Firestore,
+  QueryDocumentSnapshot,
   Timestamp,
   getFirestore,
 } from 'firebase-admin/firestore';
@@ -301,7 +303,7 @@ export class FirestoreService implements OnModuleInit {
 
     const groups = new Map<string, {
       phone: string;
-      docs: FirebaseFirestore.QueryDocumentSnapshot[];
+      docs: QueryDocumentSnapshot[];
       displayName?: string;
       address?: string;
     }>();
@@ -347,7 +349,7 @@ export class FirestoreService implements OnModuleInit {
       duplicateRegistrationLinks: 0,
     };
 
-    const batchWrites: Array<{ ref: FirebaseFirestore.DocumentReference; data: Record<string, unknown> }> = [];
+    const batchWrites: Array<{ ref: DocumentReference; data: Record<string, unknown> }> = [];
 
     for (const group of groups.values()) {
       const existingUser = await this.findUserByPhone(group.phone);
@@ -948,6 +950,13 @@ function hashSubject(subject: string): string {
 function hashPhone(phone: string): string { return createHash('sha256').update(phone).digest('hex'); }
 function hashActivity(userId: string, eventType: string, eventId: string): string { return createHash('sha256').update(userId + ':' + eventType + ':' + eventId).digest('hex'); }
 function uniquePhones(values: string[]): string[] { return [...new Set(values.filter(Boolean))]; }
+
+function normalizeIndianMobileForMigration(value: unknown): string | null {
+  const normalized = typeof value === 'string' || typeof value === 'number'
+    ? String(value).replace(/\\D/g, '')
+    : '';
+  return /^[6-9][0-9]{9}$/.test(normalized) ? normalized : null;
+}
 
 function normalizeHostname(hostname: string | undefined): string | null {
   if (!hostname) return null;
