@@ -17,6 +17,7 @@ class AppSessionController extends ChangeNotifier {
   AppSessionController({
     required FirebaseAuthProvider auth,
     required AuthSessionService sessionService,
+    AppSession initialSession = AppSession.signedOut,
     this.sessionLoadTimeout = const Duration(seconds: 20),
     this.googleSignInTimeout = const Duration(seconds: 35),
   })  : _auth = auth,
