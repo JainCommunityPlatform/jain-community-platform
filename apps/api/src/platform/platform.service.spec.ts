@@ -16,6 +16,7 @@ describe('PlatformService', () => {
     getTenantById: jest.fn(),
     listTenantAdmins: jest.fn(),
     updateTenant: jest.fn(),
+    getUser: jest.fn(),
     markTenantPrimaryDomainVerified: jest.fn(),
   };
   const audit = { record: jest.fn() };
@@ -28,6 +29,9 @@ describe('PlatformService', () => {
     firestore.getTenantByHostname.mockResolvedValue(null);
     firestore.createTenant.mockImplementation(async (input: Record<string, unknown>) => input);
     firestore.getTenantPrimaryDomainDetails.mockResolvedValue(null);
+    firestore.findUserByEmail.mockResolvedValue(null);
+    firestore.getTenantById.mockResolvedValue(null);
+    firestore.getUser.mockResolvedValue(null);
   });
 
   it('updates a tenant and records the actor', async () => {
@@ -62,12 +66,14 @@ describe('PlatformService', () => {
   });
 
   it('loads a tenant with its administrators', async () => {
-    firestore.getTenantById.mockResolvedValue({
-      id: 't1',
-      slug: 'temple-one',
-      name: 'Temple One',
-      hostname: 'temple-one.jcp.example',
-    });
+    firestore.getTenantById
+      .mockResolvedValueOnce({
+        id: 't1',
+        slug: 'temple-one',
+        name: 'Temple One',
+        hostname: 'temple-one.jcp.example',
+      })
+      .mockResolvedValueOnce(null);
     firestore.listTenantAdmins.mockResolvedValue([{ id: 'm1', userId: 'u1', tenantId: 't1', role: 'TENANT_ADMIN' }]);
 
     const service = new PlatformService(firestore as never, audit as never, config as never);
