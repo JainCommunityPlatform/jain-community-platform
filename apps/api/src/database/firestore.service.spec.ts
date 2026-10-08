@@ -154,6 +154,7 @@ describe('FirestoreService identity/profile persistence', () => {
 
     await instance.ensureTenant({ id: 'existing', slug: 'existing', name: 'Existing', hostname: 'existing.jcp.test' });
     await instance.ensureTenant({ id: 'existing', slug: 'existing', name: 'Existing', hostname: 'existing.jcp.test' });
+    db.set('tenants', 'existing', { slug: 'existing', name: 'Existing', primaryHostname: 'existing.jcp.test', status: 'INACTIVE' });
 
     db.set('tenants', 'inactive', { slug: 'inactive', name: 'Inactive', primaryHostname: 'inactive.jcp.test', status: 'INACTIVE' });
     db.set('tenants', 'active-b', { slug: 'b', name: 'B Temple', primaryHostname: 'b.jcp.test', status: 'ACTIVE' });
