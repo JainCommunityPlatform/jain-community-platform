@@ -124,7 +124,7 @@ void main() {
       home: TenantHomePage(
         selection: selection,
         tenantRepository: TenantRepository(_apiClient()),
-        websiteRepository: WebsiteRepository(_apiClient()),
+        websiteRepository: FakeWebsiteRepository(),
         sessionController: controller,
       ),
     ));
