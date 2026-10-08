@@ -14,10 +14,10 @@ void main() {
     final language = AppLanguageController(initialLocale: const Locale('en'));
 
     await tester.pumpWidget(
-      AppLanguageScope(
-        controller: language,
-        child: MaterialApp(
-          home: LoginPage(
+      MaterialApp(
+        home: AppLanguageScope(
+          controller: language,
+          child: LoginPage(
             isLoading: isLoading,
             error: error,
             onSignInWithGoogle: onSignInWithGoogle,
