@@ -5,6 +5,8 @@ class Snapshot {
   constructor(private readonly value: any, readonly id = '') {}
   get exists() { return this.value !== undefined; }
   data() { return this.value; }
+  readonly ref?: Ref;
+  constructorRef(ref: Ref) { (this as any).ref = ref; }
 }
 
 class Ref {
@@ -23,7 +25,7 @@ class Query {
   async get() {
     const docs = this.db.entries(this.collectionName)
       .filter(([, value]) => this.filters.every(([field, op, expected]) => op === '==' && value?.[field] === expected))
-      .map(([id, value]) => new Snapshot(value, id));
+       .map(([id, value]) => new Snapshot(value, id, new Ref(this.db, this.collectionName, id)));
     return { docs, empty: docs.length === 0, size: docs.length };
   }
 }
