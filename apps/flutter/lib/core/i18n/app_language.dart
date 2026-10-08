@@ -1,0 +1,48 @@
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class AppLanguageController extends ChangeNotifier {
+  static const supported = <Locale>[
+    Locale('en'),
+    Locale('hi'),
+    Locale('mr'),
+    Locale('gu'),
+  ];
+
+  Locale _locale = const Locale('hi');
+  Locale get locale => _locale;
+
+  Future<void> load() async {
+    final preferences = await SharedPreferences.getInstance();
+    final code = preferences.getString('jcp.language');
+    if (code != null && supported.any((item) => item.languageCode == code)) {
+      _locale = Locale(code);
+    }
+  }
+
+  Future<void> setLocale(Locale locale) async {
+    if (!supported.any((item) => item.languageCode == locale.languageCode) ||
+        locale.languageCode == _locale.languageCode) {
+      return;
+    }
+    _locale = Locale(locale.languageCode);
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString('jcp.language', _locale.languageCode);
+  }
+}
+
+class AppLanguageScope extends InheritedNotifier<AppLanguageController> {
+  const AppLanguageScope({
+    required AppLanguageController controller,
+    required super.child,
+    super.key,
+  }) : super(notifier: controller);
+
+  static AppLanguageController of(BuildContext context) {
+    final scope =
+        context.dependOnInheritedWidgetOfExactType<AppLanguageScope>();
+    assert(scope != null, 'AppLanguageScope is missing above this context.');
+    return scope!.notifier!;
+  }
+}
