@@ -339,7 +339,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final nav = _list(header['navItems']);
-    final language = AppLanguageScope.of(context);
+    final language = AppLanguageScope.maybeOf(context);
     final strings = AppStrings.of(context);
     return Container(
       decoration: const BoxDecoration(
@@ -378,7 +378,8 @@ class _Header extends StatelessWidget {
               IconButton(onPressed: onFindTemples, icon: const Icon(Icons.search)),
               if (showSignIn)
                 TextButton(onPressed: () => context.go(AppRoutes.login), child: Text(strings.signIn)),
-              _LanguageSelector(controller: language, strings: strings),
+              if (language != null)
+                _LanguageSelector(controller: language, strings: strings),
               if (showAdmin)
                 IconButton(onPressed: () => context.go(AppRoutes.admin), icon: const Icon(Icons.admin_panel_settings)),
             ],
