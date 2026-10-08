@@ -9,6 +9,7 @@ class AppSession {
     this.tenantId,
     this.role,
     this.needsPhoneLink = false,
+    this.platformRoles = const [],
   });
 
   final bool isAuthenticated;
@@ -18,8 +19,10 @@ class AppSession {
   final String? tenantId;
   final String? role;
   final bool needsPhoneLink;
+  final List<String> platformRoles;
 
   bool get isAdmin => role == 'TENANT_ADMIN';
+  bool get isPlatformAdmin => platformRoles.contains('PLATFORM_ADMIN');
   bool get isFinance => const {
     'FINANCE_VIEWER',
     'FINANCE_OPERATOR',
@@ -37,6 +40,9 @@ class AppSession {
       tenantId: json['tenantId'] as String?,
       role: json['role'] as String?,
       needsPhoneLink: json['needsPhoneLink'] as bool? ?? false,
+      platformRoles: (json['platformRoles'] as List<dynamic>? ?? const [])
+          .map((item) => item.toString())
+          .toList(),
     );
   }
 

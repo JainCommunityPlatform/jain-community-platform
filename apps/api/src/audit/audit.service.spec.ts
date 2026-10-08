@@ -1,5 +1,6 @@
 import { AuditService } from './audit.service';
 import { MembershipContextStore } from '../authorization/membership-context.store';
+import { AuthContextStore } from '../auth/auth-context.store';
 
 describe('AuditService', () => {
   it('records the current tenant and user from authorization context', async () => {
@@ -9,6 +10,7 @@ describe('AuditService', () => {
       get: jest.fn().mockReturnValue({
         userId: 'user-a',
         tenantId: 'tenant-a',
+        platformRoles: [],
         membership: {
           userId: 'user-a',
           tenantId: 'tenant-a',
@@ -16,9 +18,13 @@ describe('AuditService', () => {
         },
       }),
     } as unknown as MembershipContextStore;
+    const authContext = { get: jest.fn().mockReturnValue(null) } as unknown as AuthContextStore;
+    const identity = { resolve: jest.fn() };
     const service = new AuditService(
       firestore as never,
       membershipContext,
+      authContext,
+      identity as never,
     );
 
     await expect(
@@ -52,9 +58,13 @@ describe('AuditService', () => {
     const membershipContext = {
       get: jest.fn().mockReturnValue(null),
     } as unknown as MembershipContextStore;
+    const authContext = { get: jest.fn().mockReturnValue(null) } as unknown as AuthContextStore;
+    const identity = { resolve: jest.fn() };
     const service = new AuditService(
       { recordAudit: recordAudit } as never,
       membershipContext,
+      authContext,
+      identity as never,
     );
 
     await service.record({

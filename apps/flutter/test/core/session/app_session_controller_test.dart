@@ -15,6 +15,9 @@ class FakeFirebaseAuthProvider implements FirebaseAuthProvider {
   final controller = StreamController<FirebaseAuthUser?>.broadcast();
 
   @override
+  bool get isSignedIn => false;
+
+  @override
   Stream<FirebaseAuthUser?> authStateChanges() => controller.stream;
 
   @override

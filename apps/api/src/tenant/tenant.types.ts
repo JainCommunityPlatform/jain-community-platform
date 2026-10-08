@@ -5,5 +5,5 @@ export interface TenantContext {
 }
 
 export interface TenantResolver {
-  resolve(hostname: string): Promise<TenantContext | null>;
+  resolve(hostname: string, tenantId?: string): Promise<TenantContext | null>;
 }

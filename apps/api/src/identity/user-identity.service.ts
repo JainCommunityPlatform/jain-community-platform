@@ -8,6 +8,7 @@ export interface CurrentUser {
   authSubject: string;
   email?: string;
   displayName?: string;
+  platformRoles: string[];
 }
 
 @Injectable()

@@ -10,6 +10,9 @@ import { HealthModule } from './health/health.module';
 import { TenantModule } from './tenant/tenant.module';
 import { IdentityModule } from './identity/identity.module';
 import { ProfileModule } from './profile/profile.module';
+import { WebsiteModule } from './website/website.module';
+import { PlatformModule } from './platform/platform.module';
+import { DirectoryModule } from './directory/directory.module';
 
 @Module({
   imports: [
@@ -27,6 +30,9 @@ import { ProfileModule } from './profile/profile.module';
     IdentityModule,
     TenantModule,
     ProfileModule,
+    WebsiteModule,
+    PlatformModule,
+    DirectoryModule,
   ],
 })
 export class AppModule {}

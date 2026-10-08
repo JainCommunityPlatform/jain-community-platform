@@ -22,12 +22,12 @@ describe('TenantContextMiddleware', () => {
     const next = jest.fn();
 
     await middleware.use(
-      { hostname: 'TENANT.EXAMPLE.COM' } as never,
+      { hostname: 'TENANT.EXAMPLE.COM', header: jest.fn().mockReturnValue(undefined) } as never,
       {} as never,
       next,
     );
 
-    expect(tenantService.resolve).toHaveBeenCalledWith('TENANT.EXAMPLE.COM');
+    expect(tenantService.resolve).toHaveBeenCalledWith('TENANT.EXAMPLE.COM', undefined);
     expect(tenantContextStore.run).toHaveBeenCalledWith(tenant, expect.any(Function));
     expect(next).toHaveBeenCalledTimes(1);
   });
@@ -45,7 +45,7 @@ describe('TenantContextMiddleware', () => {
     );
 
     await middleware.use(
-      { hostname: 'example.com' } as never,
+      { hostname: 'example.com', header: jest.fn().mockReturnValue(undefined) } as never,
       {} as never,
       jest.fn(),
     );

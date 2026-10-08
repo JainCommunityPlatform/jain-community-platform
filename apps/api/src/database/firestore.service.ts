@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { WebsiteSiteConfig } from '../website/website.types';
 import { randomUUID, createHash } from 'node:crypto';
 import {
   App,
@@ -27,6 +28,7 @@ export interface FirestoreUser {
   state?: string;
   postalCode?: string;
   mergedInto?: string;
+  platformRoles: string[];
 }
 
 export interface FirestoreUserActivity {
@@ -70,6 +72,8 @@ export class FirestoreService implements OnModuleInit {
 
     if (this.config.get<boolean>('firebase.bootstrapEnabled', false)) {
       await this.ensureBootstrapTenant();
+    } else {
+      await this.ensureBootstrapPlatformAdmin();
     }
   }
 
@@ -131,7 +135,7 @@ export class FirestoreService implements OnModuleInit {
       .collection('userAuthIndexes')
       .doc(hashSubject(input.subject));
 
-    return db.runTransaction(async (transaction) => {
+    const user = await db.runTransaction(async (transaction) => {
       const indexSnapshot = await transaction.get(indexRef);
       let userId = indexSnapshot.exists
         ? (indexSnapshot.data()?.userId as string)
@@ -161,14 +165,20 @@ export class FirestoreService implements OnModuleInit {
         { merge: true },
       );
 
+      const current = this.toUser(userId, existing.data() ?? {});
       return {
+        ...current,
         id: userId,
         authSubject: input.subject,
-        email: input.email,
-        displayName: input.displayName,
-        phoneNumbers: this.toUser(userId, existing.data() ?? {}).phoneNumbers,
+        email: input.email ?? current.email,
+        displayName: input.displayName ?? current.displayName,
+        phoneNumbers: current.phoneNumbers,
+        platformRoles: current.platformRoles,
       };
     });
+
+    await this.claimTenantAdminInvites(user.id, input.email);
+    return user;
   }
 
   async getUser(userId: string): Promise<FirestoreUser | null> {
@@ -244,7 +254,7 @@ export class FirestoreService implements OnModuleInit {
       });
       transaction.create(indexRef, { userId, phone: input.phone, createdAt: now });
       transaction.create(db.collection('userAuthIndexes').doc(hashSubject(subject)), { userId, authSubject: subject });
-      return { id:userId, authSubject:subject, displayName:input.displayName, address:input.address, primaryPhone:input.phone, phoneNumbers:[input.phone] };
+      return { id:userId, authSubject:subject, displayName:input.displayName, address:input.address, primaryPhone:input.phone, phoneNumbers:[input.phone], platformRoles: [] };
     });
   }
 
@@ -327,13 +337,22 @@ export class FirestoreService implements OnModuleInit {
       state: (data.state as string | null) ?? undefined,
       postalCode: (data.postalCode as string | null) ?? undefined,
       mergedInto: (data.mergedInto as string | null) ?? undefined,
+      platformRoles: Array.isArray(data.platformRoles) ? data.platformRoles as string[] : [],
     };
+  }
+
+  getFirebaseApp(): App {
+    this.getDb();
+    if (!this.app) throw new Error('Firebase Admin app is not initialized');
+    return this.app;
   }
 
   async getTenantByHostname(hostname: string): Promise<{
     id: string;
     name: string;
     hostname: string;
+    status: string;
+    verified: boolean;
   } | null> {
     const db = this.getDb();
     const domainSnapshot = await db
@@ -343,7 +362,8 @@ export class FirestoreService implements OnModuleInit {
 
     if (!domainSnapshot.exists) return null;
 
-    const tenantId = domainSnapshot.data()?.tenantId as string | undefined;
+    const domain = domainSnapshot.data() ?? {};
+    const tenantId = domain.tenantId as string | undefined;
     if (!tenantId) return null;
 
     const tenantSnapshot = await db.collection('tenants').doc(tenantId).get();
@@ -354,6 +374,8 @@ export class FirestoreService implements OnModuleInit {
       id: tenantSnapshot.id,
       name: tenant.name as string,
       hostname,
+      status: (tenant.status as string | null) ?? 'ACTIVE',
+      verified: domain.verified === true,
     };
   }
 
@@ -379,6 +401,8 @@ export class FirestoreService implements OnModuleInit {
         transaction.create(tenantRef, {
           slug: input.slug,
           name: input.name,
+          primaryHostname: input.hostname,
+          status: 'ACTIVE',
           createdAt: now,
           updatedAt: now,
         });
@@ -489,6 +513,268 @@ export class FirestoreService implements OnModuleInit {
     };
   }
 
+
+  async getTenantById(tenantId: string): Promise<{
+    id: string;
+    slug: string;
+    name: string;
+    hostname: string;
+    status: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+  } | null> {
+    const snapshot = await this.getDb().collection('tenants').doc(tenantId).get();
+    if (!snapshot.exists) return null;
+    const data = snapshot.data() ?? {};
+    const domain = (data.primaryHostname as string | null) ?? '';
+    return {
+      id: snapshot.id,
+      slug: data.slug as string,
+      name: data.name as string,
+      hostname: domain,
+      status: (data.status as string) ?? 'ACTIVE',
+      address: (data.address as string | null) ?? undefined,
+      city: (data.city as string | null) ?? undefined,
+      state: (data.state as string | null) ?? undefined,
+      postalCode: (data.postalCode as string | null) ?? undefined,
+    };
+  }
+
+  async getTenantBySlug(slug: string): Promise<{ id: string; name: string; slug: string } | null> {
+    const snapshot = await this.getDb().collection('tenants').where('slug', '==', slug).limit(1).get();
+    if (snapshot.empty) return null;
+    const data = snapshot.docs[0].data();
+    return { id: snapshot.docs[0].id, name: data.name as string, slug: data.slug as string };
+  }
+
+  async listPublicTenants(): Promise<Array<{
+    id: string;
+    slug: string;
+    name: string;
+    hostname: string;
+    city?: string;
+    state?: string;
+    address?: string;
+    primaryImageUrl?: string;
+  }>> {
+    const snapshot = await this.getDb().collection('tenants').get();
+    const active = snapshot.docs
+      .map((doc) => ({ id: doc.id, data: doc.data() as Record<string, unknown> }))
+      .filter((tenant) => (tenant.data.status as string | undefined) !== 'INACTIVE');
+
+    const results = await Promise.all(active.map(async (tenant) => {
+      const site = await this.getWebsiteConfig(tenant.id);
+      return {
+        id: tenant.id,
+        slug: tenant.data.slug as string,
+        name: tenant.data.name as string,
+        hostname: (tenant.data.primaryHostname as string | null) ?? '',
+        city: (tenant.data.city as string | null) ?? undefined,
+        state: (tenant.data.state as string | null) ?? undefined,
+        address: (tenant.data.address as string | null) ?? undefined,
+        primaryImageUrl: site?.hero?.imageUrl,
+      };
+    }));
+
+    return results.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async createTenant(input: {
+    id: string;
+    slug: string;
+    name: string;
+    hostname: string;
+    customHostname?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    domainVerified?: boolean;
+    domainVerificationToken?: string;
+  }): Promise<{ id: string; slug: string; name: string; hostname: string }> {
+    const db = this.getDb();
+    const tenantRef = db.collection('tenants').doc(input.id);
+    const domainRef = db.collection('tenantDomains').doc(input.hostname);
+    const now = Timestamp.now();
+
+    await db.runTransaction(async (transaction) => {
+      const [tenant, domain] = await Promise.all([
+        transaction.get(tenantRef),
+        transaction.get(domainRef),
+      ]);
+      if (tenant.exists) throw new Error('Tenant ID already exists');
+      if (domain.exists) throw new Error('Tenant hostname already exists');
+
+      transaction.create(tenantRef, {
+        slug: input.slug,
+        name: input.name,
+        primaryHostname: input.hostname,
+        status: 'ACTIVE',
+        address: input.address ?? null,
+        city: input.city ?? null,
+        state: input.state ?? null,
+        postalCode: input.postalCode ?? null,
+        publicSiteEnabled: true,
+        directoryVisible: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+      transaction.create(domainRef, {
+        tenantId: input.id,
+        hostname: input.hostname,
+        type: input.customHostname ? 'CUSTOM' : 'PLATFORM_SUBDOMAIN',
+        verified: input.domainVerified ?? !input.customHostname,
+        verificationToken: input.domainVerificationToken ?? null,
+        primary: true,
+        createdAt: now,
+      });
+    });
+
+    return { id: input.id, slug: input.slug, name: input.name, hostname: input.hostname };
+  }
+
+  async getTenantPrimaryDomainDetails(tenantId: string): Promise<{
+    hostname: string;
+    type?: string;
+    verified: boolean;
+    verificationToken?: string;
+  } | null> {
+    const snapshot = await this.getDb().collection('tenantDomains')
+      .where('tenantId', '==', tenantId)
+      .where('primary', '==', true)
+      .limit(1)
+      .get();
+    if (snapshot.empty) return null;
+    const data = snapshot.docs[0].data();
+    return {
+      hostname: data.hostname as string,
+      type: data.type as string | undefined,
+      verified: data.verified === true,
+      verificationToken: data.verificationToken as string | undefined,
+    };
+  }
+
+  async markTenantPrimaryDomainVerified(tenantId: string): Promise<void> {
+    const snapshot = await this.getDb().collection('tenantDomains')
+      .where('tenantId', '==', tenantId)
+      .where('primary', '==', true)
+      .limit(1)
+      .get();
+    if (snapshot.empty) throw new Error('Primary tenant domain not found');
+    await snapshot.docs[0].ref.update({
+      verified: true,
+      verifiedAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+  }
+
+  async getPrimaryTenantDomain(tenantId: string): Promise<{ hostname: string; type?: string } | null> {
+    const snapshot = await this.getDb()
+      .collection('tenantDomains')
+      .where('tenantId', '==', tenantId)
+      .where('primary', '==', true)
+      .limit(1)
+      .get();
+    if (snapshot.empty) return null;
+    const data = snapshot.docs[0].data();
+    return { hostname: data.hostname as string, type: data.type as string | undefined };
+  }
+
+  async findUserByEmail(email: string): Promise<FirestoreUser | null> {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) return null;
+    const snapshot = await this.getDb().collection('users').where('email', '==', normalized).limit(1).get();
+    if (snapshot.empty) return null;
+    return this.toUser(snapshot.docs[0].id, snapshot.docs[0].data());
+  }
+
+  async setPlatformRoles(userId: string, platformRoles: string[]): Promise<FirestoreUser> {
+    const ref = this.getDb().collection('users').doc(userId);
+    await ref.set({ platformRoles, updatedAt: Timestamp.now() }, { merge: true });
+    const user = await this.getUser(userId);
+    if (!user) throw new Error('User not found');
+    return user;
+  }
+
+  async assignTenantAdmin(userId: string, tenantId: string): Promise<void> {
+    const existing = await this.getMembership(userId, tenantId);
+    if (existing) {
+      if (existing.role !== 'TENANT_ADMIN') {
+        await this.updateMembership(userId, tenantId, 'TENANT_ADMIN');
+      }
+      return;
+    }
+    await this.createMembership({ userId, tenantId, role: 'TENANT_ADMIN' });
+  }
+
+  async createTenantAdminInvite(input: { tenantId: string; email: string }): Promise<void> {
+    const normalized = input.email.trim().toLowerCase();
+    await this.getDb().collection('tenantAdminInvites').doc(
+      createHash('sha256').update(input.tenantId + ':' + normalized).digest('hex'),
+    ).set({
+      tenantId: input.tenantId,
+      email: normalized,
+      status: 'PENDING',
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    }, { merge: true });
+  }
+
+  async claimTenantAdminInvites(userId: string, email?: string): Promise<void> {
+    if (!email) return;
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) return;
+    const snapshot = await this.getDb().collection('tenantAdminInvites')
+      .where('email', '==', normalized)
+      .where('status', '==', 'PENDING')
+      .get();
+    if (snapshot.empty) return;
+
+    const batch = this.getDb().batch();
+    for (const invite of snapshot.docs) {
+      const tenantId = invite.data().tenantId as string;
+      const membershipRef = this.getDb().collection('memberships').doc(membershipId(userId, tenantId));
+      batch.set(membershipRef, {
+        userId,
+        tenantId,
+        role: 'TENANT_ADMIN',
+        createdAt: Timestamp.now(),
+      }, { merge: true });
+      batch.update(invite.ref, { status: 'CLAIMED', userId, claimedAt: Timestamp.now(), updatedAt: Timestamp.now() });
+    }
+    await batch.commit();
+  }
+
+  async getWebsiteConfig(tenantId: string): Promise<WebsiteSiteConfig | null> {
+    const snapshot = await this.getDb().collection('tenantSiteConfigs').doc(tenantId).get();
+    if (!snapshot.exists) return null;
+    return snapshot.data() as WebsiteSiteConfig;
+  }
+
+  async setWebsiteConfig(tenantId: string, config: WebsiteSiteConfig): Promise<void> {
+    await this.getDb().collection('tenantSiteConfigs').doc(tenantId).set({
+      ...config,
+      tenantId,
+      updatedAt: Timestamp.now(),
+    }, { merge: true });
+  }
+
+  private async ensureBootstrapPlatformAdmin(): Promise<void> {
+    const subject = this.config.get<string>('firebase.bootstrapPlatformAdminSubject')?.trim();
+    if (!subject) return;
+
+    const user = await this.upsertUser({
+      subject,
+      email: this.config.get<string>('firebase.bootstrapAdminEmail'),
+      displayName: this.config.get<string>('firebase.bootstrapAdminName'),
+    });
+    if (!user.platformRoles.includes('PLATFORM_ADMIN')) {
+      await this.setPlatformRoles(user.id, ['PLATFORM_ADMIN']);
+    }
+  }
+
   private async ensureBootstrapTenant(): Promise<void> {
     const tenantId = this.config.get<string>('firebase.bootstrapTenantId');
     const hostname = normalizeHostname(
@@ -513,6 +799,11 @@ export class FirestoreService implements OnModuleInit {
       email: this.config.get<string>('firebase.bootstrapAdminEmail'),
       displayName: this.config.get<string>('firebase.bootstrapAdminName'),
     });
+
+    const platformAdminSubject = this.config.get<string>('firebase.bootstrapPlatformAdminSubject');
+    if (platformAdminSubject && platformAdminSubject === subject) {
+      await this.setPlatformRoles(user.id, ['PLATFORM_ADMIN']);
+    }
 
     if (!(await this.getMembership(user.id, tenantId))) {
       await this.createMembership({

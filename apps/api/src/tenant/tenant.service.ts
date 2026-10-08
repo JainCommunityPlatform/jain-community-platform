@@ -10,7 +10,7 @@ export class TenantService {
     @Inject(TENANT_RESOLVER) private readonly resolver: TenantResolver,
   ) {}
 
-  resolve(hostname: string): Promise<TenantContext | null> {
-    return this.resolver.resolve(hostname);
+  resolve(hostname: string, tenantId?: string): Promise<TenantContext | null> {
+    return tenantId ? this.resolver.resolve(hostname, tenantId) : this.resolver.resolve(hostname);
   }
 }

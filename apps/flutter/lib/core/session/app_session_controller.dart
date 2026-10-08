@@ -17,10 +17,15 @@ class AppSessionController extends ChangeNotifier {
   AppSessionController({
     required FirebaseAuthProvider auth,
     required AuthSessionService sessionService,
+    AppSession initialSession = AppSession.signedOut,
     this.sessionLoadTimeout = const Duration(seconds: 20),
     this.googleSignInTimeout = const Duration(seconds: 35),
   })  : _auth = auth,
-        _sessionService = sessionService;
+        _sessionService = sessionService,
+        _session = initialSession,
+        _status = initialSession.isAuthenticated
+            ? AppSessionStatus.authenticated
+            : AppSessionStatus.signedOut;
 
   final FirebaseAuthProvider _auth;
   final AuthSessionService _sessionService;
@@ -83,6 +88,22 @@ class AppSessionController extends ChangeNotifier {
       _status = AppSessionStatus.error;
     }
 
+    notifyListeners();
+  }
+
+  Future<void> refreshCurrentSession() async {
+    if (!_auth.isSignedIn) return;
+    _status = AppSessionStatus.initializing;
+    _error = null;
+    notifyListeners();
+    try {
+      _session = await _sessionService.loadCurrentSession().timeout(sessionLoadTimeout);
+      _status = _session.isAuthenticated
+          ? AppSessionStatus.authenticated
+          : AppSessionStatus.signedOut;
+    } catch (error) {
+      _setError(error);
+    }
     notifyListeners();
   }
 

@@ -19,6 +19,7 @@ class AuthSessionService {
       tenantId: session.tenantId,
       role: session.role,
       needsPhoneLink: profile.needsPhoneLink,
+      platformRoles: session.platformRoles,
     );
   }
 

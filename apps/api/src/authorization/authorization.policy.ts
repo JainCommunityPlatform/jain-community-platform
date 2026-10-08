@@ -29,6 +29,15 @@ const ROLE_PERMISSIONS: Record<string, readonly Permission[]> = {
 };
 
 export class AuthorizationPolicy {
+  assertPlatformPermission(context: AuthorizationContext, permission: Permission): void {
+    if (!context.platformRoles.includes('PLATFORM_ADMIN')) {
+      throw new ForbiddenException('Platform administrator permission is required');
+    }
+    if (permission !== 'platform.tenant.manage') {
+      throw new ForbiddenException('Platform permission is not supported');
+    }
+  }
+
   assertTenantAccess(context: AuthorizationContext): void {
     if (!context.membership) {
       throw new ForbiddenException('Tenant membership is required');

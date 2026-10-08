@@ -3,17 +3,22 @@ export interface AppConfiguration {
   firebase: {
     projectId: string;
     databaseId: string;
+    storageBucket?: string;
     bootstrapEnabled: boolean;
     bootstrapTenantId?: string;
     bootstrapTenantSlug?: string;
     bootstrapTenantName?: string;
     bootstrapTenantHostname?: string;
     bootstrapAdminSubject?: string;
+    bootstrapPlatformAdminSubject?: string;
     bootstrapAdminEmail?: string;
     bootstrapAdminName?: string;
   };
   redis: {
     url?: string;
+  };
+  platform: {
+    tenantBaseDomain?: string;
   };
   auth: {
     jwksUrl?: string;
@@ -38,17 +43,22 @@ export function configuration(): AppConfiguration {
     firebase: {
       projectId: firebaseProjectId,
       databaseId: firebaseDatabaseId,
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET?.trim(),
       bootstrapEnabled: process.env.FIREBASE_BOOTSTRAP_ENABLED === 'true',
       bootstrapTenantId: process.env.FIREBASE_BOOTSTRAP_TENANT_ID?.trim(),
       bootstrapTenantSlug: process.env.FIREBASE_BOOTSTRAP_TENANT_SLUG?.trim(),
       bootstrapTenantName: process.env.FIREBASE_BOOTSTRAP_TENANT_NAME?.trim(),
       bootstrapTenantHostname: process.env.FIREBASE_BOOTSTRAP_TENANT_HOSTNAME?.trim(),
       bootstrapAdminSubject: process.env.FIREBASE_BOOTSTRAP_ADMIN_SUBJECT?.trim(),
+      bootstrapPlatformAdminSubject: process.env.FIREBASE_BOOTSTRAP_PLATFORM_ADMIN_SUBJECT?.trim(),
       bootstrapAdminEmail: process.env.FIREBASE_BOOTSTRAP_ADMIN_EMAIL?.trim(),
       bootstrapAdminName: process.env.FIREBASE_BOOTSTRAP_ADMIN_NAME?.trim(),
     },
     redis: {
       url: process.env.REDIS_URL,
+    },
+    platform: {
+      tenantBaseDomain: process.env.JCP_TENANT_BASE_DOMAIN?.trim(),
     },
     auth: {
       jwksUrl: process.env.AUTH_JWKS_URL?.trim() || FIREBASE_JWKS_URL,

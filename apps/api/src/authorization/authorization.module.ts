@@ -20,6 +20,7 @@ import { MembershipService } from './membership.service';
     MembershipService,
   ],
   exports: [
+    IdentityModule,
     AuthorizationGuard,
     AuthorizationPolicy,
     MembershipContextInterceptor,

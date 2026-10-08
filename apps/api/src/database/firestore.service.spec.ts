@@ -2,7 +2,11 @@
 import { FirestoreService } from './firestore.service';
 
 class Snapshot {
-  constructor(private readonly value: any, readonly id = '') {}
+  constructor(
+    private readonly value: any,
+    readonly id = '',
+    readonly ref?: Ref,
+  ) {}
   get exists() { return this.value !== undefined; }
   data() { return this.value; }
 }
@@ -20,10 +24,11 @@ class Query {
   constructor(private readonly db: FakeDb, private readonly collectionName: string, private readonly filters: Array<[string, string, any]> = []) {}
   where(field: string, op: string, value: any) { return new Query(this.db, this.collectionName, [...this.filters, [field, op, value]]); }
   orderBy() { return this; }
+  limit() { return this; }
   async get() {
     const docs = this.db.entries(this.collectionName)
       .filter(([, value]) => this.filters.every(([field, op, expected]) => op === '==' && value?.[field] === expected))
-      .map(([id, value]) => new Snapshot(value, id));
+      .map(([id, value]) => new Snapshot(value, id, new Ref(this.db, this.collectionName, id)));
     return { docs, empty: docs.length === 0, size: docs.length };
   }
 }
@@ -31,7 +36,14 @@ class Query {
 class FakeDb {
   private readonly data = new Map<string, any>();
   collection(name: string) {
-    return { doc: (id: string) => new Ref(this, name, id), where: (field: string, op: string, value: any) => new Query(this, name).where(field, op, value) };
+    return {
+      doc: (id: string) => new Ref(this, name, id),
+      where: (field: string, op: string, value: any) => new Query(this, name).where(field, op, value),
+      get: async () => {
+        const docs = this.entries(name).map(([id, value]) => new Snapshot(value, id, new Ref(this, name, id)));
+        return { docs, empty: docs.length === 0, size: docs.length };
+      },
+    };
   }
   get(collection: string, id: string) { return this.data.get(collection + '/' + id); }
   has(collection: string, id: string) { return this.data.has(collection + '/' + id); }
@@ -44,11 +56,14 @@ class FakeDb {
   }
   async getAll(...refs: Ref[]) { return Promise.all(refs.map(ref => ref.get())); }
   batch() {
+    const dbSet = this.set.bind(this);
+    const dbGet = this.get.bind(this);
+    const dbDelete = this.delete.bind(this);
     return {
-      create: (ref: Ref, value: any) => this.set(ref.collectionName, ref.id, value),
-      update: (ref: Ref, value: any) => this.set(ref.collectionName, ref.id, { ...this.get(ref.collectionName, ref.id), ...value }),
-      set: (ref: Ref, value: any, options?: any) => this.set(ref.collectionName, ref.id, options?.merge ? { ...this.get(ref.collectionName, ref.id), ...value } : value),
-      delete: (ref: Ref) => this.delete(ref.collectionName, ref.id),
+      create: (ref: Ref, value: any) => dbSet(ref.collectionName, ref.id, value),
+      update: (ref: Ref, value: any) => dbSet(ref.collectionName, ref.id, { ...dbGet(ref.collectionName, ref.id), ...value }),
+      set: (ref: Ref, value: any, options?: any) => dbSet(ref.collectionName, ref.id, options?.merge ? { ...dbGet(ref.collectionName, ref.id), ...value } : value),
+      delete: (ref: Ref) => dbDelete(ref.collectionName, ref.id),
       commit: async () => {},
     };
   }
@@ -57,6 +72,7 @@ class FakeDb {
 function service(db = new FakeDb()) {
   const instance = new FirestoreService({ get: jest.fn() } as never);
   (instance as any).firestore = db;
+  (instance as any).app = {};
   return { instance, db };
 }
 
@@ -123,9 +139,9 @@ describe('FirestoreService identity/profile persistence', () => {
   it('resolves tenants and membership lifecycle', async () => {
     const { instance, db } = service();
     expect(await instance.getTenantByHostname('missing.test')).toBeNull();
-    db.set('tenantDomains','one.test',{tenantId:'t1'});
-    db.set('tenants','t1',{name:'One'});
-    expect(await instance.getTenantByHostname('one.test')).toEqual({id:'t1',name:'One',hostname:'one.test'});
+    db.set('tenantDomains','one.test',{tenantId:'t1',verified:true});
+    db.set('tenants','t1',{name:'One',status:'ACTIVE'});
+    expect(await instance.getTenantByHostname('one.test')).toEqual({id:'t1',name:'One',hostname:'one.test',status:'ACTIVE',verified:true});
     expect(await instance.getMembership('u1','t1')).toBeNull();
     await instance.createMembership({userId:'u1',tenantId:'t1',role:'TENANT_ADMIN'});
     await instance.updateMembership('u1','t1','CONTENT_MANAGER');
@@ -133,4 +149,110 @@ describe('FirestoreService identity/profile persistence', () => {
     await instance.deleteMembership('u1','t1');
     expect(await instance.getMembership('u1','t1')).toBeNull();
   });
+  it('covers tenant/domain lifecycle edge cases and directory filtering', async () => {
+    const { instance, db } = service();
+
+    await instance.ensureTenant({ id: 'existing', slug: 'existing', name: 'Existing', hostname: 'existing.jcp.test' });
+    await instance.ensureTenant({ id: 'existing', slug: 'existing', name: 'Existing', hostname: 'existing.jcp.test' });
+    db.set('tenants', 'existing', { slug: 'existing', name: 'Existing', primaryHostname: 'existing.jcp.test', status: 'INACTIVE' });
+
+    db.set('tenants', 'inactive', { slug: 'inactive', name: 'Inactive', primaryHostname: 'inactive.jcp.test', status: 'INACTIVE' });
+    db.set('tenants', 'active-b', { slug: 'b', name: 'B Temple', primaryHostname: 'b.jcp.test', status: 'ACTIVE' });
+    db.set('tenants', 'active-a', { slug: 'a', name: 'A Temple', primaryHostname: 'a.jcp.test', status: 'ACTIVE' });
+    expect((await instance.listPublicTenants()).map(item => item.name)).toEqual(['A Temple', 'B Temple']);
+
+    await expect(instance.createTenant({
+      id: 'existing',
+      slug: 'new',
+      name: 'Duplicate',
+      hostname: 'existing.jcp.test',
+    })).rejects.toThrow('Tenant ID already exists');
+
+    await expect(instance.createTenant({
+      id: 'new',
+      slug: 'new',
+      name: 'New',
+      hostname: 'existing.jcp.test',
+    })).rejects.toThrow('Tenant hostname already exists');
+
+    expect(await instance.getTenantBySlug('missing')).toBeNull();
+    expect(await instance.getTenantById('missing')).toBeNull();
+    expect(await instance.getTenantPrimaryDomainDetails('missing')).toBeNull();
+    await expect(instance.markTenantPrimaryDomainVerified('missing')).rejects.toThrow('Primary tenant domain not found');
+
+    await instance.createMembership({ userId: 'u1', tenantId: 'existing', role: 'CONTENT_MANAGER' });
+    await instance.assignTenantAdmin('u1', 'existing');
+    expect((await instance.getMembership('u1', 'existing'))?.role).toBe('TENANT_ADMIN');
+    await instance.assignTenantAdmin('u1', 'existing');
+    expect((await instance.getMembership('u1', 'existing'))?.role).toBe('TENANT_ADMIN');
+
+    await instance.createTenantAdminInvite({ tenantId: 'existing', email: '  ADMIN@EXAMPLE.COM ' });
+    await instance.claimTenantAdminInvites('u2');
+    await instance.claimTenantAdminInvites('u2', 'admin@example.com');
+    expect((await instance.getMembership('u2', 'existing'))?.role).toBe('TENANT_ADMIN');
+  });
+
+  it('supports reusable tenant website onboarding, directory and media configuration records', async () => {
+    const { instance, db } = service();
+
+    const tenant = await instance.createTenant({
+      id: 't2',
+      slug: 'two',
+      name: 'Two',
+      hostname: 'two.jcp.test',
+      address: 'Address',
+      city: 'Pune',
+      domainVerified: true,
+    });
+    expect(tenant).toEqual({ id: 't2', slug: 'two', name: 'Two', hostname: 'two.jcp.test' });
+
+    await instance.setWebsiteConfig('t2', {
+      tenantId: 't2',
+      version: 1,
+      theme: { primary: '#F57C00', secondary: '#8B2E1B', background: '#FFF4DE', surface: '#FFFDF8', accent: '#E65100' },
+      header: { navItems: [], languages: ['हिन्दी'] },
+      hero: { title: 'Two', imageUrl: 'https://example.test/two.jpg' },
+      quickInfo: [],
+      about: { title: 'Two', body: 'About' },
+      templeDirectory: { enabled: true, title: 'Temples', showSearch: true, limit: 6 },
+      events: { enabled: true, title: 'Events', items: [] },
+      gallery: { enabled: true, title: 'Gallery', items: [] },
+      seva: { enabled: true, title: 'Seva', items: [] },
+      contact: {},
+      footer: {},
+    } as any);
+
+    expect((await instance.getWebsiteConfig('t2'))?.hero.title).toBe('Two');
+
+    const directory = await instance.listPublicTenants();
+    expect(directory.find((item) => item.id === 't2')).toMatchObject({
+      name: 'Two',
+      hostname: 'two.jcp.test',
+      primaryImageUrl: 'https://example.test/two.jpg',
+    });
+
+    await instance.setPlatformRoles('u2', ['PLATFORM_ADMIN']);
+    expect((await instance.getUser('u2'))?.platformRoles).toEqual(['PLATFORM_ADMIN']);
+
+    await instance.createTenantAdminInvite({ tenantId: 't2', email: 'admin@example.com' });
+    const admin = await instance.upsertUser({ subject: 'google:admin', email: 'admin@example.com' });
+    expect((await instance.getMembership(admin.id, 't2'))?.role).toBe('TENANT_ADMIN');
+
+    const domain = await instance.getTenantPrimaryDomainDetails('t2');
+    expect(domain?.verified).toBe(true);
+    db.set('tenantDomains', 'two.jcp.test', {
+      tenantId: 't2',
+      hostname: 'two.jcp.test',
+      type: 'CUSTOM',
+      primary: true,
+      verified: false,
+      verificationToken: 'token',
+    });
+    expect((await instance.getTenantPrimaryDomainDetails('t2'))?.verificationToken).toBe('token');
+    await instance.markTenantPrimaryDomainVerified('t2');
+    expect((await instance.getTenantPrimaryDomainDetails('t2'))?.verified).toBe(true);
+
+    expect(instance.getFirebaseApp()).toBeDefined();
+  });
+
 });

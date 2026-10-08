@@ -19,6 +19,9 @@ describe('configuration', () => {
     delete process.env.FIREBASE_BOOTSTRAP_ADMIN_SUBJECT;
     delete process.env.FIREBASE_BOOTSTRAP_ADMIN_EMAIL;
     delete process.env.FIREBASE_BOOTSTRAP_ADMIN_NAME;
+    delete process.env.FIREBASE_BOOTSTRAP_PLATFORM_ADMIN_SUBJECT;
+    delete process.env.FIREBASE_STORAGE_BUCKET;
+    delete process.env.JCP_TENANT_BASE_DOMAIN;
     delete process.env.REDIS_URL;
     delete process.env.AUTH_JWKS_URL;
     delete process.env.AUTH_ISSUER;
@@ -37,7 +40,10 @@ describe('configuration', () => {
         bootstrapAdminSubject: undefined,
         bootstrapAdminEmail: undefined,
         bootstrapAdminName: undefined,
+        bootstrapPlatformAdminSubject: undefined,
+        storageBucket: undefined,
       },
+      platform: { tenantBaseDomain: undefined },
       redis: { url: undefined },
       auth: {
         jwksUrl:
@@ -78,7 +84,10 @@ describe('configuration', () => {
         bootstrapAdminSubject: 'firebase-user-1',
         bootstrapAdminEmail: 'admin@example.com',
         bootstrapAdminName: 'Admin',
+        bootstrapPlatformAdminSubject: undefined,
+        storageBucket: undefined,
       },
+      platform: { tenantBaseDomain: undefined },
       redis: { url: 'redis://localhost:6379' },
       auth: {
         jwksUrl: 'https://example.test/jwks',
