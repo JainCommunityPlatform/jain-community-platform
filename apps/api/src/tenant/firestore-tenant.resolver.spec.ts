@@ -22,8 +22,6 @@ describe('FirestoreTenantResolver', () => {
       id: 'tenant-1',
       name: 'Bade Baba Kharadi',
       hostname: 'badebabakharadi.com',
-      status: 'ACTIVE',
-      verified: true,
     });
 
     expect(getTenantByHostname).toHaveBeenCalledWith('badebabakharadi.com');
@@ -34,6 +32,8 @@ describe('FirestoreTenantResolver', () => {
       id: 'tenant-1',
       name: 'Bade Baba Kharadi',
       hostname: 'badebabakharadi.com',
+      status: 'ACTIVE',
+      verified: true,
     });
 
     await expect(resolver.resolve('  badebabakharadi.com  ')).resolves.toEqual({
