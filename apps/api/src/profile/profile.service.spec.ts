@@ -56,6 +56,11 @@ describe('ProfileService', () => {
     await expect(service.linkCurrentContact({ subject:'auth-1' }, '9876543210')).rejects.toThrow('database unavailable');
   });
 
+  it('propagates non-Error link failures', async () => {
+    firestore.linkPhoneToUser.mockRejectedValue('database unavailable');
+    await expect(service.linkCurrentContact({ subject:'auth-1' }, '9876543210')).rejects.toBe('database unavailable');
+  });
+
   it('provisions and resolves profiles by mobile', async () => {
     firestore.provisionUserByPhone.mockResolvedValue({ id:'user-1', authSubject:'migration:1', phoneNumbers:['9876543210'], primaryPhone:'9876543210' });
     firestore.findUserByPhone.mockResolvedValue({ id:'user-1', authSubject:'migration:1', phoneNumbers:['9876543210'], primaryPhone:'9876543210' });
