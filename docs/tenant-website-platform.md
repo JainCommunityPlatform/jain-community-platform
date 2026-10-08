@@ -10,12 +10,13 @@ This is implemented as a reusable platform capability; the reference tenant is d
 2. The tenant receives a stable ID and slug.
 3. The platform administrator can provide a custom hostname or let JCP generate a subdomain from JCP_TENANT_BASE_DOMAIN.
 4. The initial temple administrator is assigned immediately when a matching global user exists, otherwise an invitation is persisted and claimed when that user first authenticates.
-5. A default website configuration is created automatically.
-6. Temple administrators edit the website through the tenant-scoped admin portal.
-7. Images are uploaded through the backend and stored under a tenant-specific storage prefix.
-8. Public web requests resolve the tenant from a verified hostname.
-9. Mobile requests select a tenant from the central directory and send the validated tenant ID as an explicit API context.
-10. Both surfaces read and write the same tenant website configuration record.
+5. Platform administrators can edit an existing tenant and add additional tenant administrators by user email.
+6. A default website configuration is created automatically.
+7. Temple administrators edit the website through the tenant-scoped admin portal.
+8. Images are uploaded through the backend and stored under a tenant-specific storage prefix.
+9. Public web requests resolve the tenant from a verified hostname.
+10. Mobile requests select a tenant from the central directory and send the validated tenant ID as an explicit API context.
+11. Both surfaces read and write the same tenant website configuration record.
 
 ## Tenant isolation and platform administration
 
@@ -54,7 +55,7 @@ For generated tenant subdomains, configure:
 - the web host/reverse proxy to route the wildcard host to the Flutter Web application;
 - the API to be reachable under the same origin or an explicitly configured API base URL.
 
-For image uploads, configure FIREBASE_STORAGE_BUCKET for the backend.
+For image uploads, FIREBASE_STORAGE_BUCKET may be set explicitly. If it is omitted, the backend resolves the Firebase project's current default bucket (<project>.firebasestorage.app) and falls back to the legacy <project>.appspot.com bucket.
 
 For the first platform administrator, configure FIREBASE_BOOTSTRAP_PLATFORM_ADMIN_SUBJECT with the authenticated Firebase subject that should receive PLATFORM_ADMIN.
 
