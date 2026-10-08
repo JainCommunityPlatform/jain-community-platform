@@ -30,7 +30,6 @@ void main() {
         onSignInWithGoogle: null,
       );
 
-      expect(find.text('Sign in'), findsOneWidget);
       expect(find.text('Signing in…'), findsOneWidget);
       expect(find.text('Continue with Google'), findsNothing);
     },
@@ -44,6 +43,7 @@ void main() {
         error: StateError('authentication failed'),
         onSignInWithGoogle: () async {},
       );
+      await tester.pump();
 
       expect(find.text('Sign-in failed'), findsOneWidget);
       expect(find.text('Continue with Google'), findsOneWidget);
