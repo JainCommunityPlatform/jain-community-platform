@@ -103,9 +103,8 @@ Future<(AppRouter, TenantSelectionController, AppSessionController)> _router({
   final controller = AppSessionController(
     auth: auth,
     sessionService: FakeSessionService(session),
+    initialSession: session,
   );
-  await controller.initialize();
-  await Future<void>.delayed(Duration.zero);
 
   final router = AppRouter(
     tenantSelection: selection,
