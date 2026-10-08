@@ -13,7 +13,6 @@ describe('ProfileService', () => {
     findUserByPhone: jest.fn(),
     listUserActivities: jest.fn(),
     recordUserActivity: jest.fn(),
-    migrateRegistrationsToUsers: jest.fn(),
   };
   let service: ProfileService;
 
@@ -21,18 +20,6 @@ describe('ProfileService', () => {
     jest.clearAllMocks();
     service = new ProfileService(firestore as never, identity as never);
     identity.resolve.mockResolvedValue({ id: 'user-1', authSubject: 'auth-1', email: 'a@b.test' });
-  });
-
-  it('delegates registration migration to Firestore', async () => {
-    firestore.migrateRegistrationsToUsers.mockResolvedValue({ dryRun:true });
-    await expect(service.migrateRegistrationsToUsers({ dryRun:true, limit:5 })).resolves.toEqual({ dryRun:true });
-    expect(firestore.migrateRegistrationsToUsers).toHaveBeenCalledWith({ dryRun:true, limit:5 });
-  });
-
-  it('delegates registration migration with default options', async () => {
-    firestore.migrateRegistrationsToUsers.mockResolvedValue({ dryRun:false });
-    await expect(service.migrateRegistrationsToUsers()).resolves.toEqual({ dryRun:false });
-    expect(firestore.migrateRegistrationsToUsers).toHaveBeenCalledWith({});
   });
 
   it('returns a profile and indicates when contact linking is required', async () => {
