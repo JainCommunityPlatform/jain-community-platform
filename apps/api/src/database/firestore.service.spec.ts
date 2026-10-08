@@ -2,11 +2,13 @@
 import { FirestoreService } from './firestore.service';
 
 class Snapshot {
-  constructor(private readonly value: any, readonly id = '') {}
+  constructor(
+    private readonly value: any,
+    readonly id = '',
+    readonly ref?: Ref,
+  ) {}
   get exists() { return this.value !== undefined; }
   data() { return this.value; }
-  readonly ref?: Ref;
-  constructorRef(ref: Ref) { (this as any).ref = ref; }
 }
 
 class Ref {
@@ -25,7 +27,7 @@ class Query {
   async get() {
     const docs = this.db.entries(this.collectionName)
       .filter(([, value]) => this.filters.every(([field, op, expected]) => op === '==' && value?.[field] === expected))
-       .map(([id, value]) => new Snapshot(value, id, new Ref(this.db, this.collectionName, id)));
+      .map(([id, value]) => new Snapshot(value, id, new Ref(this.db, this.collectionName, id)));
     return { docs, empty: docs.length === 0, size: docs.length };
   }
 }
@@ -37,7 +39,7 @@ class FakeDb {
       doc: (id: string) => new Ref(this, name, id),
       where: (field: string, op: string, value: any) => new Query(this, name).where(field, op, value),
       get: async () => {
-        const docs = this.entries(name).map(([id, value]) => new Snapshot(value, id));
+        const docs = this.entries(name).map(([id, value]) => new Snapshot(value, id, new Ref(this, name, id)));
         return { docs, empty: docs.length === 0, size: docs.length };
       },
     };
