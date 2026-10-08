@@ -1,5 +1,3 @@
-import { ConfigService } from '@nestjs/config';
-
 jest.mock('firebase-admin/auth', () => ({
   getAuth: jest.fn(),
 }));
