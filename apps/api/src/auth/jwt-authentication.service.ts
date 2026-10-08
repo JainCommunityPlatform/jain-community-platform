@@ -1,6 +1,5 @@
 import {
   Injectable,
-  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { getAuth } from 'firebase-admin/auth';
@@ -35,12 +34,6 @@ export class JwtAuthenticationService implements AuthenticationTokenVerifier {
     } catch (error) {
       if (error instanceof UnauthorizedException) {
         throw error;
-      }
-
-      if (error instanceof Error && error.message.includes('not initialized')) {
-        throw new ServiceUnavailableException(
-          'Authentication provider is not configured',
-        );
       }
 
       throw new UnauthorizedException('Invalid authentication token');
