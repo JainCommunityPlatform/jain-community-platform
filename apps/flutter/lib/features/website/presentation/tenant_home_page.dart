@@ -981,7 +981,9 @@ class _LanguageSelector extends StatelessWidget {
     return PopupMenuButton<Locale>(
       tooltip: strings.language,
       icon: const Icon(Icons.translate),
-      onSelected: controller.setLocale,
+      onSelected: (locale) {
+        controller.setLocale(locale);
+      },
       itemBuilder: (_) => AppLanguageController.supported
           .map(
             (locale) => PopupMenuItem<Locale>(
