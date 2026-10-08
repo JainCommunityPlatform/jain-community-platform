@@ -13,6 +13,7 @@ describe('ProfileService', () => {
     findUserByPhone: jest.fn(),
     listUserActivities: jest.fn(),
     recordUserActivity: jest.fn(),
+    migrateRegistrationsToUsers: jest.fn(),
   };
   let service: ProfileService;
 
@@ -23,7 +24,7 @@ describe('ProfileService', () => {
   });
 
   it('delegates registration migration to Firestore', async () => {
-    firestore.migrateRegistrationsToUsers = jest.fn().mockResolvedValue({ dryRun:true });
+    firestore.migrateRegistrationsToUsers.mockResolvedValue({ dryRun:true });
     await expect(service.migrateRegistrationsToUsers({ dryRun:true, limit:5 })).resolves.toEqual({ dryRun:true });
     expect(firestore.migrateRegistrationsToUsers).toHaveBeenCalledWith({ dryRun:true, limit:5 });
   });
