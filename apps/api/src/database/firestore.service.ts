@@ -239,8 +239,14 @@ export class FirestoreService implements OnModuleInit {
     return db.runTransaction(async (transaction) => {
       const index = await transaction.get(indexRef);
       if (index.exists) {
-        const existing = await transaction.get(db.collection('users').doc(index.data()?.userId as string));
-        if (existing.exists) return this.toUser(existing.id, existing.data() ?? {});
+        const indexedUserId = index.data()?.userId as string | undefined;
+        if (indexedUserId) {
+          const existing = await transaction.get(db.collection('users').doc(indexedUserId));
+          if (existing.exists) return this.toUser(existing.id, existing.data() ?? {});
+        }
+        // Repair a stale phone index that points to a deleted/missing user.
+        // Reusing the existing index document avoids ALREADY_EXISTS failures
+        // while keeping the phone-to-user index canonical.
       }
       const userId = randomUUID();
       const subject = 'migration:' + hashPhone(input.phone);
@@ -254,7 +260,7 @@ export class FirestoreService implements OnModuleInit {
         createdAt: now,
         updatedAt: now,
       });
-      transaction.create(indexRef, { userId, phone: input.phone, createdAt: now });
+      transaction.set(indexRef, { userId, phone: input.phone, createdAt: now }, { merge: true });
       transaction.create(db.collection('userAuthIndexes').doc(hashSubject(subject)), { userId, authSubject: subject });
       return { id:userId, authSubject:subject, displayName:input.displayName, address:input.address, primaryPhone:input.phone, phoneNumbers:[input.phone], platformRoles: [] };
     });
