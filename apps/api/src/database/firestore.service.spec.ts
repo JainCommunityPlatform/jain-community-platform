@@ -142,6 +142,48 @@ describe('FirestoreService identity/profile persistence', () => {
     await instance.deleteMembership('u1','t1');
     expect(await instance.getMembership('u1','t1')).toBeNull();
   });
+  it('covers tenant/domain lifecycle edge cases and directory filtering', async () => {
+    const { instance, db } = service();
+
+    await instance.ensureTenant({ id: 'existing', slug: 'existing', name: 'Existing', hostname: 'existing.jcp.test' });
+    await instance.ensureTenant({ id: 'existing', slug: 'existing', name: 'Existing', hostname: 'existing.jcp.test' });
+
+    db.set('tenants', 'inactive', { slug: 'inactive', name: 'Inactive', primaryHostname: 'inactive.jcp.test', status: 'INACTIVE' });
+    db.set('tenants', 'active-b', { slug: 'b', name: 'B Temple', primaryHostname: 'b.jcp.test', status: 'ACTIVE' });
+    db.set('tenants', 'active-a', { slug: 'a', name: 'A Temple', primaryHostname: 'a.jcp.test', status: 'ACTIVE' });
+    expect((await instance.listPublicTenants()).map(item => item.name)).toEqual(['A Temple', 'B Temple']);
+
+    await expect(instance.createTenant({
+      id: 'existing',
+      slug: 'new',
+      name: 'Duplicate',
+      hostname: 'existing.jcp.test',
+    })).rejects.toThrow('Tenant ID already exists');
+
+    await expect(instance.createTenant({
+      id: 'new',
+      slug: 'new',
+      name: 'New',
+      hostname: 'existing.jcp.test',
+    })).rejects.toThrow('Tenant hostname already exists');
+
+    expect(await instance.getTenantBySlug('missing')).toBeNull();
+    expect(await instance.getTenantById('missing')).toBeNull();
+    expect(await instance.getTenantPrimaryDomainDetails('missing')).toBeNull();
+    await expect(instance.markTenantPrimaryDomainVerified('missing')).rejects.toThrow('Primary tenant domain not found');
+
+    await instance.createMembership({ userId: 'u1', tenantId: 'existing', role: 'CONTENT_MANAGER' });
+    await instance.assignTenantAdmin('u1', 'existing');
+    expect((await instance.getMembership('u1', 'existing'))?.role).toBe('TENANT_ADMIN');
+    await instance.assignTenantAdmin('u1', 'existing');
+    expect((await instance.getMembership('u1', 'existing'))?.role).toBe('TENANT_ADMIN');
+
+    await instance.createTenantAdminInvite({ tenantId: 'existing', email: '  ADMIN@EXAMPLE.COM ' });
+    await instance.claimTenantAdminInvites('u2');
+    await instance.claimTenantAdminInvites('u2', 'admin@example.com');
+    expect((await instance.getMembership('u2', 'existing'))?.role).toBe('TENANT_ADMIN');
+  });
+
   it('supports reusable tenant website onboarding, directory and media configuration records', async () => {
     const { instance, db } = service();
 
