@@ -79,6 +79,7 @@ class _TenantHomePageState extends State<TenantHomePage> {
           site: snapshot.data!,
           onFindTemples: () => widget.selection.select(null),
           showAdmin: widget.sessionController.session.isAdmin,
+          showSignIn: !widget.sessionController.session.isAuthenticated,
         );
       },
     );
@@ -262,12 +263,14 @@ class _WebsiteView extends StatelessWidget {
     required this.site,
     required this.onFindTemples,
     required this.showAdmin,
+    required this.showSignIn,
   });
 
   final dynamic tenant;
   final Map<String, dynamic> site;
   final VoidCallback onFindTemples;
   final bool showAdmin;
+  final bool showSignIn;
 
   @override
   Widget build(BuildContext context) {
@@ -294,6 +297,7 @@ class _WebsiteView extends StatelessWidget {
               onFindTemples: onFindTemples,
               colors: colors,
               showAdmin: showAdmin,
+              showSignIn: showSignIn,
             )),
             SliverToBoxAdapter(child: _Hero(hero: hero, colors: colors)),
             SliverToBoxAdapter(child: _QuickInfo(items: quickInfo, colors: colors)),
@@ -320,13 +324,14 @@ class _WebsiteView extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.tenantName, required this.header, required this.onFindTemples, required this.colors, required this.showAdmin});
+  const _Header({required this.tenantName, required this.header, required this.onFindTemples, required this.colors, required this.showAdmin, required this.showSignIn});
 
   final String tenantName;
   final Map<String, dynamic> header;
   final VoidCallback onFindTemples;
   final ColorScheme colors;
   final bool showAdmin;
+  final bool showSignIn;
 
   @override
   Widget build(BuildContext context) {
@@ -366,6 +371,8 @@ class _Header extends StatelessWidget {
                   child: Text(item['label'] as String? ?? ''),
                 )),
               IconButton(onPressed: onFindTemples, icon: const Icon(Icons.search)),
+              if (showSignIn)
+                TextButton(onPressed: () => context.go(AppRoutes.login), child: const Text('Sign in')),
               if (showAdmin)
                 IconButton(onPressed: () => context.go(AppRoutes.admin), icon: const Icon(Icons.admin_panel_settings)),
             ],
