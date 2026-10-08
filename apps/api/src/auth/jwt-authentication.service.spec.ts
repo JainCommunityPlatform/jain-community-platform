@@ -1,53 +1,59 @@
-import { ConfigService } from '@nestjs/config';
-
-jest.mock('jose', () => ({
-  createRemoteJWKSet: jest.fn(() => ({ jwks: true })),
-  jwtVerify: jest.fn(),
+jest.mock('firebase-admin/auth', () => ({
+  getAuth: jest.fn(),
 }));
 
-import { jwtVerify } from 'jose';
+import { getAuth } from 'firebase-admin/auth';
+import { FirestoreService } from '../database/firestore.service';
 import { JwtAuthenticationService } from './jwt-authentication.service';
 
 describe('JwtAuthenticationService', () => {
-  beforeEach(() => jest.clearAllMocks());
+  const verifyIdToken = jest.fn();
+  const firestore = {
+    getFirebaseApp: jest.fn(() => ({ name: '[DEFAULT]' })),
+  } as unknown as FirestoreService;
 
-  it('fails clearly when the authentication provider is not configured', async () => {
-    const config = { get: jest.fn().mockReturnValue(undefined) } as unknown as ConfigService;
-    const service = new JwtAuthenticationService(config);
-    await expect(service.verify('token')).rejects.toMatchObject({ status: 503 });
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (getAuth as jest.Mock).mockReturnValue({ verifyIdToken });
   });
 
-  it('verifies a token and maps optional claims', async () => {
-    const config = {
-      get: jest.fn((key: string) => ({
-        'auth.jwksUrl': 'https://example.test/jwks',
-        'auth.issuer': 'issuer',
-        'auth.audience': 'audience',
-      } as Record<string, string>)[key]),
-    } as unknown as ConfigService;
-    (jwtVerify as jest.Mock).mockResolvedValue({ payload: { sub: 'subject-a', email: 'a@test', name: 'A' } });
-    const service = new JwtAuthenticationService(config);
+  it('verifies a Firebase ID token and maps optional claims', async () => {
+    verifyIdToken.mockResolvedValue({
+      uid: 'subject-a',
+      email: 'a@test',
+      name: 'A',
+    });
+
+    const service = new JwtAuthenticationService(firestore);
     await expect(service.verify('token')).resolves.toEqual({
       subject: 'subject-a',
       email: 'a@test',
       displayName: 'A',
     });
-    expect(jwtVerify).toHaveBeenCalled();
+    expect(getAuth).toHaveBeenCalledWith({ name: '[DEFAULT]' });
+    expect(verifyIdToken).toHaveBeenCalledWith('token');
   });
 
   it('rejects a token without a subject', async () => {
-    const config = {
-      get: jest.fn((key: string) => ({ 'auth.jwksUrl': 'https://example.test/jwks', 'auth.issuer': 'issuer', 'auth.audience': 'audience' } as Record<string, string>)[key]),
-    } as unknown as ConfigService;
-    (jwtVerify as jest.Mock).mockResolvedValue({ payload: {} });
-    await expect(new JwtAuthenticationService(config).verify('token')).rejects.toMatchObject({ status: 401 });
+    verifyIdToken.mockResolvedValue({});
+
+    await expect(
+      new JwtAuthenticationService(firestore).verify('token'),
+    ).rejects.toMatchObject({ status: 401 });
   });
 
-  it('maps provider verification failures to unauthorized', async () => {
-    const config = {
-      get: jest.fn((key: string) => ({ 'auth.jwksUrl': 'https://example.test/jwks', 'auth.issuer': 'issuer', 'auth.audience': 'audience' } as Record<string, string>)[key]),
-    } as unknown as ConfigService;
-    (jwtVerify as jest.Mock).mockRejectedValue(new Error('bad token'));
-    await expect(new JwtAuthenticationService(config).verify('token')).rejects.toMatchObject({ status: 401 });
+  it('rejects an invalid Firebase token', async () => {
+    verifyIdToken.mockRejectedValue(new Error('FirebaseAuthError'));
+
+    await expect(
+      new JwtAuthenticationService(firestore).verify('token'),
+    ).rejects.toMatchObject({ status: 401 });
+  });
+
+  it('rejects an empty bearer token', async () => {
+    await expect(
+      new JwtAuthenticationService(firestore).verify('   '),
+    ).rejects.toMatchObject({ status: 401 });
+    expect(verifyIdToken).not.toHaveBeenCalled();
   });
 });
