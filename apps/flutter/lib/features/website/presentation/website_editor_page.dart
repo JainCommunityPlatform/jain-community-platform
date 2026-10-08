@@ -37,7 +37,6 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
   final _backgroundColor = TextEditingController();
   final _surfaceColor = TextEditingController();
   final _accentColor = TextEditingController();
-  final _languages = TextEditingController();
   final _availableLanguages = const ['हिन्दी', 'मराठी', 'English', 'ગુજરાતી'];
   final Set<String> _selectedLanguages = {'हिन्दी', 'मराठी', 'English'};
   bool _uploading = false;
@@ -64,7 +63,7 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
     for (final controller in [
       _heroTitle, _heroSubtitle, _heroDescription, _heroCta, _heroImage,
       _aboutTitle, _aboutBody, _aboutImage, _address, _phone, _whatsapp, _email, _mapUrl,
-      _primaryColor, _secondaryColor, _backgroundColor, _surfaceColor, _accentColor, _languages, _logoUrl,
+      _primaryColor, _secondaryColor, _backgroundColor, _surfaceColor, _accentColor, _logoUrl,
       _directoryTitle, _directorySubtitle, _directoryLimit, _eventsTitle, _galleryTitle, _sevaTitle,
     ]) {
       controller.dispose();
