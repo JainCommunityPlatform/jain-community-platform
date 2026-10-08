@@ -95,6 +95,7 @@ class TempleDirectoryPage extends StatefulWidget {
     required this.selection,
     this.onSelect,
     this.showPlatformAdmin = false,
+    this.showSignIn = true,
     super.key,
   });
 
@@ -102,6 +103,7 @@ class TempleDirectoryPage extends StatefulWidget {
   final TenantSelectionController selection;
   final FutureOr<void> Function(TenantSummary)? onSelect;
   final bool showPlatformAdmin;
+  final bool showSignIn;
   final bool showSignIn;
 
   @override
