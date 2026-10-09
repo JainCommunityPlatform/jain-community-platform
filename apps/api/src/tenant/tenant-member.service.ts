@@ -100,6 +100,17 @@ export class TenantMemberService {
 
   async remove(userId: string): Promise<void> {
     const membership = await this.findMembership(userId);
+    if ((membership.roles ?? [membership.role]).includes('TENANT_ADMIN')) {
+      const allMemberships = await this.firestore.listMemberships(membership.tenantId);
+      const adminCount = allMemberships.filter((item) =>
+        (item.roles ?? [item.role]).includes('TENANT_ADMIN'),
+      ).length;
+      if (adminCount <= 1) {
+        throw new ConflictException(
+          'At least one temple administrator must remain assigned',
+        );
+      }
+    }
     await this.firestore.deleteMembership(userId, membership.tenantId);
 
     await this.audit.record({
