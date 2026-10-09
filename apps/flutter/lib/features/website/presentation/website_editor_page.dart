@@ -584,14 +584,19 @@ class _EditorSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-    margin: const EdgeInsets.only(bottom: 16),
-    child: Padding(
-      padding: const EdgeInsets.all(18),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 14),
-        ...children.expand((child) => [child, const SizedBox(height: 10)]),
-      ]),
+    margin: const EdgeInsets.only(bottom: 12),
+    clipBehavior: Clip.antiAlias,
+    child: ExpansionTile(
+      initiallyExpanded: title == 'Theme & header',
+      tilePadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+      childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+      title: Text(
+        title,
+        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+      ),
+      children: children
+          .expand((child) => [child, const SizedBox(height: 10)])
+          .toList(),
     ),
   );
 }
@@ -662,39 +667,63 @@ class _ListEditorSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      margin: const EdgeInsets.only(bottom: 12),
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        initiallyExpanded: false,
+        tilePadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+        childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+        title: Row(
           children: [
-            Row(
-              children: [
-                Expanded(child: Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800))),
-                OutlinedButton.icon(onPressed: onAdd, icon: const Icon(Icons.add), label: const Text('Add')),
-              ],
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              ),
             ),
-            const SizedBox(height: 10),
-            if (items.isEmpty)
-              const Text('अभी कोई item नहीं है।')
-            else
-              ...List.generate(items.length, (index) {
-                final item = items[index];
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.drag_indicator),
-                  title: Text(itemTitle(item)),
-                  subtitle: Text(item['imageUrl']?.toString().isNotEmpty == true ? 'Image configured' : ''),
-                  trailing: Wrap(
-                    children: [
-                      IconButton(onPressed: () => onEdit(index), icon: const Icon(Icons.edit)),
-                      IconButton(onPressed: () => onDelete(index), icon: const Icon(Icons.delete_outline)),
-                    ],
-                  ),
-                );
-              }),
+            OutlinedButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.add),
+              label: const Text('Add'),
+            ),
           ],
         ),
+        children: [
+          if (items.isEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(4, 8, 4, 16),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('अभी कोई item नहीं है।'),
+              ),
+            )
+          else
+            ...List.generate(items.length, (index) {
+              final item = items[index];
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.drag_indicator),
+                title: Text(itemTitle(item)),
+                subtitle: Text(
+                  item['imageUrl']?.toString().isNotEmpty == true
+                      ? 'Image configured'
+                      : '',
+                ),
+                trailing: Wrap(
+                  children: [
+                    IconButton(
+                      onPressed: () => onEdit(index),
+                      icon: const Icon(Icons.edit),
+                    ),
+                    IconButton(
+                      onPressed: () => onDelete(index),
+                      icon: const Icon(Icons.delete_outline),
+                    ),
+                  ],
+                ),
+              );
+            }),
+        ],
       ),
     );
   }
