@@ -170,6 +170,29 @@ void main() {
     controller.dispose();
   });
 
+  testWidgets('temple directory exposes MyJinalay bottom navigation',
+      (tester) async {
+    final (_, selection, controller) = await _router();
+    selection.select(null);
+    await tester.pumpWidget(MaterialApp(
+      home: TenantHomePage(
+        selection: selection,
+        tenantRepository: TenantRepository(_apiClient()),
+        websiteRepository: FakeWebsiteRepository(),
+        sessionController: controller,
+      ),
+    ));
+    await _pumpRouter(tester);
+
+    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Temples'), findsOneWidget);
+    expect(find.text('Events'), findsOneWidget);
+    expect(find.text('Donations'), findsOneWidget);
+    expect(find.text('Profile'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    controller.dispose();
+  });
+
   testWidgets('home sign-in action navigates to login', (tester) async {
     final (_, selection, controller) = await _router();
     final router = GoRouter(
@@ -248,6 +271,33 @@ void main() {
 
     expect(router.state.uri.path, AppRoutes.admin);
     expect(find.text('admin'), findsOneWidget);
+    router.dispose();
+    controller.dispose();
+  });
+
+  testWidgets('inventory console requires an inventory or admin role',
+      (tester) async {
+    final (appRouter, _, controller) = await _router(
+      session: const AppSession(
+        isAuthenticated: true,
+        userId: 'user-1',
+        roles: ['FINANCE_VIEWER', 'INVENTORY_MANAGER'],
+      ),
+    );
+    final router = GoRouter(
+      initialLocation: AppRoutes.inventory,
+      redirect: appRouter.redirect,
+      routes: [
+        GoRoute(path: '/login', builder: (_, __) => const Scaffold(body: Text('login'))),
+        GoRoute(path: AppRoutes.member, builder: (_, __) => const Scaffold(body: Text('member'))),
+        GoRoute(path: AppRoutes.inventory, builder: (_, __) => const Scaffold(body: Text('inventory'))),
+      ],
+    );
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await _pumpRouter(tester);
+    expect(router.state.uri.path, AppRoutes.inventory);
+    expect(find.text('inventory'), findsOneWidget);
     router.dispose();
     controller.dispose();
   });
