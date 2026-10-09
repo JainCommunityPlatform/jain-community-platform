@@ -22,6 +22,7 @@ import 'package:jain_community_platform/features/profile/data/profile_repository
 import 'package:jain_community_platform/features/tenant/data/tenant_repository.dart';
 import 'package:jain_community_platform/features/website/data/website_repository.dart';
 import 'package:jain_community_platform/features/website/presentation/tenant_home_page.dart';
+import 'package:jain_community_platform/features/website/presentation/website_editor_page.dart';
 
 const temple = TenantContext(
   id: 'tenant-1',
@@ -324,6 +325,71 @@ void main() {
     expect(find.text('City'), findsOneWidget);
     expect(find.text('State'), findsOneWidget);
     expect(find.text('PIN'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  test('tenant session resolves multiple simultaneous roles', () {
+    final session = AppSession.fromAuthMe({
+      'userId': 'user-1',
+      'role': 'FINANCE_VIEWER',
+      'roles': ['INVENTORY_MANAGER', 'TENANT_ADMIN'],
+    });
+
+    expect(session.isAuthenticated, isTrue);
+    expect(session.isAdmin, isTrue);
+    expect(session.isFinance, isTrue);
+    expect(session.isInventory, isTrue);
+  });
+
+  testWidgets('website editor keeps secondary sections collapsed by default',
+      (tester) async {
+    final client = MockClient((request) async {
+      if (request.method == 'GET' &&
+          request.url.path == '/api/website/site') {
+        return http.Response(jsonEncode({
+          'tenantId': 'tenant-1',
+          'theme': {
+            'primary': '#F57C00',
+            'secondary': '#8B2E1B',
+            'background': '#FFF4DE',
+            'surface': '#FFFDF8',
+            'accent': '#E65100',
+          },
+          'header': {'languages': ['हिन्दी']},
+          'hero': {'title': 'Bade Baba Kharadi'},
+          'about': {},
+          'contact': {},
+          'templeDirectory': {'enabled': true, 'limit': 6},
+          'events': {'enabled': true, 'items': []},
+          'gallery': {'enabled': true, 'items': []},
+          'seva': {'enabled': true, 'items': []},
+          'quickInfo': [],
+        }), 200);
+      }
+      return http.Response('{}', 200);
+    });
+    final repository = WebsiteRepository(ApiClient(
+      baseUrl: Uri.parse('https://example.test/'),
+      client: client,
+    ));
+
+    await tester.pumpWidget(MaterialApp(
+      home: WebsiteEditorPage(
+        repository: repository,
+        tenantName: 'Bade Baba Kharadi',
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Theme & header'), findsOneWidget);
+    expect(find.text('Section controls'), findsOneWidget);
+    expect(find.text('Temple directory title'), findsNothing);
+
+    await tester.ensureVisible(find.text('Section controls'));
+    await tester.tap(find.text('Section controls'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Temple directory title'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
