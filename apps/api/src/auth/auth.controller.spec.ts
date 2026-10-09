@@ -40,7 +40,7 @@ describe('AuthController', () => {
       userId: 'database-user-1',
       tenantId: 'tenant-1',
       role: 'TENANT_ADMIN',
-      roles: [],
+      roles: ['TENANT_ADMIN'],
       platformRoles: [],
     }));
   });
