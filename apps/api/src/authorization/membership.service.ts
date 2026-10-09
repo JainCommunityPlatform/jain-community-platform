@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { FirestoreService } from '../database/firestore.service';
 import {
@@ -20,6 +20,32 @@ const MEMBERSHIP_ROLES = new Set<MembershipRole>([
 @Injectable()
 export class MembershipService {
   constructor(private readonly firestore: FirestoreService) {}
+
+  async assignRoles(
+    userId: string,
+    tenantId: string,
+    requestedRoles: string[],
+  ) {
+    const roles = [...new Set(requestedRoles)];
+    if (roles.length === 0 || roles.some((role) => !MEMBERSHIP_ROLES.has(role as MembershipRole))) {
+      throw new BadRequestException('At least one supported tenant role is required');
+    }
+
+    const user = await this.firestore.getUser(userId);
+    if (!user) throw new NotFoundException('User profile not found');
+
+    const existing = await this.firestore.getMembership(userId, tenantId);
+    if (existing) {
+      return this.firestore.updateMembershipRoles(userId, tenantId, roles);
+    }
+
+    return this.firestore.createMembership({
+      userId,
+      tenantId,
+      role: roles[0],
+      roles,
+    });
+  }
 
   async resolve(
     userId: string,
