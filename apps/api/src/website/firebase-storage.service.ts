@@ -42,8 +42,21 @@ export class FirebaseStorageService {
       );
     }
 
-    if (!input.contentType.startsWith('image/')) {
+    // Mobile/browser file pickers sometimes label valid image bytes as
+    // application/octet-stream. Trust a recognized image signature in that
+    // case, but never allow an arbitrary non-image payload through.
+    const detectedContentType = detectImageContentType(input.buffer);
+    const suppliedContentType = input.contentType.trim().toLowerCase().split(';')[0];
+    const contentType = suppliedContentType.startsWith('image/')
+      ? suppliedContentType
+      : detectedContentType;
+
+    if (!contentType || !contentType.startsWith('image/')) {
       throw new Error('Only image uploads are supported');
+    }
+
+    if (input.buffer.length === 0) {
+      throw new Error('The uploaded image is empty');
     }
 
     if (input.buffer.length > 10 * 1024 * 1024) {
@@ -63,7 +76,7 @@ export class FirebaseStorageService {
         await file.save(input.buffer, {
           resumable: false,
           metadata: {
-            contentType: input.contentType,
+            contentType,
             cacheControl: 'public,max-age=31536000,immutable',
           },
         });
@@ -89,7 +102,7 @@ export class FirebaseStorageService {
         return {
           path,
           url,
-          contentType: input.contentType,
+          contentType,
           size: input.buffer.length,
         };
       } catch (error) {
@@ -103,6 +116,31 @@ export class FirebaseStorageService {
   }
 }
 
+function detectImageContentType(buffer: Buffer): string | undefined {
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return 'image/jpeg';
+  }
+  if (
+    buffer.length >= 8 &&
+    buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+  ) {
+    return 'image/png';
+  }
+  if (buffer.length >= 6 && ['GIF87a', 'GIF89a'].includes(buffer.toString('ascii', 0, 6))) {
+    return 'image/gif';
+  }
+  if (
+    buffer.length >= 12 &&
+    buffer.toString('ascii', 0, 4) === 'RIFF' &&
+    buffer.toString('ascii', 8, 12) === 'WEBP'
+  ) {
+    return 'image/webp';
+  }
+  if (buffer.length >= 2 && buffer[0] === 0x42 && buffer[1] === 0x4d) {
+    return 'image/bmp';
+  }
+  return undefined;
+}
 
 function normalizeBucketName(value: string | undefined): string | undefined {
   if (!value) return undefined;
