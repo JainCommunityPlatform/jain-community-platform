@@ -1208,13 +1208,6 @@ class _LanguageSelector extends StatelessWidget {
   }
 }
 
-String _directoryDescription(AppStrings strings) => switch (strings.languageCode) {
-  'hi' => 'JCP में उपलब्ध मंदिरों को खोजें और उनकी पूरी वेबसाइट देखें।',
-  'mr' => 'JCP वरील मंदिरे शोधा आणि त्यांची संपूर्ण वेबसाइट पहा.',
-  'gu' => 'JCP પર ઉપલબ્ધ દેરાસરો શોધો અને તેમની સંપૂર્ણ વેબસાઇટ જુઓ.',
-  _ => 'Find temples available on JCP and explore their complete websites.',
-};
-
 String _sevaLabel(String? icon, String? fallback, AppStrings strings) => switch (icon) {
   'favorite' => strings.foodSeva,
   'groups' => strings.volunteer,
