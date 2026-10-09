@@ -8,7 +8,6 @@ import 'core/auth/firebase_auth_provider.dart';
 import 'core/firebase/firebase_bootstrap.dart';
 import 'core/i18n/app_language.dart';
 import 'core/routing/app_router.dart';
-import 'core/routing/app_routes.dart';
 import 'core/session/app_session_controller.dart';
 import 'core/session/auth_session_service.dart';
 import 'core/tenant/tenant_context.dart';
