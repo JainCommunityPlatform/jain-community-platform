@@ -3,15 +3,22 @@ import '../../profile/data/profile_repository.dart';
 import '../../profile/presentation/profile_page.dart';
 
 class MemberHomePage extends StatefulWidget {
-  const MemberHomePage({this.profileRepository, super.key});
+  const MemberHomePage({this.profileRepository, this.initialIndex = 0, super.key});
   final ProfileRepository? profileRepository;
+  final int initialIndex;
 
   @override
   State<MemberHomePage> createState() => _MemberHomePageState();
 }
 
 class _MemberHomePageState extends State<MemberHomePage> {
-  int selectedIndex = 0;
+  late int selectedIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    selectedIndex = widget.initialIndex.clamp(0, 4);
+  }
 
   @override
   Widget build(BuildContext context) {
