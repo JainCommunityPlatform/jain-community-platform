@@ -449,13 +449,17 @@ export class FirestoreService implements OnModuleInit {
   }
 
   async listMemberships(tenantId: string): Promise<FirestoreMembership[]> {
+    // Filter by tenant without requiring a composite Firestore index on
+    // (tenantId, createdAt). Sort the small tenant-scoped result set in memory
+    // so administrator management keeps working in newly provisioned projects.
     const snapshot = await this.getDb()
       .collection('memberships')
       .where('tenantId', '==', tenantId)
-      .orderBy('createdAt', 'asc')
       .get();
 
-    const memberships = snapshot.docs.map((doc) => this.toMembership(doc));
+    const memberships = snapshot.docs
+      .map((doc) => this.toMembership(doc))
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     await Promise.all(
       memberships.map(async (membership) => {
         const user = await this.getUser(membership.userId);
