@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:jain_community_platform/core/api/api_client.dart';
 import 'package:jain_community_platform/core/auth/firebase_auth_provider.dart';
+import 'package:jain_community_platform/core/i18n/app_language.dart';
 import 'package:jain_community_platform/core/routing/app_router.dart';
 import 'package:jain_community_platform/core/routing/app_routes.dart';
 import 'package:jain_community_platform/core/session/app_session.dart';
@@ -23,6 +24,7 @@ import 'package:jain_community_platform/features/tenant/data/tenant_repository.d
 import 'package:jain_community_platform/features/website/data/website_repository.dart';
 import 'package:jain_community_platform/features/website/presentation/tenant_home_page.dart';
 import 'package:jain_community_platform/features/website/presentation/website_editor_page.dart';
+import 'package:jain_community_platform/main.dart' as app;
 
 const temple = TenantContext(
   id: 'tenant-1',
@@ -193,6 +195,37 @@ void main() {
     }
     expect(tester.takeException(), isNull);
     controller.dispose();
+  });
+
+  testWidgets('Android back from a nested route returns to temple directory',
+      (tester) async {
+    final (appRouter, selection, controller) = await _router(
+      session: const AppSession(
+        isAuthenticated: true,
+        userId: 'user-1',
+      ),
+    );
+    final language = AppLanguageController();
+
+    await tester.pumpWidget(app.JainCommunityPlatformApp(
+      router: appRouter,
+      tenantSelection: selection,
+      language: language,
+    ));
+    await _pumpRouter(tester);
+
+    appRouter.router.go(AppRoutes.member);
+    await _pumpRouter(tester);
+    expect(appRouter.router.state.uri.path, AppRoutes.member);
+
+    await tester.binding.handlePopRoute();
+    await _pumpRouter(tester);
+
+    expect(appRouter.router.state.uri.path, AppRoutes.home);
+    expect(selection.selected, isNull);
+    appRouter.router.dispose();
+    controller.dispose();
+    language.dispose();
   });
 
   testWidgets('home sign-in action navigates to login', (tester) async {
