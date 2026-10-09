@@ -1,5 +1,8 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../core/routing/app_routes.dart';
 
 import '../data/website_repository.dart';
 
@@ -383,6 +386,21 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
             )
           else
             FilledButton.icon(onPressed: _save, icon: const Icon(Icons.publish), label: const Text('Publish')),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: 5,
+        onDestinationSelected: (index) {
+          if (index == 5) return;
+          context.go('${AppRoutes.member}?tab=$index');
+        },
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
+          NavigationDestination(icon: Icon(Icons.temple_hindu_outlined), selectedIcon: Icon(Icons.temple_hindu), label: 'Temples'),
+          NavigationDestination(icon: Icon(Icons.event_outlined), selectedIcon: Icon(Icons.event), label: 'Events'),
+          NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined), selectedIcon: Icon(Icons.volunteer_activism), label: 'Donations'),
+          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
+          NavigationDestination(icon: Icon(Icons.web_outlined), selectedIcon: Icon(Icons.web), label: 'Website'),
         ],
       ),
       body: ListView(
