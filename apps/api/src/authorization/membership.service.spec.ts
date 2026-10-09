@@ -39,6 +39,40 @@ describe('MembershipService', () => {
     });
   });
 
+  it('assigns multiple roles to an existing user membership', async () => {
+    const updateMembershipRoles = jest.fn().mockResolvedValue({
+      id: 'user-a__tenant-a',
+      userId: 'user-a',
+      tenantId: 'tenant-a',
+      role: 'FINANCE_VIEWER',
+      roles: ['FINANCE_VIEWER', 'INVENTORY_MANAGER'],
+    });
+    const service = new MembershipService({
+      getUser: jest.fn().mockResolvedValue({ id: 'user-a' }),
+      getMembership: jest.fn().mockResolvedValue({
+        id: 'user-a__tenant-a',
+        userId: 'user-a',
+        tenantId: 'tenant-a',
+        role: 'FINANCE_VIEWER',
+        roles: ['FINANCE_VIEWER'],
+      }),
+      updateMembershipRoles,
+    } as never);
+
+    await expect(service.assignRoles(
+      'user-a',
+      'tenant-a',
+      ['FINANCE_VIEWER', 'INVENTORY_MANAGER'],
+    )).resolves.toMatchObject({
+      roles: ['FINANCE_VIEWER', 'INVENTORY_MANAGER'],
+    });
+    expect(updateMembershipRoles).toHaveBeenCalledWith(
+      'user-a',
+      'tenant-a',
+      ['FINANCE_VIEWER', 'INVENTORY_MANAGER'],
+    );
+  });
+
   it('returns null when no membership exists', async () => {
     const getMembership = jest.fn().mockResolvedValue(null);
     const service = new MembershipService({ getMembership } as never);
