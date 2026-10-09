@@ -15,9 +15,28 @@ describe('MembershipService', () => {
       userId: 'user-a',
       tenantId: 'tenant-a',
       role: 'CONTENT_MANAGER',
+      roles: ['CONTENT_MANAGER'],
     });
 
     expect(getMembership).toHaveBeenCalledWith('user-a', 'tenant-a');
+  });
+
+  it('resolves multiple supported roles and ignores unknown roles', async () => {
+    const service = new MembershipService({
+      getMembership: jest.fn().mockResolvedValue({
+        userId: 'user-a',
+        tenantId: 'tenant-a',
+        role: 'FINANCE_VIEWER',
+        roles: ['FINANCE_VIEWER', 'INVENTORY_MANAGER', 'UNKNOWN_ROLE'],
+      }),
+    } as never);
+
+    await expect(service.resolve('user-a', 'tenant-a')).resolves.toEqual({
+      userId: 'user-a',
+      tenantId: 'tenant-a',
+      role: 'FINANCE_VIEWER',
+      roles: ['FINANCE_VIEWER', 'INVENTORY_MANAGER'],
+    });
   });
 
   it('returns null when no membership exists', async () => {
