@@ -87,6 +87,10 @@ class AppRouter {
           path: AppRoutes.library,
           builder: (_, __) => const _PlaceholderPage(title: 'Digital library'),
         ),
+        GoRoute(
+          path: AppRoutes.inventory,
+          builder: (_, __) => const _PlaceholderPage(title: 'Inventory console'),
+        ),
       ],
     );
   }
@@ -110,6 +114,7 @@ class AppRouter {
       AppRoutes.adminSite,
       AppRoutes.finance,
       AppRoutes.library,
+      AppRoutes.inventory,
       AppRoutes.platformAdmin,
     }.contains(location);
 
@@ -142,6 +147,10 @@ class AppRouter {
     }
 
     if (location == AppRoutes.finance && !session.isFinance) {
+      return AppRoutes.member;
+    }
+
+    if (location == AppRoutes.inventory && !session.isInventory) {
       return AppRoutes.member;
     }
 
