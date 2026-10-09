@@ -571,6 +571,234 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
               Text('कार्यक्रम, गैलरी, सेवा और quick-info cards भी इसी configuration में tenant-scoped हैं और अगले editor sections में इसी model को extend किया जा सकता है।'),
             ],
           ),
+          _TeamAccessSection(repository: widget.repository),
+        ],
+      ),
+    );
+  }
+}
+
+
+class _TeamAccessSection extends StatefulWidget {
+  const _TeamAccessSection({required this.repository});
+
+  final WebsiteRepository repository;
+
+  @override
+  State<_TeamAccessSection> createState() => _TeamAccessSectionState();
+}
+
+class _TeamAccessSectionState extends State<_TeamAccessSection> {
+  static const _availableRoles = <String, String>{
+    'TENANT_ADMIN': 'Temple administrator',
+    'CONTENT_MANAGER': 'Content manager',
+    'EVENT_MANAGER': 'Event manager',
+    'FINANCE_VIEWER': 'Finance — view',
+    'FINANCE_OPERATOR': 'Finance — operator',
+    'FINANCE_APPROVER': 'Finance — approver',
+    'INVENTORY_MANAGER': 'Inventory manager',
+    'CA_AUDITOR': 'Auditor',
+  };
+
+  final _email = TextEditingController();
+  final Set<String> _selectedRoles = {};
+  List<Map<String, dynamic>> _memberships = [];
+  bool _loading = true;
+  bool _saving = false;
+  String? _message;
+  bool _error = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _email.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final result = await widget.repository.listTenantMemberships();
+      _memberships = result
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+      _error = false;
+    } catch (error) {
+      _message = 'Unable to load temple team: $error';
+      _error = true;
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _selectMembership(Map<String, dynamic> membership) {
+    final email = membership['email']?.toString();
+    if (email == null || email.isEmpty) return;
+    final roles = membership['roles'] is List
+        ? (membership['roles'] as List).map((role) => role.toString()).toSet()
+        : <String>{membership['role']?.toString() ?? ''};
+    setState(() {
+      _email.text = email;
+      _selectedRoles
+        ..clear()
+        ..addAll(roles.where(_availableRoles.containsKey));
+      _message = 'Editing roles for $email. Save to apply the selected roles.';
+      _error = false;
+    });
+  }
+
+  Future<void> _save() async {
+    final email = _email.text.trim().toLowerCase();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() {
+        _message = 'Enter a valid email address.';
+        _error = true;
+      });
+      return;
+    }
+    if (_selectedRoles.isEmpty) {
+      setState(() {
+        _message = 'Select at least one role.';
+        _error = true;
+      });
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+      _message = null;
+      _error = false;
+    });
+    try {
+      await widget.repository.assignTenantRoles(
+        email: email,
+        roles: _availableRoles.keys.where(_selectedRoles.contains).toList(),
+      );
+      _email.clear();
+      _selectedRoles.clear();
+      _message = 'Temple team roles saved successfully.';
+      await _load();
+    } catch (error) {
+      _message = 'Unable to save roles: $error';
+      _error = true;
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        initiallyExpanded: false,
+        tilePadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+        childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+        title: const Text(
+          'Temple team & roles',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+        ),
+        subtitle: const Text('Assign multiple roles to a JCP user'),
+        children: [
+          const Text(
+            'Enter the email of an existing JCP user. Selecting roles replaces that user’s role set for this temple; multiple roles can be selected together.',
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _email,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              labelText: 'Existing JCP user email',
+              prefixIcon: Icon(Icons.email_outlined),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ..._availableRoles.entries.map((entry) => CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            value: _selectedRoles.contains(entry.key),
+            title: Text(entry.value),
+            subtitle: Text(entry.key, style: const TextStyle(fontSize: 11)),
+            onChanged: (selected) => setState(() {
+              if (selected == true) {
+                _selectedRoles.add(entry.key);
+              } else {
+                _selectedRoles.remove(entry.key);
+              }
+            }),
+          )),
+          if (_message != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _message!,
+                  style: TextStyle(
+                    color: _error ? Theme.of(context).colorScheme.error : null,
+                  ),
+                ),
+              ),
+            ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FilledButton.icon(
+              onPressed: _saving ? null : _save,
+              icon: _saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.save_outlined),
+              label: const Text('Save roles'),
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Divider(),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text('Current temple team', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: LinearProgressIndicator(),
+            )
+          else if (_memberships.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('No team members found yet.'),
+              ),
+            )
+          else
+            ..._memberships.map((membership) {
+              final name = membership['displayName']?.toString();
+              final email = membership['email']?.toString() ?? '';
+              final roles = membership['roles'] is List
+                  ? (membership['roles'] as List).map((role) => role.toString()).join(', ')
+                  : membership['role']?.toString() ?? '';
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const CircleAvatar(child: Icon(Icons.person_outline)),
+                title: Text(name?.isNotEmpty == true ? name! : email),
+                subtitle: Text('$email\n$roles'),
+                isThreeLine: true,
+                trailing: IconButton(
+                  tooltip: 'Edit roles',
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: () => _selectMembership(membership),
+                ),
+              );
+            }),
         ],
       ),
     );
