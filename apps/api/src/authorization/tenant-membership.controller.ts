@@ -7,10 +7,13 @@ import {
   Post,
   Put,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 
 import { AuthenticationGuard } from '../auth/authentication.guard';
+import { AuthenticationContextInterceptor } from '../auth/authentication-context.interceptor';
 import { AuthorizationGuard } from './authorization.guard';
+import { MembershipContextInterceptor } from './membership-context.interceptor';
 import { MembershipContextStore } from './membership-context.store';
 import { MembershipService } from './membership.service';
 import { RequirePermission } from './require-permission.decorator';
@@ -21,6 +24,7 @@ import { AssignMembershipRolesDto } from './dto/assign-membership-roles.dto';
 
 @Controller('memberships')
 @UseGuards(AuthenticationGuard, AuthorizationGuard)
+@UseInterceptors(AuthenticationContextInterceptor, MembershipContextInterceptor)
 export class TenantMembershipController {
   constructor(
     private readonly memberships: MembershipService,
