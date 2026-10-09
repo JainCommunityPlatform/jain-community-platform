@@ -18,6 +18,7 @@ export interface AuthenticatedUserContext extends AuthenticatedUser {
   userId: string;
   tenantId?: string;
   role?: string;
+  roles: string[];
   platformRoles: string[];
 }
 
