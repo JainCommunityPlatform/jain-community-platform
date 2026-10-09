@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../core/routing/app_routes.dart';
 
 import '../data/tenant_member.dart';
 import '../data/tenant_member_repository.dart';
@@ -70,6 +73,24 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
       appBar: AppBar(title: const Text('Members'), actions: [
         IconButton(tooltip: 'Add member', onPressed: mutating ? null : showAdd, icon: const Icon(Icons.person_add_outlined)),
       ]),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: 5,
+        onDestinationSelected: (index) {
+          if (index == 5) {
+            Navigator.of(context).pop();
+            return;
+          }
+          context.go('${AppRoutes.member}?tab=$index');
+        },
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
+          NavigationDestination(icon: Icon(Icons.temple_hindu_outlined), selectedIcon: Icon(Icons.temple_hindu), label: 'Temples'),
+          NavigationDestination(icon: Icon(Icons.event_outlined), selectedIcon: Icon(Icons.event), label: 'Events'),
+          NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined), selectedIcon: Icon(Icons.volunteer_activism), label: 'Donations'),
+          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
+          NavigationDestination(icon: Icon(Icons.admin_panel_settings_outlined), selectedIcon: Icon(Icons.admin_panel_settings), label: 'Manage'),
+        ],
+      ),
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : error != null
