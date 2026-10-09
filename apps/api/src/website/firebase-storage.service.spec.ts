@@ -9,6 +9,8 @@ import { FirebaseStorageService } from './firebase-storage.service';
 describe('FirebaseStorageService', () => {
   beforeEach(() => jest.clearAllMocks());
 
+  const validJpeg = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
+
   it('uses the Firebase project default bucket when no explicit bucket is configured', async () => {
     const file = {
       save: jest.fn().mockResolvedValue(undefined),
@@ -30,13 +32,38 @@ describe('FirebaseStorageService', () => {
       tenantId: 't1',
       filename: 'hero.jpg',
       contentType: 'image/jpeg',
-      buffer: Buffer.from('image'),
+      buffer: validJpeg,
     })).resolves.toMatchObject({
       url: expect.stringContaining('https://firebasestorage.googleapis.com/v0/b/'),
     });
 
     expect((getStorage as jest.Mock).mock.results[0].value.bucket)
       .toHaveBeenCalledWith('jain-community-platform.firebasestorage.app');
+  });
+
+  it('detects a valid image when the client sends application/octet-stream', async () => {
+    const file = {
+      save: jest.fn().mockResolvedValue(undefined),
+      setMetadata: jest.fn().mockResolvedValue(undefined),
+    };
+    const bucket = { file: jest.fn().mockReturnValue(file) };
+    (getStorage as jest.Mock).mockReturnValue({ bucket: jest.fn().mockReturnValue(bucket) });
+    const service = new FirebaseStorageService(
+      { getFirebaseApp: jest.fn().mockReturnValue({}) } as never,
+      { get: jest.fn().mockReturnValue('bucket') } as never,
+    );
+
+    const result = await service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'hero.jpg',
+      contentType: 'application/octet-stream',
+      buffer: validJpeg,
+    });
+
+    expect(result.contentType).toBe('image/jpeg');
+    expect(file.save).toHaveBeenCalledWith(validJpeg, expect.objectContaining({
+      metadata: expect.objectContaining({ contentType: 'image/jpeg' }),
+    }));
   });
 
   it('falls back to the legacy bucket when the current Firebase bucket is unavailable', async () => {
@@ -67,7 +94,7 @@ describe('FirebaseStorageService', () => {
       tenantId: 't1',
       filename: 'hero.jpg',
       contentType: 'image/jpeg',
-      buffer: Buffer.from('image'),
+      buffer: validJpeg,
     })).resolves.toMatchObject({
       url: expect.stringContaining('https://firebasestorage.googleapis.com/v0/b/'),
     });
@@ -102,7 +129,7 @@ describe('FirebaseStorageService', () => {
       tenantId: 't1',
       filename: 'temple hero.jpg',
       contentType: 'image/jpeg',
-      buffer: Buffer.from('image'),
+      buffer: validJpeg,
     });
 
     expect(storage.bucket).toHaveBeenCalledWith('jain-community-platform.firebasestorage.app');
@@ -133,7 +160,7 @@ describe('FirebaseStorageService', () => {
       tenantId: 't1',
       filename: 'hero.jpg',
       contentType: 'image/jpeg',
-      buffer: Buffer.from('image'),
+      buffer: validJpeg,
     })).rejects.toThrow('Firebase Storage upload failed');
   });
 
@@ -168,7 +195,7 @@ describe('FirebaseStorageService', () => {
       tenantId: 't1',
       filename: 'hero photo.jpg',
       contentType: 'image/jpeg',
-      buffer: Buffer.from('image'),
+      buffer: validJpeg,
     });
 
     expect(result.url).toContain('https://firebasestorage.googleapis.com/v0/b/');
