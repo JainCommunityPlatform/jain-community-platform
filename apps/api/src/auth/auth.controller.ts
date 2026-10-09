@@ -50,6 +50,7 @@ export class AuthController {
       userId: currentUser.id,
       tenantId: authorization?.tenantId || undefined,
       role: authorization?.membership?.role,
+      roles: authorization?.membership?.roles ?? [],
       platformRoles: currentUser.platformRoles,
     };
   }
