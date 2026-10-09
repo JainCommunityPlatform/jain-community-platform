@@ -482,29 +482,58 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Theme & header'), findsOneWidget);
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text('Section controls'),
+      250,
+      scrollable: scrollable,
+    );
     expect(find.text('Section controls'), findsOneWidget);
     expect(find.text('Temple directory title'), findsNothing);
 
-    await tester.ensureVisible(find.text('Section controls'));
     await tester.tap(find.text('Section controls'));
     await tester.pumpAndSettle();
-
+    await tester.scrollUntilVisible(
+      find.text('Temple directory title'),
+      250,
+      scrollable: scrollable,
+    );
     expect(find.text('Temple directory title'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Temple team & roles'));
+    await tester.scrollUntilVisible(
+      find.text('Temple team & roles'),
+      350,
+      scrollable: scrollable,
+    );
     await tester.tap(find.text('Temple team & roles'));
     await tester.pumpAndSettle();
     final emailField = find.byWidgetPredicate(
       (widget) => widget is TextField &&
           widget.decoration?.labelText == 'Existing JCP user email',
     );
-    await tester.ensureVisible(emailField);
+    await tester.scrollUntilVisible(
+      emailField,
+      250,
+      scrollable: scrollable,
+    );
     await tester.enterText(emailField, 'member@example.test');
-    await tester.ensureVisible(find.text('Finance — view'));
+    await tester.scrollUntilVisible(
+      find.text('Finance — view'),
+      250,
+      scrollable: scrollable,
+    );
     await tester.tap(find.text('Finance — view'));
-    await tester.ensureVisible(find.text('Inventory manager'));
+    await tester.scrollUntilVisible(
+      find.text('Inventory manager'),
+      250,
+      scrollable: scrollable,
+    );
     await tester.tap(find.text('Inventory manager'));
-    await tester.ensureVisible(find.text('Save roles'));
+    await tester.scrollUntilVisible(
+      find.text('Save roles'),
+      250,
+      scrollable: scrollable,
+    );
     await tester.tap(find.text('Save roles'));
     await tester.pumpAndSettle();
 
