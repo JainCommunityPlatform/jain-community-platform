@@ -8,12 +8,10 @@ import { AuthorizationPolicy } from './authorization.policy';
 import { MembershipContextInterceptor } from './membership-context.interceptor';
 import { MembershipContextStore } from './membership-context.store';
 import { MembershipService } from './membership.service';
-import { TenantMembershipController } from './tenant-membership.controller';
 
 @Global()
 @Module({
   imports: [DatabaseModule, IdentityModule, TenantContextModule],
-  controllers: [TenantMembershipController],
   providers: [
     AuthorizationGuard,
     AuthorizationPolicy,
