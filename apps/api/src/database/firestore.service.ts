@@ -872,11 +872,19 @@ export class FirestoreService implements OnModuleInit {
     for (const invite of snapshot.docs) {
       const tenantId = invite.data().tenantId as string;
       const membershipRef = this.getDb().collection('memberships').doc(membershipId(userId, tenantId));
+      const existing = await membershipRef.get();
+      const data = existing.data() ?? {};
+      const existingRoles = Array.isArray(data.roles)
+        ? (data.roles as unknown[]).filter((role): role is string => typeof role === 'string')
+        : typeof data.role === 'string' ? [data.role as string] : [];
+      const roles = [...new Set([...existingRoles, 'TENANT_ADMIN'])];
       batch.set(membershipRef, {
         userId,
         tenantId,
-        role: 'TENANT_ADMIN',
-        createdAt: Timestamp.now(),
+        role: typeof data.role === 'string' ? data.role : 'TENANT_ADMIN',
+        roles,
+        createdAt: data.createdAt ?? Timestamp.now(),
+        updatedAt: Timestamp.now(),
       }, { merge: true });
       batch.update(invite.ref, { status: 'CLAIMED', userId, claimedAt: Timestamp.now(), updatedAt: Timestamp.now() });
     }
