@@ -52,6 +52,20 @@ export class MembershipService {
 
     const existing = await this.firestore.getMembership(userId, tenantId);
     if (existing) {
+      if (
+        existing.roles.includes('TENANT_ADMIN') &&
+        !roles.includes('TENANT_ADMIN')
+      ) {
+        const tenantMemberships = await this.firestore.listMemberships(tenantId);
+        const adminCount = tenantMemberships.filter((membership) =>
+          membership.roles.includes('TENANT_ADMIN'),
+        ).length;
+        if (adminCount <= 1) {
+          throw new BadRequestException(
+            'At least one temple administrator must remain assigned',
+          );
+        }
+      }
       return this.firestore.updateMembershipRoles(userId, tenantId, roles);
     }
 
