@@ -9,7 +9,7 @@ const TENANT_ROLES = [
   'FINANCE_OPERATOR',
   'FINANCE_APPROVER',
   'CA_AUDITOR',
-] as const;
+];
 
 export class UpdateMembershipRolesDto {
   @IsArray()
