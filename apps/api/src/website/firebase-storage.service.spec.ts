@@ -12,7 +12,7 @@ describe('FirebaseStorageService', () => {
   it('uses the Firebase project default bucket when no explicit bucket is configured', async () => {
     const file = {
       save: jest.fn().mockResolvedValue(undefined),
-      getSignedUrl: jest.fn().mockResolvedValue(['https://example.test/default.jpg']),
+      setMetadata: jest.fn().mockResolvedValue(undefined),
     };
     const bucket = { file: jest.fn().mockReturnValue(file) };
     (getStorage as jest.Mock).mockReturnValue({ bucket: jest.fn().mockReturnValue(bucket) });
@@ -31,7 +31,9 @@ describe('FirebaseStorageService', () => {
       filename: 'hero.jpg',
       contentType: 'image/jpeg',
       buffer: Buffer.from('image'),
-    })).resolves.toMatchObject({ url: 'https://example.test/default.jpg' });
+    })).resolves.toMatchObject({
+      url: expect.stringContaining('https://firebasestorage.googleapis.com/v0/b/'),
+    });
 
     expect((getStorage as jest.Mock).mock.results[0].value.bucket)
       .toHaveBeenCalledWith('jain-community-platform.firebasestorage.app');
@@ -42,7 +44,7 @@ describe('FirebaseStorageService', () => {
       save: jest.fn()
         .mockRejectedValueOnce(new Error('new bucket unavailable'))
         .mockResolvedValueOnce(undefined),
-      getSignedUrl: jest.fn().mockResolvedValue(['https://example.test/legacy.jpg']),
+      setMetadata: jest.fn().mockResolvedValue(undefined),
     };
     const bucket = { file: jest.fn().mockReturnValue(file) };
     const storage = {
@@ -66,15 +68,52 @@ describe('FirebaseStorageService', () => {
       filename: 'hero.jpg',
       contentType: 'image/jpeg',
       buffer: Buffer.from('image'),
-    })).resolves.toMatchObject({ url: 'https://example.test/legacy.jpg' });
+    })).resolves.toMatchObject({
+      url: expect.stringContaining('https://firebasestorage.googleapis.com/v0/b/'),
+    });
 
+    expect(file.setMetadata).toHaveBeenCalledWith({
+      metadata: expect.objectContaining({
+        firebaseStorageDownloadTokens: expect.any(String),
+      }),
+    });
     expect(storage.bucket).toHaveBeenNthCalledWith(2, 'jain-community-platform.appspot.com');
+  });
+
+  it('accepts a gs:// bucket value and returns a tokenized Firebase download URL', async () => {
+    const file = {
+      save: jest.fn().mockResolvedValue(undefined),
+      setMetadata: jest.fn().mockResolvedValue(undefined),
+    };
+    const bucket = { file: jest.fn().mockReturnValue(file) };
+    const storage = { bucket: jest.fn().mockReturnValue(bucket) };
+    (getStorage as jest.Mock).mockReturnValue(storage);
+
+    const service = new FirebaseStorageService(
+      { getFirebaseApp: jest.fn().mockReturnValue({}) } as never,
+      {
+        get: jest.fn((key: string) =>
+          key === 'firebase.storageBucket' ? 'gs://jain-community-platform.firebasestorage.app/' : undefined,
+        ),
+      } as never,
+    );
+
+    const result = await service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'temple hero.jpg',
+      contentType: 'image/jpeg',
+      buffer: Buffer.from('image'),
+    });
+
+    expect(storage.bucket).toHaveBeenCalledWith('jain-community-platform.firebasestorage.app');
+    expect(result.url).toContain('https://firebasestorage.googleapis.com/v0/b/');
+    expect(result.url).toContain('?alt=media&token=');
   });
 
   it('reports a useful error when every candidate bucket fails', async () => {
     const file = {
       save: jest.fn().mockRejectedValue(new Error('permission denied')),
-      getSignedUrl: jest.fn(),
+      setMetadata: jest.fn(),
     };
     const bucket = { file: jest.fn().mockReturnValue(file) };
     (getStorage as jest.Mock).mockReturnValue({
@@ -112,10 +151,10 @@ describe('FirebaseStorageService', () => {
     })).rejects.toThrow('10 MB limit');
   });
 
-  it('uploads a tenant-scoped image and returns a signed URL', async () => {
+  it('uploads a tenant-scoped image and returns a tokenized public URL', async () => {
     const file = {
       save: jest.fn().mockResolvedValue(undefined),
-      getSignedUrl: jest.fn().mockResolvedValue(['https://example.test/image.jpg']),
+      setMetadata: jest.fn().mockResolvedValue(undefined),
     };
     const bucket = { file: jest.fn().mockReturnValue(file) };
     (getStorage as jest.Mock).mockReturnValue({ bucket: jest.fn().mockReturnValue(bucket) });
@@ -132,8 +171,14 @@ describe('FirebaseStorageService', () => {
       buffer: Buffer.from('image'),
     });
 
-    expect(result.url).toBe('https://example.test/image.jpg');
+    expect(result.url).toContain('https://firebasestorage.googleapis.com/v0/b/');
+    expect(result.url).toContain('?alt=media&token=');
     expect(file.save).toHaveBeenCalled();
+    expect(file.setMetadata).toHaveBeenCalledWith({
+      metadata: expect.objectContaining({
+        firebaseStorageDownloadTokens: expect.any(String),
+      }),
+    });
     expect(bucket.file).toHaveBeenCalledWith(expect.stringContaining('tenants/t1/website/'));
   });
 

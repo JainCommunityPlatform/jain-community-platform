@@ -13,6 +13,8 @@ This is implemented as a reusable platform capability; the reference tenant is d
 5. Platform administrators can edit an existing tenant and add additional tenant administrators by user email.
 6. A default website configuration is created automatically.
 7. Temple administrators edit the website through the tenant-scoped admin portal.
+
+Temple image uploads use Firebase Storage download tokens for public website media.
 8. Images are uploaded through the backend and stored under a tenant-specific storage prefix.
 9. Public web requests resolve the tenant from a verified hostname.
 10. Mobile requests select a tenant from the central directory and send the validated tenant ID as an explicit API context.
