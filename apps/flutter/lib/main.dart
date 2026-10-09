@@ -8,6 +8,7 @@ import 'core/auth/firebase_auth_provider.dart';
 import 'core/firebase/firebase_bootstrap.dart';
 import 'core/i18n/app_language.dart';
 import 'core/routing/app_router.dart';
+import 'core/routing/app_routes.dart';
 import 'core/session/app_session_controller.dart';
 import 'core/session/auth_session_service.dart';
 import 'core/tenant/tenant_context.dart';
@@ -97,6 +98,21 @@ class JainCommunityPlatformApp extends StatelessWidget {
             supportedLocales: AppLanguageController.supported,
             localizationsDelegates: GlobalMaterialLocalizations.delegates,
             routerConfig: router.router,
+            builder: (context, child) => PopScope<Object?>(
+              canPop: router.router.canPop(),
+              onPopInvokedWithResult: (didPop, result) {
+                if (didPop) return;
+                final currentPath =
+                    router.router.routeInformationProvider.value.uri.path;
+                if (currentPath != AppRoutes.home) {
+                  tenantSelection.select(null);
+                  router.router.go(AppRoutes.home);
+                } else if (tenantSelection.selected != null) {
+                  tenantSelection.select(null);
+                }
+              },
+              child: child ?? const SizedBox.shrink(),
+            ),
           ),
         ),
       ),
