@@ -62,7 +62,10 @@ class AppRouter {
         ),
         GoRoute(
           path: AppRoutes.member,
-          builder: (_, __) => MemberHomePage(profileRepository: _profileRepository),
+          builder: (_, state) => MemberHomePage(
+            profileRepository: _profileRepository,
+            initialIndex: int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0,
+          ),
         ),
         GoRoute(
           path: AppRoutes.admin,
