@@ -8,6 +8,7 @@ class AppSession {
     this.displayName,
     this.tenantId,
     this.role,
+    this.roles = const [],
     this.needsPhoneLink = false,
     this.platformRoles = const [],
   });
@@ -18,17 +19,25 @@ class AppSession {
   final String? displayName;
   final String? tenantId;
   final String? role;
+  final List<String> roles;
   final bool needsPhoneLink;
   final List<String> platformRoles;
 
-  bool get isAdmin => role == 'TENANT_ADMIN';
+  Set<String> get effectiveRoles => {...roles, if (role != null) role!};
+  bool get isAdmin => effectiveRoles.contains('TENANT_ADMIN');
   bool get isPlatformAdmin => platformRoles.contains('PLATFORM_ADMIN');
-  bool get isFinance => const {
+  bool get isFinance => effectiveRoles.intersection(const {
     'FINANCE_VIEWER',
     'FINANCE_OPERATOR',
     'FINANCE_APPROVER',
     'TENANT_ADMIN',
-  }.contains(role);
+  }).isNotEmpty;
+  bool get isInventory => effectiveRoles.intersection(const {
+    'INVENTORY_VIEWER',
+    'INVENTORY_OPERATOR',
+    'INVENTORY_MANAGER',
+    'TENANT_ADMIN',
+  }).isNotEmpty;
 
   factory AppSession.fromAuthMe(Map<String, dynamic> json) {
     final userId = json['userId'] as String?;
@@ -39,6 +48,11 @@ class AppSession {
       displayName: json['displayName'] as String?,
       tenantId: json['tenantId'] as String?,
       role: json['role'] as String?,
+      roles: (json['roles'] as List<dynamic>? ??
+              json['tenantRoles'] as List<dynamic>? ??
+              const [])
+          .map((item) => item.toString())
+          .toList(),
       needsPhoneLink: json['needsPhoneLink'] as bool? ?? false,
       platformRoles: (json['platformRoles'] as List<dynamic>? ?? const [])
           .map((item) => item.toString())
