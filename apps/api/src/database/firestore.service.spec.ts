@@ -242,6 +242,23 @@ describe('FirestoreService identity/profile persistence', () => {
     expect(memberships[0].user?.displayName).toBe('Older admin');
   });
 
+  it('preserves existing roles when adding a tenant administrator role', async () => {
+    const { instance } = service();
+    await instance.createMembership({
+      userId: 'user-finance',
+      tenantId: 'tenant-1',
+      role: 'FINANCE_VIEWER',
+      roles: ['FINANCE_VIEWER'],
+    });
+
+    await instance.assignTenantAdmin('user-finance', 'tenant-1');
+
+    const membership = await instance.getMembership('user-finance', 'tenant-1');
+    expect(membership?.roles).toEqual(['FINANCE_VIEWER', 'TENANT_ADMIN']);
+    expect((await instance.listTenantAdmins('tenant-1')).map((item) => item.userId))
+      .toContain('user-finance');
+  });
+
   it('resolves tenants and membership lifecycle', async () => {
     const { instance, db } = service();
     expect(await instance.getTenantByHostname('missing.test')).toBeNull();
