@@ -609,24 +609,44 @@ class _AdminManagementState extends State<_AdminManagement> {
                   );
                 }),
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(child: TextField(
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final emailField = TextField(
                     controller: _email,
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(
                       labelText: 'Administrator email',
                       prefixIcon: Icon(Icons.email_outlined),
                     ),
-                  )),
-                  const SizedBox(width: 8),
-                  FilledButton(
+                  );
+                  final addButton = FilledButton(
                     onPressed: _adding ? null : _add,
                     child: _adding
-                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
                         : const Text('Add'),
-                  ),
-                ],
+                  );
+                  if (constraints.maxWidth < 360) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        emailField,
+                        const SizedBox(height: 8),
+                        Align(alignment: Alignment.centerLeft, child: addButton),
+                      ],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(child: emailField),
+                      const SizedBox(width: 8),
+                      addButton,
+                    ],
+                  );
+                },
               ),
             ],
           ],
