@@ -120,14 +120,27 @@ class _PlatformAdminPageState extends State<PlatformAdminPage> {
                   _dialogField(name, 'Temple name'),
                   _dialogField(hostname, 'Primary domain'),
                   _dialogField(address, 'Address', maxLines: 2),
-                  Row(
-                    children: [
-                      Expanded(child: _dialogField(city, 'City')),
-                      const SizedBox(width: 8),
-                      Expanded(child: _dialogField(state, 'State')),
-                      const SizedBox(width: 8),
-                      Expanded(child: _dialogField(pin, 'PIN')),
-                    ],
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      if (constraints.maxWidth < 440) {
+                        return Column(
+                          children: [
+                            _dialogField(city, 'City'),
+                            _dialogField(state, 'State'),
+                            _dialogField(pin, 'PIN'),
+                          ],
+                        );
+                      }
+                      return Row(
+                        children: [
+                          Expanded(child: _dialogField(city, 'City')),
+                          const SizedBox(width: 8),
+                          Expanded(child: _dialogField(state, 'State')),
+                          const SizedBox(width: 8),
+                          Expanded(child: _dialogField(pin, 'PIN')),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 18),
                   _AdminManagement(api: widget.api, tenantId: tenant['id'].toString()),
