@@ -510,6 +510,7 @@ export class FirestoreService implements OnModuleInit {
     userId: string,
     tenantId: string,
     roles: string[],
+    preferredRole?: string,
   ): Promise<FirestoreMembership> {
     const normalizedRoles = [...new Set(roles.map((role) => role.trim()).filter(Boolean))];
     if (normalizedRoles.length === 0) {
@@ -520,9 +521,11 @@ export class FirestoreService implements OnModuleInit {
       .doc(membershipId(userId, tenantId));
     const current = await ref.get();
     const currentRole = current.data()?.role as string | undefined;
-    const role = currentRole && normalizedRoles.includes(currentRole)
-      ? currentRole
-      : normalizedRoles[0];
+    const role = preferredRole && normalizedRoles.includes(preferredRole)
+      ? preferredRole
+      : currentRole && normalizedRoles.includes(currentRole)
+          ? currentRole
+          : normalizedRoles[0];
     await ref.update({ role, roles: normalizedRoles, updatedAt: Timestamp.now() });
 
     return this.toMembership(await ref.get());
@@ -838,7 +841,12 @@ export class FirestoreService implements OnModuleInit {
     const existing = await this.getMembership(userId, tenantId);
     if (existing) {
       if (!existing.roles.includes('TENANT_ADMIN')) {
-        await this.updateMembershipRoles(userId, tenantId, [...existing.roles, 'TENANT_ADMIN']);
+        await this.updateMembershipRoles(
+          userId,
+          tenantId,
+          [...existing.roles, 'TENANT_ADMIN'],
+          'TENANT_ADMIN',
+        );
       }
       return;
     }
@@ -881,7 +889,7 @@ export class FirestoreService implements OnModuleInit {
       batch.set(membershipRef, {
         userId,
         tenantId,
-        role: typeof data.role === 'string' ? data.role : 'TENANT_ADMIN',
+        role: 'TENANT_ADMIN',
         roles,
         createdAt: data.createdAt ?? Timestamp.now(),
         updatedAt: Timestamp.now(),
