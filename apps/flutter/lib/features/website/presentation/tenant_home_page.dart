@@ -150,6 +150,49 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
             ),
         ],
       ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: 1,
+        onDestinationSelected: (index) {
+          if (widget.showPlatformAdmin && index == 5) {
+            context.go(AppRoutes.platformAdmin);
+          } else if (index != 1) {
+            context.go('${AppRoutes.member}?tab=$index');
+          }
+        },
+        destinations: [
+          const NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.temple_hindu_outlined),
+            selectedIcon: Icon(Icons.temple_hindu),
+            label: 'Temples',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.event_outlined),
+            selectedIcon: Icon(Icons.event),
+            label: 'Events',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.volunteer_activism_outlined),
+            selectedIcon: Icon(Icons.volunteer_activism),
+            label: 'Donations',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+          if (widget.showPlatformAdmin)
+            const NavigationDestination(
+              icon: Icon(Icons.admin_panel_settings_outlined),
+              selectedIcon: Icon(Icons.admin_panel_settings),
+              label: 'Manage',
+            ),
+        ],
+      ),
       body: FutureBuilder<List<TenantSummary>>(
         future: _future,
         builder: (context, snapshot) {
