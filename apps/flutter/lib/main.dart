@@ -103,10 +103,8 @@ class JainCommunityPlatformApp extends StatelessWidget {
               builder: (context, _) {
                 final currentPath =
                     router.router.routeInformationProvider.value.uri.path;
-                final atDirectory = currentPath == AppRoutes.home &&
-                    tenantSelection.selected == null;
                 return PopScope<Object?>(
-                  canPop: router.router.canPop() || atDirectory,
+                  canPop: true,
                   onPopInvokedWithResult: (didPop, result) {
                     if (didPop) return;
                     if (currentPath != AppRoutes.home) {
