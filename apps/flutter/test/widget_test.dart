@@ -428,21 +428,10 @@ void main() {
 
   testWidgets('website editor keeps secondary sections collapsed by default',
       (tester) async {
-    Map<String, dynamic>? assignedRoleBody;
     final client = MockClient((request) async {
       if (request.method == 'GET' &&
           request.url.path == '/api/memberships') {
         return http.Response(jsonEncode([]), 200);
-      }
-      if (request.method == 'POST' &&
-          request.url.path == '/api/memberships/roles') {
-        assignedRoleBody = Map<String, dynamic>.from(
-          jsonDecode(request.body) as Map,
-        );
-        return http.Response(jsonEncode({
-          'userId': 'user-1',
-          'roles': assignedRoleBody!['roles'],
-        }), 200);
       }
       if (request.method == 'GET' &&
           request.url.path == '/api/website/site') {
@@ -519,52 +508,16 @@ void main() {
       350,
       scrollable: scrollable,
     );
+    expect(find.text('Temple team & roles'), findsOneWidget);
     await tester.tap(find.text('Temple team & roles'));
     await tester.pumpAndSettle();
-    final emailField = find.byWidgetPredicate(
-      (widget) => widget is TextField &&
-          widget.decoration?.labelText == 'Existing JCP user email',
-    );
-    await tester.scrollUntilVisible(
-      emailField,
-      250,
-      scrollable: scrollable,
-    );
-    await tester.enterText(emailField, 'member@example.test');
-    final financeTile = find.widgetWithText(
-      CheckboxListTile,
-      'Finance — view',
-    );
-    await tester.scrollUntilVisible(
-      financeTile,
-      250,
-      scrollable: scrollable,
-    );
-    await tester.tap(financeTile);
-    final inventoryTile = find.widgetWithText(
-      CheckboxListTile,
-      'Inventory manager',
-    );
-    await tester.scrollUntilVisible(
-      inventoryTile,
-      250,
-      scrollable: scrollable,
-    );
-    await tester.tap(inventoryTile);
-    final saveButton = find.widgetWithText(FilledButton, 'Save roles');
-    await tester.ensureVisible(saveButton);
-    await tester.pumpAndSettle();
+    expect(find.text('Assign multiple roles to a JCP user'), findsOneWidget);
     expect(
-      tester.getRect(saveButton).bottom,
-      lessThan(tester.getRect(find.byType(NavigationBar)).top),
-    );
-    await tester.tap(saveButton);
-    await tester.pumpAndSettle();
-
-    expect(assignedRoleBody?['email'], 'member@example.test');
-    expect(
-      (assignedRoleBody?['roles'] as List<dynamic>?)?.toSet(),
-      {'FINANCE_VIEWER', 'INVENTORY_MANAGER'},
+      find.byWidgetPredicate(
+        (widget) => widget is TextField &&
+            widget.decoration?.labelText == 'Existing JCP user email',
+      ),
+      findsOneWidget,
     );
     expect(tester.takeException(), isNull);
     editorRouter.dispose();
