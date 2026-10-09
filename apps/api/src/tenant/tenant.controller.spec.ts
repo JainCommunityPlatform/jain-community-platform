@@ -36,6 +36,26 @@ describe('TenantController', () => {
     expect(tenantService.resolve).toHaveBeenCalledWith('example.com');
   });
 
+  it('returns a resolved tenant when the hostname is known', async () => {
+    const tenant = {
+      id: 'tenant-1',
+      name: 'Tenant One',
+      hostname: 'tenant.example.com',
+    };
+    tenantService.resolve.mockResolvedValue(tenant);
+
+    await expect(controller.resolve('tenant.example.com')).resolves.toBe(tenant);
+  });
+
+  it('uses an empty hostname when none is supplied', async () => {
+    tenantService.resolve.mockResolvedValue(null);
+
+    await expect(controller.resolve()).rejects.toThrow(
+      new NotFoundException('Tenant not found'),
+    );
+    expect(tenantService.resolve).toHaveBeenCalledWith('');
+  });
+
   it('returns the tenant from the current request context', () => {
     const tenant = {
       id: 'tenant-1',
