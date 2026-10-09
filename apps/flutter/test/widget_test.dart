@@ -172,6 +172,29 @@ void main() {
     controller.dispose();
   });
 
+  testWidgets('platform admin hero stays readable on narrow phones',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final client = MockClient(
+      (_) async => http.Response(jsonEncode([]), 200),
+    );
+    final api = ApiClient(
+      baseUrl: Uri.parse('https://example.test/'),
+      client: client,
+    );
+    await tester.pumpWidget(MaterialApp(home: PlatformAdminPage(api: api)));
+    await _pumpRouter(tester);
+
+    final heading = find.text('Temple administration');
+    expect(heading, findsOneWidget);
+    expect(tester.getSize(heading).width, greaterThan(100));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('temple directory exposes MyJinalay bottom navigation',
       (tester) async {
     final (_, selection, controller) = await _router();
