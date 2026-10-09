@@ -343,7 +343,22 @@ void main() {
 
   testWidgets('website editor keeps secondary sections collapsed by default',
       (tester) async {
+    Map<String, dynamic>? assignedRoleBody;
     final client = MockClient((request) async {
+      if (request.method == 'GET' &&
+          request.url.path == '/api/memberships') {
+        return http.Response(jsonEncode([]), 200);
+      }
+      if (request.method == 'POST' &&
+          request.url.path == '/api/memberships/roles') {
+        assignedRoleBody = Map<String, dynamic>.from(
+          jsonDecode(request.body) as Map,
+        );
+        return http.Response(jsonEncode({
+          'userId': 'user-1',
+          'roles': assignedRoleBody!['roles'],
+        }), 200);
+      }
       if (request.method == 'GET' &&
           request.url.path == '/api/website/site') {
         return http.Response(jsonEncode({
@@ -390,6 +405,29 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Temple directory title'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Temple team & roles'));
+    await tester.tap(find.text('Temple team & roles'));
+    await tester.pumpAndSettle();
+    final emailField = find.byWidgetPredicate(
+      (widget) => widget is TextField &&
+          widget.decoration?.labelText == 'Existing JCP user email',
+    );
+    await tester.ensureVisible(emailField);
+    await tester.enterText(emailField, 'member@example.test');
+    await tester.ensureVisible(find.text('Finance — view'));
+    await tester.tap(find.text('Finance — view'));
+    await tester.ensureVisible(find.text('Inventory manager'));
+    await tester.tap(find.text('Inventory manager'));
+    await tester.ensureVisible(find.text('Save roles'));
+    await tester.tap(find.text('Save roles'));
+    await tester.pumpAndSettle();
+
+    expect(assignedRoleBody?['email'], 'member@example.test');
+    expect(
+      (assignedRoleBody?['roles'] as List<dynamic>?)?.toSet(),
+      {'FINANCE_VIEWER', 'INVENTORY_MANAGER'},
+    );
     expect(tester.takeException(), isNull);
   });
 
