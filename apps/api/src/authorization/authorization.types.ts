@@ -28,5 +28,6 @@ export interface AuthorizationContext {
     userId: string;
     tenantId: string;
     role: MembershipRole;
+    roles: MembershipRole[];
   } | null;
 }
