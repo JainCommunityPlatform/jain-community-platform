@@ -66,6 +66,37 @@ describe('FirebaseStorageService', () => {
     }));
   });
 
+  it('detects HEIC images from iPhone when the picker reports octet-stream', async () => {
+    const file = {
+      save: jest.fn().mockResolvedValue(undefined),
+      setMetadata: jest.fn().mockResolvedValue(undefined),
+    };
+    const bucket = { file: jest.fn().mockReturnValue(file) };
+    (getStorage as jest.Mock).mockReturnValue({
+      bucket: jest.fn().mockReturnValue(bucket),
+    });
+    const service = new FirebaseStorageService(
+      { getFirebaseApp: jest.fn().mockReturnValue({}) } as never,
+      { get: jest.fn().mockReturnValue('bucket') } as never,
+    );
+    const heicBytes = Buffer.concat([
+      Buffer.from([0x00, 0x00, 0x00, 0x18]),
+      Buffer.from('ftypheic'),
+    ]);
+
+    const result = await service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'iphone-photo.heic',
+      contentType: 'application/octet-stream',
+      buffer: heicBytes,
+    });
+
+    expect(result.contentType).toBe('image/heic');
+    expect(file.save).toHaveBeenCalledWith(heicBytes, expect.objectContaining({
+      metadata: expect.objectContaining({ contentType: 'image/heic' }),
+    }));
+  });
+
   it('falls back to the legacy bucket when the current Firebase bucket is unavailable', async () => {
     const file = {
       save: jest.fn()
