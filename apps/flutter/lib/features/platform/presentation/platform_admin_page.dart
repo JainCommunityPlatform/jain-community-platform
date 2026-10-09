@@ -114,7 +114,7 @@ class _PlatformAdminPageState extends State<PlatformAdminPage> {
           title: const Text('Edit temple'),
           content: SingleChildScrollView(
             child: SizedBox(
-              width: 520,
+              width: MediaQuery.sizeOf(dialogContext).width * 0.82,
               child: Column(
                 children: [
                   _dialogField(name, 'Temple name'),
@@ -305,9 +305,30 @@ class _AdminHero extends StatelessWidget {
         BoxShadow(blurRadius: 22, offset: Offset(0, 10)),
       ],
     ),
-    child: Row(
-      children: [
-        Container(
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 600;
+        final heading = const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Temple administration',
+              softWrap: true,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'Onboard temples, manage their administrators and maintain their details.',
+              softWrap: true,
+              style: TextStyle(color: Colors.white70),
+            ),
+          ],
+        );
+        final icon = Container(
           width: 58,
           height: 58,
           decoration: BoxDecoration(
@@ -315,24 +336,41 @@ class _AdminHero extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
           ),
           child: const Icon(Icons.temple_hindu, color: Colors.white, size: 34),
-        ),
-        const SizedBox(width: 16),
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Temple administration', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
-              SizedBox(height: 4),
-              Text('Onboard temples, manage their administrators and maintain their details.', style: TextStyle(color: Colors.white70)),
-            ],
-          ),
-        ),
-        FilledButton.icon(
+        );
+        final addButton = FilledButton.icon(
           onPressed: onAdd,
-          icon: Icon(Icons.add),
-          label: Text('Add temple'),
-        ),
-      ],
+          icon: const Icon(Icons.add),
+          label: const Text('Add temple'),
+        );
+
+        if (compact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  icon,
+                  const SizedBox(width: 12),
+                  Expanded(child: heading),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Align(alignment: Alignment.centerLeft, child: addButton),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            icon,
+            const SizedBox(width: 16),
+            Expanded(child: heading),
+            const SizedBox(width: 16),
+            addButton,
+          ],
+        );
+      },
     ),
   );
 }
