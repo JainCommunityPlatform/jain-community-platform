@@ -32,6 +32,7 @@ class AppRouter {
     final websiteRepository = WebsiteRepository(api);
     _websiteRepository = websiteRepository;
     router = GoRouter(
+      navigatorKey: navigatorKey,
       initialLocation: AppRoutes.home,
       refreshListenable: sessionController,
       redirect: redirect,
@@ -104,6 +105,7 @@ class AppRouter {
   final ProfileRepository _profileRepository;
   final ApiClient _api;
   late final WebsiteRepository _websiteRepository;
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
   late final GoRouter router;
 
   AppSession get currentSession => _sessionController.session;
