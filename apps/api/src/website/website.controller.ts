@@ -12,7 +12,9 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 
 import { AuthenticationGuard } from '../auth/authentication.guard';
+import { AuthenticationContextInterceptor } from '../auth/authentication-context.interceptor';
 import { AuthorizationGuard } from '../authorization/authorization.guard';
+import { MembershipContextInterceptor } from '../authorization/membership-context.interceptor';
 import { RequirePermission } from '../authorization/require-permission.decorator';
 import { AuditService } from '../audit/audit.service';
 import { TenantContextStore } from '../tenant/tenant-context.store';
@@ -36,6 +38,7 @@ export class WebsiteController {
 
   @Put('site')
   @UseGuards(AuthenticationGuard, AuthorizationGuard)
+  @UseInterceptors(AuthenticationContextInterceptor, MembershipContextInterceptor)
   @RequirePermission('content.manage')
   async updateSite(@Body() dto: UpdateWebsiteConfigDto) {
     return this.website.updateCurrent(dto);
@@ -43,6 +46,7 @@ export class WebsiteController {
 
   @Post('site/reset')
   @UseGuards(AuthenticationGuard, AuthorizationGuard)
+  @UseInterceptors(AuthenticationContextInterceptor, MembershipContextInterceptor)
   @RequirePermission('content.manage')
   async resetSite() {
     return this.website.resetCurrent();
@@ -51,7 +55,11 @@ export class WebsiteController {
   @Post('media')
   @UseGuards(AuthenticationGuard, AuthorizationGuard)
   @RequirePermission('content.manage')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  @UseInterceptors(
+    AuthenticationContextInterceptor,
+    MembershipContextInterceptor,
+    FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
   async upload(@UploadedFile() file?: {
     buffer: Buffer;
     originalname: string;
