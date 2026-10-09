@@ -17,7 +17,7 @@ class _MemberHomePageState extends State<MemberHomePage> {
   @override
   void initState() {
     super.initState();
-    selectedIndex = widget.initialIndex.clamp(0, 4);
+    selectedIndex = widget.initialIndex.clamp(0, 4).toInt();
   }
 
   @override
