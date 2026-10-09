@@ -362,17 +362,14 @@ class _AdminHero extends StatelessWidget {
         );
 
         if (compact) {
+          // Stack the icon, copy and action on phones. A side-by-side row
+          // leaves too little width for long translated temple headings.
           return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  icon,
-                  const SizedBox(width: 12),
-                  Expanded(child: heading),
-                ],
-              ),
+              icon,
+              const SizedBox(height: 16),
+              SizedBox(width: double.infinity, child: heading),
               const SizedBox(height: 18),
               Align(alignment: Alignment.centerLeft, child: addButton),
             ],
