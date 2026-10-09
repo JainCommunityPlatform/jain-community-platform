@@ -184,11 +184,13 @@ void main() {
     ));
     await _pumpRouter(tester);
 
-    expect(find.text('Home'), findsOneWidget);
-    expect(find.text('Temples'), findsOneWidget);
-    expect(find.text('Events'), findsOneWidget);
-    expect(find.text('Donations'), findsOneWidget);
-    expect(find.text('Profile'), findsOneWidget);
+    final navigation = find.byType(NavigationBar);
+    for (final label in ['Home', 'Temples', 'Events', 'Donations', 'Profile']) {
+      expect(
+        find.descendant(of: navigation, matching: find.text(label)),
+        findsOneWidget,
+      );
+    }
     expect(tester.takeException(), isNull);
     controller.dispose();
   });
