@@ -115,6 +115,7 @@ class TempleDirectoryPage extends StatefulWidget {
 class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
   late Future<List<TenantSummary>> _future;
   String _query = '';
+  String _selectedCity = 'All';
 
   @override
   void initState() {
@@ -199,10 +200,20 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
       body: FutureBuilder<List<TenantSummary>>(
         future: _future,
         builder: (context, snapshot) {
-          final items = (snapshot.data ?? [])
+          final allTemples = snapshot.data ?? <TenantSummary>[];
+          final cities = allTemples
+              .map((item) => item.city?.trim() ?? '')
+              .where((city) => city.isNotEmpty)
+              .toSet()
+              .toList()
+            ..sort();
+          final items = allTemples
               .where((item) =>
                   item.name.toLowerCase().contains(_query.toLowerCase()) ||
-                  (item.city ?? '').toLowerCase().contains(_query.toLowerCase()))
+                  (item.city ?? '').toLowerCase().contains(_query.toLowerCase()) ||
+                  (item.state ?? '').toLowerCase().contains(_query.toLowerCase()))
+              .where((item) =>
+                  _selectedCity == 'All' || item.city == _selectedCity)
               .toList();
 
           return Center(
@@ -211,8 +222,6 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(18, 18, 18, 40),
                 children: [
-                  _TempleDirectoryHero(strings: strings),
-                  const SizedBox(height: 18),
                   Card(
                     elevation: 0,
                     child: Padding(
@@ -232,13 +241,30 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 12),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final city in ['All', ...cities])
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: FilterChip(
+                              selected: _selectedCity == city,
+                              label: Text(city == 'All' ? 'All temples' : city),
+                              onSelected: (_) => setState(() => _selectedCity = city),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
                   Row(
                     children: [
                       Expanded(
                         child: Text(
                           strings.temples,
-                          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
+                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
                         ),
                       ),
                       if (snapshot.hasData)
@@ -259,36 +285,16 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
                   else if (items.isEmpty)
                     _EmptyContent(message: strings.noTemples)
                   else
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final columns = constraints.maxWidth >= 1000
-                            ? 4
-                            : constraints.maxWidth >= 650
-                                ? 3
-                                : 2;
-                        return GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: items.length,
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: columns,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                            childAspectRatio: 0.78,
-                          ),
-                          itemBuilder: (context, index) {
-                            final temple = items[index];
-                            return _TempleCard(
-                              temple: temple,
-                              onTap: () async {
-                                widget.selection.select(temple.toContext());
-                                await widget.onSelect?.call(temple);
-                              },
-                            );
-                          },
-                        );
-                      },
-                    ),
+                    ...items.map((temple) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _TempleCard(
+                        temple: temple,
+                        onTap: () async {
+                          widget.selection.select(temple.toContext());
+                          await widget.onSelect?.call(temple);
+                        },
+                      ),
+                    )),
                 ],
               ),
             ),
@@ -380,30 +386,54 @@ class _TempleCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       clipBehavior: Clip.antiAlias,
+      elevation: 1,
       child: InkWell(
         onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: _RemoteImage(url: temple.primaryImageUrl, icon: Icons.temple_hindu)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(temple.name, maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 4),
-                  Text(
-                    [temple.city, temple.state].whereType<String>().where((v) => v.isNotEmpty).join(', '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ],
+        child: SizedBox(
+          height: 116,
+          child: Row(
+            children: [
+              SizedBox(
+                width: 112,
+                child: _RemoteImage(
+                  url: temple.primaryImageUrl,
+                  icon: Icons.temple_hindu,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 14),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        temple.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        [temple.city, temple.state]
+                            .whereType<String>()
+                            .where((v) => v.isNotEmpty)
+                            .join(', '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 13, color: Color(0xFF766A60)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Icon(Icons.chevron_right, color: Color(0xFF8B2E1B)),
+              ),
+            ],
+          ),
         ),
       ),
     );
