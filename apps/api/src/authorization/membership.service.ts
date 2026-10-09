@@ -21,6 +21,22 @@ const MEMBERSHIP_ROLES = new Set<MembershipRole>([
 export class MembershipService {
   constructor(private readonly firestore: FirestoreService) {}
 
+  async listTenantMemberships(tenantId: string) {
+    return this.firestore.listMemberships(tenantId);
+  }
+
+  async assignRolesByEmail(
+    email: string,
+    tenantId: string,
+    roles: string[],
+  ) {
+    const user = await this.firestore.findUserByEmail(email.trim().toLowerCase());
+    if (!user) {
+      throw new NotFoundException('No JCP user exists with that email address');
+    }
+    return this.assignRoles(user.id, tenantId, roles);
+  }
+
   async assignRoles(
     userId: string,
     tenantId: string,
