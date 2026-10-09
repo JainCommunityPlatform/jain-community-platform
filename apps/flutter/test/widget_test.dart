@@ -523,6 +523,38 @@ void main() {
     editorRouter.dispose();
   });
 
+  test('website repository sends multiple tenant roles to the API', () async {
+    Map<String, dynamic>? requestBody;
+    final client = MockClient((request) async {
+      if (request.method == 'GET' && request.url.path == '/api/memberships') {
+        return http.Response(jsonEncode([]), 200);
+      }
+      if (request.method == 'POST' && request.url.path == '/api/memberships/roles') {
+        requestBody = Map<String, dynamic>.from(jsonDecode(request.body) as Map);
+        return http.Response(jsonEncode({
+          'userId': 'user-1',
+          'roles': requestBody!['roles'],
+        }), 200);
+      }
+      return http.Response('{}', 404);
+    });
+    final repository = WebsiteRepository(
+      ApiClient(baseUrl: Uri.parse('https://example.test/'), client: client),
+    );
+
+    await expectLater(repository.listTenantMemberships(), completion(isEmpty));
+    await repository.assignTenantRoles(
+      email: 'member@example.test',
+      roles: ['FINANCE_VIEWER', 'INVENTORY_MANAGER'],
+    );
+
+    expect(requestBody?['email'], 'member@example.test');
+    expect(
+      (requestBody?['roles'] as List<dynamic>?)?.toSet(),
+      {'FINANCE_VIEWER', 'INVENTORY_MANAGER'},
+    );
+  });
+
   testWidgets('login page invokes the Google sign-in callback',
       (tester) async {
     var invoked = false;
