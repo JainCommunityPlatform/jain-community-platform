@@ -17,6 +17,7 @@ import 'package:jain_community_platform/core/tenant/tenant_context.dart';
 import 'package:jain_community_platform/core/tenant/tenant_selection_controller.dart';
 import 'package:jain_community_platform/features/auth/presentation/login_page.dart';
 import 'package:jain_community_platform/features/member/presentation/member_home_page.dart';
+import 'package:jain_community_platform/features/platform/presentation/platform_admin_page.dart';
 import 'package:jain_community_platform/features/profile/data/profile_repository.dart';
 import 'package:jain_community_platform/features/tenant/data/tenant_repository.dart';
 import 'package:jain_community_platform/features/website/data/website_repository.dart';
@@ -279,6 +280,51 @@ void main() {
     await tester.tap(find.text('Profile'));
     await _pumpRouter(tester);
     expect(find.text('MyJinalay Member'), findsOneWidget);
+  });
+
+  testWidgets('JCP administration remains readable on a narrow mobile viewport',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final client = MockClient((request) async {
+      if (request.method == 'GET' &&
+          request.url.path == '/api/platform/tenants') {
+        return http.Response(jsonEncode([
+          {
+            'id': 'tenant-1',
+            'name': 'Bade Baba Kharadi',
+            'city': 'Pune',
+            'state': 'Maharashtra',
+            'hostname': 'badebaba.example.test',
+          },
+        ]), 200);
+      }
+      return http.Response(jsonEncode([]), 200);
+    });
+    final api = ApiClient(
+      baseUrl: Uri.parse('https://example.test/'),
+      client: client,
+    );
+
+    await tester.pumpWidget(MaterialApp(home: PlatformAdminPage(api: api)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Temple administration'), findsOneWidget);
+    expect(find.text('Add temple'), findsOneWidget);
+    expect(find.text('Bade Baba Kharadi'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit temple'), findsOneWidget);
+    expect(find.text('City'), findsOneWidget);
+    expect(find.text('State'), findsOneWidget);
+    expect(find.text('PIN'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('login page invokes the Google sign-in callback',
