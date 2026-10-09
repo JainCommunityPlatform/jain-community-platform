@@ -11,6 +11,16 @@ describe('TenantMemberService', () => {
   };
   const tenantContext = { get: jest.fn() };
   const audit = { record: jest.fn() };
+  const membershipService = {
+    assignRoles: jest.fn().mockResolvedValue({
+      id: 'membership-1',
+      userId: 'user-1',
+      tenantId: 'tenant-1',
+      role: 'EVENT_MANAGER',
+      roles: ['EVENT_MANAGER'],
+      createdAt: new Date('2026-01-01'),
+    }),
+  };
 
   let service: TenantMemberService;
 
@@ -25,6 +35,7 @@ describe('TenantMemberService', () => {
       firestore as never,
       tenantContext as never,
       audit as never,
+      membershipService as never,
     );
   });
 
@@ -124,11 +135,12 @@ describe('TenantMemberService', () => {
 
     await service.update('user-1', 'EVENT_MANAGER');
 
-    expect(firestore.updateMembership).toHaveBeenCalledWith(
+    expect(membershipService.assignRoles).toHaveBeenCalledWith(
       'user-1',
       'tenant-1',
-      'EVENT_MANAGER',
+      ['EVENT_MANAGER'],
     );
+    expect(firestore.updateMembership).not.toHaveBeenCalled();
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'MEMBERSHIP_ROLE_CHANGED' }),
     );
