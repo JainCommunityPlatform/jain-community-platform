@@ -27,17 +27,25 @@ export class MembershipService {
   ): Promise<AuthorizationContext['membership']> {
     const membership = await this.firestore.getMembership(userId, tenantId);
 
-    if (
-      !membership ||
-      !MEMBERSHIP_ROLES.has(membership.role as MembershipRole)
-    ) {
-      return null;
-    }
+    if (!membership) return null;
+
+    const roles = [...new Set(
+      (membership.roles?.length ? membership.roles : [membership.role])
+        .filter((role): role is MembershipRole =>
+          MEMBERSHIP_ROLES.has(role as MembershipRole),
+        ),
+    )];
+    if (roles.length === 0) return null;
+
+    const role = roles.includes(membership.role as MembershipRole)
+      ? membership.role as MembershipRole
+      : roles[0];
 
     return {
       userId: membership.userId,
       tenantId: membership.tenantId,
-      role: membership.role as MembershipRole,
+      role,
+      roles,
     };
   }
 }
