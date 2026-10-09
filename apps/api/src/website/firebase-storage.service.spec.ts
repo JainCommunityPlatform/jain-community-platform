@@ -42,7 +42,7 @@ describe('FirebaseStorageService', () => {
       save: jest.fn()
         .mockRejectedValueOnce(new Error('new bucket unavailable'))
         .mockResolvedValueOnce(undefined),
-      getSignedUrl: jest.fn().mockResolvedValue(['https://example.test/legacy.jpg']),
+      setMetadata: jest.fn().mockResolvedValue(undefined),
     };
     const bucket = { file: jest.fn().mockReturnValue(file) };
     const storage = {
@@ -68,7 +68,42 @@ describe('FirebaseStorageService', () => {
       buffer: Buffer.from('image'),
     })).resolves.toMatchObject({ url: 'https://example.test/legacy.jpg' });
 
+    expect(file.setMetadata).toHaveBeenCalledWith({
+      metadata: expect.objectContaining({
+        firebaseStorageDownloadTokens: expect.any(String),
+      }),
+    });
     expect(storage.bucket).toHaveBeenNthCalledWith(2, 'jain-community-platform.appspot.com');
+  });
+
+  it('accepts a gs:// bucket value and returns a tokenized Firebase download URL', async () => {
+    const file = {
+      save: jest.fn().mockResolvedValue(undefined),
+      setMetadata: jest.fn().mockResolvedValue(undefined),
+    };
+    const bucket = { file: jest.fn().mockReturnValue(file) };
+    const storage = { bucket: jest.fn().mockReturnValue(bucket) };
+    (getStorage as jest.Mock).mockReturnValue(storage);
+
+    const service = new FirebaseStorageService(
+      { getFirebaseApp: jest.fn().mockReturnValue({}) } as never,
+      {
+        get: jest.fn((key: string) =>
+          key === 'firebase.storageBucket' ? 'gs://jain-community-platform.firebasestorage.app/' : undefined,
+        ),
+      } as never,
+    );
+
+    const result = await service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'temple hero.jpg',
+      contentType: 'image/jpeg',
+      buffer: Buffer.from('image'),
+    });
+
+    expect(storage.bucket).toHaveBeenCalledWith('jain-community-platform.firebasestorage.app');
+    expect(result.url).toContain('https://firebasestorage.googleapis.com/v0/b/');
+    expect(result.url).toContain('?alt=media&token=');
   });
 
   it('reports a useful error when every candidate bucket fails', async () => {
