@@ -98,20 +98,27 @@ class JainCommunityPlatformApp extends StatelessWidget {
             supportedLocales: AppLanguageController.supported,
             localizationsDelegates: GlobalMaterialLocalizations.delegates,
             routerConfig: router.router,
-            builder: (context, child) => PopScope<Object?>(
-              canPop: router.router.canPop(),
-              onPopInvokedWithResult: (didPop, result) {
-                if (didPop) return;
+            builder: (context, child) => AnimatedBuilder(
+              animation: router.router.routerDelegate,
+              builder: (context, _) {
                 final currentPath =
                     router.router.routeInformationProvider.value.uri.path;
-                if (currentPath != AppRoutes.home) {
-                  tenantSelection.select(null);
-                  router.router.go(AppRoutes.home);
-                } else if (tenantSelection.selected != null) {
-                  tenantSelection.select(null);
-                }
+                final atDirectory = currentPath == AppRoutes.home &&
+                    tenantSelection.selected == null;
+                return PopScope<Object?>(
+                  canPop: router.router.canPop() || atDirectory,
+                  onPopInvokedWithResult: (didPop, result) {
+                    if (didPop) return;
+                    if (currentPath != AppRoutes.home) {
+                      tenantSelection.select(null);
+                      router.router.go(AppRoutes.home);
+                    } else if (tenantSelection.selected != null) {
+                      tenantSelection.select(null);
+                    }
+                  },
+                  child: child ?? const SizedBox.shrink(),
+                );
               },
-              child: child ?? const SizedBox.shrink(),
             ),
           ),
         ),
