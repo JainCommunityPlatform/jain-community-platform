@@ -80,7 +80,9 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
             Navigator.of(context).pop();
             return;
           }
-          context.go('${AppRoutes.member}?tab=$index');
+          final router = GoRouter.of(context);
+          Navigator.of(context).pop();
+          router.go('${AppRoutes.member}?tab=$index');
         },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
