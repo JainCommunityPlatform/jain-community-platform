@@ -715,7 +715,9 @@ class _TeamAccessSectionState extends State<_TeamAccessSection> {
       margin: const EdgeInsets.only(bottom: 12),
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
+        key: const PageStorageKey<String>('Temple team & roles'),
         initiallyExpanded: false,
+        maintainState: true,
         tilePadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
         childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
         title: const Text(
@@ -916,7 +918,9 @@ class _ListEditorSection extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
+        key: PageStorageKey<String>(title),
         initiallyExpanded: false,
+        maintainState: true,
         tilePadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
         childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
         title: Row(
