@@ -214,7 +214,7 @@ void main() {
     ));
     await _pumpRouter(tester);
 
-    appRouter.router.go(AppRoutes.member);
+    appRouter.router.push(AppRoutes.member);
     await _pumpRouter(tester);
     expect(appRouter.router.state.uri.path, AppRoutes.member);
 
@@ -222,7 +222,7 @@ void main() {
     await _pumpRouter(tester);
 
     expect(appRouter.router.state.uri.path, AppRoutes.home);
-    expect(selection.selected, isNull);
+    expect(selection.selected?.id, temple.id);
     appRouter.router.dispose();
     controller.dispose();
     language.dispose();
@@ -517,18 +517,26 @@ void main() {
       scrollable: scrollable,
     );
     await tester.enterText(emailField, 'member@example.test');
+    final financeTile = find.widgetWithText(
+      CheckboxListTile,
+      'Finance — view',
+    );
     await tester.scrollUntilVisible(
-      find.text('Finance — view'),
+      financeTile,
       250,
       scrollable: scrollable,
     );
-    await tester.tap(find.text('Finance — view'));
+    await tester.tap(financeTile);
+    final inventoryTile = find.widgetWithText(
+      CheckboxListTile,
+      'Inventory manager',
+    );
     await tester.scrollUntilVisible(
-      find.text('Inventory manager'),
+      inventoryTile,
       250,
       scrollable: scrollable,
     );
-    await tester.tap(find.text('Inventory manager'));
+    await tester.tap(inventoryTile);
     await tester.scrollUntilVisible(
       find.text('Save roles'),
       250,
