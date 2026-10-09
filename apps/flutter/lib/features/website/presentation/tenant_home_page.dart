@@ -116,6 +116,7 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
   late Future<List<TenantSummary>> _future;
   String _query = '';
   String _selectedCity = 'All';
+  int _selectedTab = 0;
 
   @override
   void initState() {
@@ -155,11 +156,13 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
         ],
       ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: 1,
+        selectedIndex: _selectedTab,
         onDestinationSelected: (index) {
           if (widget.showPlatformAdmin && index == 5) {
             context.go(AppRoutes.platformAdmin);
-          } else if (index != 1) {
+          } else if (index == 0 || index == 1) {
+            setState(() => _selectedTab = index);
+          } else {
             context.go('${AppRoutes.member}?tab=$index');
           }
         },
