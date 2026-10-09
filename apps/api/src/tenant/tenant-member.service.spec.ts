@@ -146,6 +146,25 @@ describe('TenantMemberService', () => {
     );
   });
 
+  it('prevents removing the final tenant administrator', async () => {
+    firestore.getMembership.mockResolvedValue({
+      id: 'membership-1',
+      userId: 'user-1',
+      tenantId: 'tenant-1',
+      role: 'TENANT_ADMIN',
+      roles: ['TENANT_ADMIN'],
+      createdAt: new Date('2026-01-01'),
+    });
+    firestore.listMemberships.mockResolvedValue([
+      { userId: 'user-1', role: 'TENANT_ADMIN', roles: ['TENANT_ADMIN'] },
+    ]);
+
+    await expect(service.remove('user-1')).rejects.toThrow(
+      'At least one temple administrator must remain assigned',
+    );
+    expect(firestore.deleteMembership).not.toHaveBeenCalled();
+  });
+
   it('removes and audits a membership inside the resolved tenant', async () => {
     firestore.getMembership.mockResolvedValue({
       id: 'membership-1',
