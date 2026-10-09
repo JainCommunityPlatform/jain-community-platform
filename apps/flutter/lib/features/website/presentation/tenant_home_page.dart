@@ -82,6 +82,9 @@ class _TenantHomePageState extends State<TenantHomePage> {
           site: snapshot.data!,
           onFindTemples: () => widget.selection.select(null),
           showAdmin: widget.sessionController.session.isAdmin,
+          showFinance: widget.sessionController.session.isFinance,
+          showInventory: widget.sessionController.session.isInventory,
+          showPlatformAdmin: widget.sessionController.session.isPlatformAdmin,
           showSignIn: !widget.sessionController.session.isAuthenticated,
         );
       },
@@ -413,6 +416,9 @@ class _WebsiteView extends StatelessWidget {
     required this.site,
     required this.onFindTemples,
     required this.showAdmin,
+    required this.showFinance,
+    required this.showInventory,
+    required this.showPlatformAdmin,
     required this.showSignIn,
   });
 
@@ -420,6 +426,9 @@ class _WebsiteView extends StatelessWidget {
   final Map<String, dynamic> site;
   final VoidCallback onFindTemples;
   final bool showAdmin;
+  final bool showFinance;
+  final bool showInventory;
+  final bool showPlatformAdmin;
   final bool showSignIn;
 
   @override
@@ -469,9 +478,96 @@ class _WebsiteView extends StatelessWidget {
           ],
         ),
       ),
+      bottomNavigationBar: _TempleBottomNavigation(
+        showAdmin: showAdmin,
+        showFinance: showFinance,
+        showInventory: showInventory,
+        showPlatformAdmin: showPlatformAdmin,
+        onFindTemples: onFindTemples,
+      ),
     );
   }
 }
+
+class _TempleNavItem {
+  const _TempleNavItem({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+}
+
+class _TempleBottomNavigation extends StatelessWidget {
+  const _TempleBottomNavigation({
+    required this.showAdmin,
+    required this.showFinance,
+    required this.showInventory,
+    required this.showPlatformAdmin,
+    required this.onFindTemples,
+  });
+
+  final bool showAdmin;
+  final bool showFinance;
+  final bool showInventory;
+  final bool showPlatformAdmin;
+  final VoidCallback onFindTemples;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <_TempleNavItem>[
+      const _TempleNavItem(label: 'Home', icon: Icons.home_outlined, onTap: _noOp),
+      _TempleNavItem(label: 'Temples', icon: Icons.temple_hindu_outlined, onTap: onFindTemples),
+      _TempleNavItem(label: 'Events', icon: Icons.event_outlined, onTap: () => context.go('${AppRoutes.member}?tab=2')),
+      _TempleNavItem(label: 'Donations', icon: Icons.volunteer_activism_outlined, onTap: () => context.go('${AppRoutes.member}?tab=3')),
+      _TempleNavItem(label: 'Profile', icon: Icons.person_outline, onTap: () => context.go('${AppRoutes.member}?tab=4')),
+      if (showAdmin)
+        _TempleNavItem(label: 'Website', icon: Icons.web_outlined, onTap: () => context.go(AppRoutes.adminSite)),
+      if (showFinance)
+        _TempleNavItem(label: 'Finance', icon: Icons.account_balance_wallet_outlined, onTap: () => context.go(AppRoutes.finance)),
+      if (showInventory)
+        _TempleNavItem(label: 'Inventory', icon: Icons.inventory_2_outlined, onTap: () => context.go(AppRoutes.inventory)),
+      if (showPlatformAdmin)
+        _TempleNavItem(label: 'Manage', icon: Icons.admin_panel_settings_outlined, onTap: () => context.go(AppRoutes.platformAdmin)),
+    ];
+
+    return Material(
+      elevation: 12,
+      color: const Color(0xFFFFFBF1),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 68,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: items.map((item) => InkWell(
+                onTap: item.onTap,
+                child: SizedBox(
+                  width: 76,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(item.icon, size: 22, color: const Color(0xFF8B2E1B)),
+                      const SizedBox(height: 3),
+                      Text(item.label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 11, color: Color(0xFF5D4037))),
+                    ],
+                  ),
+                ),
+              )).toList(),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+void _noOp() {}
 
 class _Header extends StatelessWidget {
   const _Header({required this.tenantName, required this.header, required this.onFindTemples, required this.colors, required this.showAdmin, required this.showSignIn});
