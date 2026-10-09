@@ -473,12 +473,23 @@ void main() {
       client: client,
     ));
 
-    await tester.pumpWidget(MaterialApp(
-      home: WebsiteEditorPage(
-        repository: repository,
-        tenantName: 'Bade Baba Kharadi',
-      ),
-    ));
+    final editorRouter = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, __) => WebsiteEditorPage(
+            repository: repository,
+            tenantName: 'Bade Baba Kharadi',
+          ),
+        ),
+        GoRoute(
+          path: '/member',
+          builder: (_, __) => const Scaffold(body: Text('member page')),
+        ),
+      ],
+    );
+    await tester.pumpWidget(MaterialApp.router(routerConfig: editorRouter));
     await tester.pumpAndSettle();
 
     expect(find.text('Theme & header'), findsOneWidget);
@@ -537,12 +548,14 @@ void main() {
       scrollable: scrollable,
     );
     await tester.tap(inventoryTile);
-    await tester.scrollUntilVisible(
-      find.text('Save roles'),
-      250,
-      scrollable: scrollable,
+    final saveButton = find.widgetWithText(FilledButton, 'Save roles');
+    await tester.ensureVisible(saveButton);
+    await tester.pumpAndSettle();
+    expect(
+      tester.getRect(saveButton).bottom,
+      lessThan(tester.getRect(find.byType(NavigationBar)).top),
     );
-    await tester.tap(find.text('Save roles'));
+    await tester.tap(saveButton);
     await tester.pumpAndSettle();
 
     expect(assignedRoleBody?['email'], 'member@example.test');
@@ -551,6 +564,7 @@ void main() {
       {'FINANCE_VIEWER', 'INVENTORY_MANAGER'},
     );
     expect(tester.takeException(), isNull);
+    editorRouter.dispose();
   });
 
   testWidgets('login page invokes the Google sign-in callback',
