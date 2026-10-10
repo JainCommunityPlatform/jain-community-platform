@@ -55,7 +55,7 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(find.text('Arpit Jain'), findsOneWidget);
+    expect(find.text('Arpit Jain'), findsNWidgets(2));
     expect(find.text('Edit'), findsOneWidget);
     expect(find.text('Save profile'), findsNothing);
     final nameField = tester.widget<TextField>(
@@ -80,6 +80,8 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.text('Sign out'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
     expect(find.text('Sign out?'), findsOneWidget);
