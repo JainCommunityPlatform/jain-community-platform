@@ -110,6 +110,37 @@ describe('NotificationDeliveryService', () => {
     expect(result.errorMessage).toBe('Unknown provider error');
   });
 
+  it('treats an unreadable successful email response as a successful delivery without an id', async () => {
+    process.env.RESEND_API_KEY = 'test-key';
+    process.env.NOTIFICATION_EMAIL_FROM = 'JCP <updates@example.org>';
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true, status: 200, json: async () => { throw new Error('invalid provider JSON'); },
+    } as unknown as Response);
+    const result = await service().deliver(input);
+    expect(result.status).toBe('SENT');
+    expect(result.providerMessageId).toBeUndefined();
+  });
+
+  it('records WhatsApp API rejection details as a failed delivery', async () => {
+    process.env.WHATSAPP_ACCESS_TOKEN = 'test-token';
+    process.env.WHATSAPP_PHONE_NUMBER_ID = 'phone-id';
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: false, status: 400, json: async () => ({ error: { message: 'Invalid recipient', code: 131030 } }),
+    } as Response);
+    const result = await service().deliver({ ...input, channel: 'WHATSAPP', recipient: '919876543210' });
+    expect(result.status).toBe('FAILED');
+    expect(result.errorMessage).toContain('WhatsApp HTTP 400: Invalid recipient');
+  });
+
+  it('handles Firebase Admin becoming unavailable between readiness check and send', async () => {
+    (getApps as jest.Mock)
+      .mockReturnValueOnce([{ name: 'test-app' }])
+      .mockReturnValueOnce([]);
+    const result = await service().deliver({ ...input, channel: 'PUSH', recipient: 'fcm-token' });
+    expect(result.status).toBe('FAILED');
+    expect(result.errorMessage).toContain('Firebase Admin is not initialized');
+  });
+
   it('sends WhatsApp messages using the configured Cloud API phone number', async () => {
     process.env.WHATSAPP_ACCESS_TOKEN = 'test-token';
     process.env.WHATSAPP_PHONE_NUMBER_ID = 'phone-id';
