@@ -90,7 +90,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Sign out?'), findsOneWidget);
     await tester.tap(find.widgetWithText(FilledButton, 'Sign out').last);
-    await tester.pumpAndSettle();
+    // The page intentionally shows an indeterminate spinner while sign-out
+    // is in progress; pump once rather than waiting for all animations to stop.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
     expect(signedOut, isTrue);
   });
 }
