@@ -173,8 +173,18 @@ class ApiClient {
   String _errorMessage(http.Response response) {
     try {
       final decoded = jsonDecode(response.body);
-      if (decoded is Map<String, dynamic> && decoded['message'] is String) {
-        return decoded['message'] as String;
+      if (decoded is Map<String, dynamic>) {
+        final message = decoded['message'];
+        if (message is String && message.isNotEmpty) return message;
+        if (message is List) {
+          final details = message
+              .map((item) => item.toString().trim())
+              .where((item) => item.isNotEmpty)
+              .toList();
+          if (details.isNotEmpty) return details.join('; ');
+        }
+        final error = decoded['error'];
+        if (error is String && error.isNotEmpty) return error;
       }
     } catch (_) {
       // Fall through to the status text.
