@@ -65,7 +65,7 @@ export class AuthorizationPolicy {
     ]);
     const financeAccessForbidden =
       roles.includes('TENANT_ADMIN') ||
-      context.platformRoles.includes('PLATFORM_ADMIN');
+      (context.platformRoles ?? []).includes('PLATFORM_ADMIN');
     const effectiveRoles = financeAccessForbidden
       ? roles.filter((role) => !financeRoles.has(role))
       : roles;
