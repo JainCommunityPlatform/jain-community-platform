@@ -508,7 +508,10 @@ void main() {
     // ListView lazily builds off-screen sections. Resolve the Scrollable
     // that is an ancestor of this ListView (not the reverse relationship and
     // not the app's first/nested scrollable) before scrolling to later cards.
-    final editorScrollable = find.ancestor(
+    // The Scrollable is built inside ListView, so it must be found
+    // among the ListView's descendants. Using ancestor() returns no match
+    // and makes scrollUntilVisible throw StateError: No element.
+    final editorScrollable = find.descendant(
       of: find.byType(ListView).first,
       matching: find.byType(Scrollable),
     ).first;
