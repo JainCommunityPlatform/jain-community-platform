@@ -15,7 +15,11 @@ import { AuthenticationGuard } from '../auth/authentication.guard';
 import { AuthenticationContextInterceptor } from '../auth/authentication-context.interceptor';
 import { AuthContextStore } from '../auth/auth-context.store';
 import { AuthorizationGuard } from '../authorization/authorization.guard';
-import { MembershipService, FINANCIAL_MEMBERSHIP_ROLES } from '../authorization/membership.service';
+import {
+  FINANCIAL_MEMBERSHIP_ROLES,
+  MembershipService,
+} from '../authorization/membership.service';
+import { MembershipRole } from '../authorization/authorization.types';
 import { MembershipContextInterceptor } from '../authorization/membership-context.interceptor';
 import { RequirePermission } from '../authorization/require-permission.decorator';
 import { FirestoreService } from '../database/firestore.service';
@@ -44,7 +48,7 @@ export class FinanceTeamController {
         email: membership.user?.email ?? null,
         displayName: membership.user?.displayName ?? null,
         roles: (membership.roles?.length ? membership.roles : [membership.role])
-          .filter((role) => FINANCIAL_MEMBERSHIP_ROLES.has(role as never)),
+          .filter((role) => FINANCIAL_MEMBERSHIP_ROLES.has(role as MembershipRole)),
       }))
       .filter((membership) => membership.roles.length > 0);
   }
@@ -91,7 +95,11 @@ export class FinanceTeamController {
   ) {
     await this.ensureTenantExists(tenantId);
     const actor = await this.requireActor();
-    const result = await this.memberships.revokeFinancialRole(userId, tenantId, role);
+    const result = await this.memberships.revokeFinancialRole(
+      userId,
+      tenantId,
+      role,
+    );
     await this.firestore.recordAudit({
       tenantId,
       userId: actor.id,
@@ -110,7 +118,7 @@ export class FinanceTeamController {
       userId,
       tenantId,
       roles: result.roles.filter((currentRole) =>
-        FINANCIAL_MEMBERSHIP_ROLES.has(currentRole as never),
+        FINANCIAL_MEMBERSHIP_ROLES.has(currentRole as MembershipRole),
       ),
       membershipDeleted: result.membershipDeleted,
     };
@@ -125,7 +133,9 @@ export class FinanceTeamController {
   private async requireActor() {
     const authenticated = this.auth.get();
     const actor = authenticated ? await this.identity.resolve(authenticated) : null;
-    if (!actor) throw new UnauthorizedException('Authenticated platform user is required');
+    if (!actor) {
+      throw new UnauthorizedException('Authenticated platform user is required');
+    }
     return actor;
   }
 }
