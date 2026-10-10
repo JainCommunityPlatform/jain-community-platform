@@ -5,6 +5,8 @@ describe('NotificationsController', () => {
   const notifications = {
     listForUser: jest.fn(),
     markRead: jest.fn(),
+    getPreferences: jest.fn(),
+    updatePreferences: jest.fn(),
   };
   const tenantContext = { get: jest.fn() };
   const auth = { get: jest.fn() };
@@ -30,6 +32,19 @@ describe('NotificationsController', () => {
     expect(notifications.listForUser).toHaveBeenCalledWith('tenant-a', 'user-a');
   });
 
+  it('gets preferences for the authenticated user and tenant', async () => {
+    notifications.getPreferences.mockResolvedValue({ tenantId: 'tenant-a', userId: 'user-a', email: false, whatsapp: true, push: false });
+    await expect(controller().getMyPreferences()).resolves.toMatchObject({ whatsapp: true });
+    expect(notifications.getPreferences).toHaveBeenCalledWith('tenant-a', 'user-a');
+  });
+
+  it('updates only the authenticated user preferences in the current tenant', async () => {
+    const input = { email: true, whatsapp: false, push: true };
+    notifications.updatePreferences.mockResolvedValue({ tenantId: 'tenant-a', userId: 'user-a', ...input });
+    await expect(controller().updateMyPreferences(input)).resolves.toMatchObject(input);
+    expect(notifications.updatePreferences).toHaveBeenCalledWith({ tenantId: 'tenant-a', userId: 'user-a', ...input });
+  });
+
   it('marks only the authenticated user notification as read', async () => {
     notifications.markRead.mockResolvedValue({ id: 'n-1', readAt: new Date() });
     await expect(controller().markMineRead('n-1')).resolves.toMatchObject({ id: 'n-1' });
@@ -40,6 +55,8 @@ describe('NotificationsController', () => {
     tenantContext.get.mockReturnValue(null);
     await expect(controller().listMine()).rejects.toBeInstanceOf(BadRequestException);
     await expect(controller().markMineRead('n-1')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(controller().getMyPreferences()).rejects.toBeInstanceOf(BadRequestException);
+    await expect(controller().updateMyPreferences({ email: true, whatsapp: false, push: false })).rejects.toBeInstanceOf(BadRequestException);
     expect(notifications.listForUser).not.toHaveBeenCalled();
     expect(notifications.markRead).not.toHaveBeenCalled();
   });
@@ -48,5 +65,7 @@ describe('NotificationsController', () => {
     identity.resolve.mockResolvedValue(null);
     await expect(controller().listMine()).rejects.toBeInstanceOf(UnauthorizedException);
     await expect(controller().markMineRead('n-1')).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(controller().getMyPreferences()).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(controller().updateMyPreferences({ email: true, whatsapp: false, push: false })).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });
