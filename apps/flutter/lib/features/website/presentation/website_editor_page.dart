@@ -7,10 +7,18 @@ import '../../../core/routing/app_routes.dart';
 import '../data/website_repository.dart';
 
 class WebsiteEditorPage extends StatefulWidget {
-  const WebsiteEditorPage({required this.repository, required this.tenantName, super.key});
+  const WebsiteEditorPage({
+    required this.repository,
+    required this.tenantName,
+    this.imagePicker,
+    super.key,
+  });
 
   final WebsiteRepository repository;
   final String tenantName;
+  // Injectable so the image-selection and upload journey can be tested without
+  // depending on a device file-picker plugin channel.
+  final Future<FilePickerResult?> Function()? imagePicker;
 
   @override
   State<WebsiteEditorPage> createState() => _WebsiteEditorPageState();
@@ -134,13 +142,19 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
     }
   }
 
+  Future<FilePickerResult?> _pickImage() {
+    final picker = widget.imagePicker;
+    if (picker != null) return picker();
+    return FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'],
+      withData: true,
+    );
+  }
+
   Future<void> _uploadTo(TextEditingController target) async {
     try {
-      final result = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
-        withData: true,
-      );
+      final result = await _pickImage();
       if (result == null || result.files.isEmpty) return;
       final file = result.files.single;
       final bytes = file.bytes;
@@ -287,6 +301,8 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
       for (final field in fields)
         field: TextEditingController(text: initial[field]?.toString() ?? ''),
     };
+    var uploadingImage = false;
+    String? imageMessage;
 
     try {
       return await showDialog<Map<String, dynamic>>(
@@ -317,41 +333,73 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
                                 : 'चित्र URL तैयार है',
                           )),
                           OutlinedButton.icon(
-                            onPressed: () async {
-                              final result = await FilePicker.pickFiles(
-                                type: FileType.custom,
-                                allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
-                                withData: true,
-                              );
+                            onPressed: uploadingImage ? null : () async {
+                              final result = await _pickImage();
                               if (result == null || result.files.isEmpty) return;
                               final file = result.files.single;
                               final bytes = file.bytes;
-                              if (bytes == null || bytes.isEmpty) return;
+                              if (bytes == null || bytes.isEmpty) {
+                                setDialogState(() => imageMessage = 'Could not read the selected image.');
+                                return;
+                              }
+                              if (bytes.length > 10 * 1024 * 1024) {
+                                setDialogState(() => imageMessage = 'Please choose an image smaller than 10 MB.');
+                                return;
+                              }
+                              setDialogState(() {
+                                uploadingImage = true;
+                                imageMessage = null;
+                              });
                               try {
                                 final url = await widget.repository.uploadImage(bytes, file.name);
                                 controllers[imageField]?.text = url;
-                                setDialogState(() {});
+                                if (dialogContext.mounted) {
+                                  setDialogState(() => imageMessage = 'Image uploaded. Save this item, then Save & Publish Website.');
+                                }
                               } catch (error) {
                                 if (dialogContext.mounted) {
-                                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                                    SnackBar(content: Text('Upload failed: $error')),
-                                  );
+                                  setDialogState(() => imageMessage = 'Upload failed: $error');
+                                }
+                              } finally {
+                                if (dialogContext.mounted) {
+                                  setDialogState(() => uploadingImage = false);
                                 }
                               }
                             },
-                            icon: const Icon(Icons.upload),
-                            label: const Text('Upload'),
+                            icon: uploadingImage
+                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                                : const Icon(Icons.upload),
+                            label: Text(uploadingImage ? 'Uploading…' : 'Upload'),
                           ),
                         ],
+                      ),
+                    if (uploadingImage) const LinearProgressIndicator(),
+                    if (imageMessage != null)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            imageMessage!,
+                            style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
+                              color: imageMessage!.startsWith('Upload failed')
+                                  ? Theme.of(dialogContext).colorScheme.error
+                                  : null,
+                            ),
+                          ),
+                        ),
                       ),
                   ],
                 ),
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancel')),
+              TextButton(
+                onPressed: uploadingImage ? null : () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
               FilledButton(
-                onPressed: () {
+                onPressed: uploadingImage ? null : () {
                   Navigator.of(dialogContext).pop({
                     for (final field in fields)
                       field: controllers[field]!.text.trim(),
