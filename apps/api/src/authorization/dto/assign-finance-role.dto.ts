@@ -12,6 +12,6 @@ export class AssignFinanceRoleDto {
   @IsEmail()
   email!: string;
 
-  @IsIn(FINANCIAL_ROLE_NAMES)
+  @IsIn([...FINANCIAL_ROLE_NAMES])
   role!: (typeof FINANCIAL_ROLE_NAMES)[number];
 }
