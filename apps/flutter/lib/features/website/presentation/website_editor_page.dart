@@ -432,6 +432,11 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (_message != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: _Message(message: _message!),
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               child: SizedBox(
@@ -464,7 +469,6 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          if (_message != null) _Message(message: _message!),
           _EditorSection(
             title: 'Theme & header',
             children: [
