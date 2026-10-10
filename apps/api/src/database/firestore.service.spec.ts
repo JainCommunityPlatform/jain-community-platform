@@ -456,9 +456,9 @@ describe('FirestoreService donation payment workflow', () => {
   }
 
   it('requires a different approver and only counts a payment after verification', async () => {
-    const { instance } = await setup();
+    const { instance, pledge } = await setup();
     const payment = await instance.recordDonationPayment({
-      tenantId: 'tenant-a', pledgeId: (await setup()).pledge.id,
+      tenantId: 'tenant-a', pledgeId: pledge.id,
       actorUserId: 'finance-operator', amountPaise: 25000, method: 'UPI',
       reference: 'UPI-123', idempotencyKey: 'payment-key',
     });
