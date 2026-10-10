@@ -12,6 +12,9 @@ describe('GivingController', () => {
     approvePayment: jest.fn(),
     rejectPayment: jest.fn(),
     listTenantPayments: jest.fn(),
+    listTenantReceipts: jest.fn(),
+    listMyReceipts: jest.fn(),
+    getFinanceReport: jest.fn(),
   };
   const tenantContext = { get: jest.fn().mockReturnValue({ id: 'tenant-a' }) };
   const auth = { get: jest.fn().mockReturnValue({ uid: 'auth-user' }) };
@@ -40,6 +43,21 @@ describe('GivingController', () => {
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({
       action: 'DONATION_PLEDGE_CREATED', entityId: 'pledge-1',
     }));
+  });
+
+  it('restricts donor receipts to the authenticated identity and tenant', async () => {
+    giving.listMyReceipts.mockResolvedValue([{ id: 'receipt-1', tenantId: 'tenant-a', donorUserId: 'user-a' }]);
+    await expect(controller().listMyReceipts()).resolves.toMatchObject([{ donorUserId: 'user-a' }]);
+    expect(giving.listMyReceipts).toHaveBeenCalledWith('tenant-a', 'user-a');
+  });
+
+  it('uses the resolved tenant for finance receipts and reports', async () => {
+    giving.listTenantReceipts.mockResolvedValue([]);
+    giving.getFinanceReport.mockResolvedValue({ tenantId: 'tenant-a', totals: {} });
+    await controller().listTenantReceipts();
+    await controller().financeReport();
+    expect(giving.listTenantReceipts).toHaveBeenCalledWith('tenant-a');
+    expect(giving.getFinanceReport).toHaveBeenCalledWith('tenant-a');
   });
 
   it('returns donor history for the current identity and tenant only', async () => {
