@@ -30,7 +30,7 @@ export class AuthorizationPolicy {
     if (!context.platformRoles.includes('PLATFORM_ADMIN')) {
       throw new ForbiddenException('Platform administrator permission is required');
     }
-    if (permission !== 'platform.tenant.manage') {
+    if (!['platform.tenant.manage', 'platform.finance.team.manage'].includes(permission)) {
       throw new ForbiddenException('Platform permission is not supported');
     }
   }
@@ -57,8 +57,17 @@ export class AuthorizationPolicy {
     const roles = context.membership!.roles?.length
       ? context.membership!.roles
       : [context.membership!.role];
+    // Separation of duties is an invariant, not merely an assignment-UI rule:
+    // a tenant administrator must never gain finance/audit access through role union.
+    const financeRoles = new Set([
+      'TENANT_FINANCE', 'FINANCE_VIEWER', 'FINANCE_OPERATOR',
+      'FINANCE_APPROVER', 'CA_AUDITOR',
+    ]);
+    const effectiveRoles = roles.includes('TENANT_ADMIN')
+      ? roles.filter((role) => !financeRoles.has(role))
+      : roles;
     const permissions = new Set(
-      roles.flatMap((role) => ROLE_PERMISSIONS[role] ?? []),
+      effectiveRoles.flatMap((role) => ROLE_PERMISSIONS[role] ?? []),
     );
     if (!permissions.has(permission)) {
       throw new ForbiddenException('Permission denied');
