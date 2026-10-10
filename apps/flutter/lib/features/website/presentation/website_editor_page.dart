@@ -418,7 +418,7 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
       appBar: AppBar(
         title: const Text('Temple Website Editor'),
         actions: [
-          if (_saving || _uploading)
+          if (_saving || _uploadingTarget != null)
             const Padding(
               padding: EdgeInsets.all(16),
               child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)),
@@ -1043,29 +1043,6 @@ class _ListEditorSection extends StatelessWidget {
       ),
     );
   }
-}
-
-class _BusyBanner extends StatelessWidget {
-  const _BusyBanner({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 14),
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.primaryContainer,
-      borderRadius: BorderRadius.circular(14),
-    ),
-    child: Row(
-      children: [
-        const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-        const SizedBox(width: 12),
-        Expanded(child: Text(message)),
-      ],
-    ),
-  );
 }
 
 Widget _colorField(TextEditingController controller, String label) => StatefulBuilder(
