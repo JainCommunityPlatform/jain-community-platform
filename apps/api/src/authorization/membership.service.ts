@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { FirestoreService } from '../database/firestore.service';
 import {
@@ -7,7 +12,11 @@ import {
 } from './authorization.types';
 
 export const FINANCIAL_MEMBERSHIP_ROLES = new Set<MembershipRole>([
-  'TENANT_FINANCE', 'FINANCE_VIEWER', 'FINANCE_OPERATOR', 'FINANCE_APPROVER', 'CA_AUDITOR',
+  'TENANT_FINANCE',
+  'FINANCE_VIEWER',
+  'FINANCE_OPERATOR',
+  'FINANCE_APPROVER',
+  'CA_AUDITOR',
 ]);
 
 const MEMBERSHIP_ROLES = new Set<MembershipRole>([
@@ -48,7 +57,10 @@ export class MembershipService {
     requestedRoles: string[],
   ) {
     const roles = [...new Set(requestedRoles)];
-    if (roles.length === 0 || roles.some((role) => !MEMBERSHIP_ROLES.has(role as MembershipRole))) {
+    if (
+      roles.length === 0 ||
+      roles.some((role) => !MEMBERSHIP_ROLES.has(role as MembershipRole))
+    ) {
       throw new BadRequestException('At least one supported tenant role is required');
     }
 
@@ -94,16 +106,26 @@ export class MembershipService {
     const user = await this.firestore.findUserByEmail(email.trim().toLowerCase());
     if (!user) throw new NotFoundException('No JCP user exists with that email address');
     if (user.id === actorUserId) {
-      throw new ForbiddenException('Platform administrators cannot assign financial access to themselves');
+      throw new ForbiddenException(
+        'Platform administrators cannot assign financial access to themselves',
+      );
     }
     if (user.platformRoles?.includes('PLATFORM_ADMIN')) {
-      throw new ForbiddenException('Platform administrators cannot be assigned tenant financial roles');
+      throw new ForbiddenException(
+        'Platform administrators cannot be assigned tenant financial roles',
+      );
     }
 
     const existing = await this.firestore.getMembership(user.id, tenantId);
-    const existingRoles = existing?.roles?.length ? existing.roles : existing ? [existing.role] : [];
+    const existingRoles = existing?.roles?.length
+      ? existing.roles
+      : existing
+        ? [existing.role]
+        : [];
     if (existingRoles.includes('TENANT_ADMIN')) {
-      throw new ForbiddenException('Tenant administrators cannot be assigned financial roles');
+      throw new ForbiddenException(
+        'Tenant administrators cannot be assigned financial roles',
+      );
     }
     return this.assignRoles(user.id, tenantId, [...existingRoles, role]);
   }
@@ -114,14 +136,21 @@ export class MembershipService {
     }
     const existing = await this.firestore.getMembership(userId, tenantId);
     if (!existing) throw new NotFoundException('Tenant membership not found');
-    const currentRoles = existing.roles?.length ? existing.roles : [existing.role];
+    const currentRoles = existing.roles?.length
+      ? existing.roles
+      : [existing.role];
     if (!currentRoles.includes(role)) {
       throw new NotFoundException('The requested financial role is not assigned');
     }
     const remainingRoles = currentRoles.filter((currentRole) => currentRole !== role);
     if (remainingRoles.length === 0) {
       await this.firestore.deleteMembership(userId, tenantId);
-      return { ...existing, roles: [], membershipDeleted: true, previousRoles: currentRoles };
+      return {
+        ...existing,
+        roles: [],
+        membershipDeleted: true,
+        previousRoles: currentRoles,
+      };
     }
     const membership = await this.assignRoles(userId, tenantId, remainingRoles);
     return { ...membership, membershipDeleted: false, previousRoles: currentRoles };
@@ -135,12 +164,14 @@ export class MembershipService {
 
     if (!membership) return null;
 
-    const roles = [...new Set(
-      (membership.roles?.length ? membership.roles : [membership.role])
-        .filter((role): role is MembershipRole =>
-          MEMBERSHIP_ROLES.has(role as MembershipRole),
+    const roles = [
+      ...new Set(
+        (membership.roles?.length ? membership.roles : [membership.role]).filter(
+          (role): role is MembershipRole =>
+            MEMBERSHIP_ROLES.has(role as MembershipRole),
         ),
-    )];
+      ),
+    ];
     if (roles.length === 0) return null;
 
     const role = roles.includes(membership.role as MembershipRole)
