@@ -7,7 +7,11 @@ describe('TenantMembershipController', () => {
   const context = {
     get: jest.fn().mockReturnValue({ userId: 'actor-a', tenantId: 'tenant-a' }),
   };
-  const firestore = { recordAudit: jest.fn().mockResolvedValue(undefined) };
+  const firestore = {
+    recordAudit: jest.fn().mockResolvedValue(undefined),
+    findUserByEmail: jest.fn().mockResolvedValue(null),
+    getMembership: jest.fn().mockResolvedValue(null),
+  };
   const memberships = {
     listTenantMemberships: jest.fn().mockResolvedValue([
       {
@@ -95,9 +99,32 @@ describe('TenantMembershipController', () => {
     expect(memberships.assignRolesByEmail).not.toHaveBeenCalled();
   });
 
+  it('rejects overwriting an existing finance membership through assignment by email', async () => {
+    firestore.findUserByEmail.mockResolvedValue({ id: 'user-a' });
+    firestore.getMembership.mockResolvedValue({
+      id: 'user-a__tenant-a', userId: 'user-a', tenantId: 'tenant-a',
+      role: 'FINANCE_VIEWER', roles: ['FINANCE_VIEWER'],
+    });
+    await expect(controller().assignRolesByEmail({
+      email: 'member@example.test', roles: ['CONTENT_MANAGER'],
+    })).rejects.toThrow(ForbiddenException);
+    expect(memberships.assignRolesByEmail).not.toHaveBeenCalled();
+  });
+
   it('rejects financial role changes through the general membership endpoint', async () => {
     await expect(controller().updateRoles('user-a', {
       roles: ['TENANT_FINANCE'],
+    })).rejects.toThrow(ForbiddenException);
+    expect(memberships.assignRoles).not.toHaveBeenCalled();
+  });
+
+  it('rejects removing a financial role through the general membership update endpoint', async () => {
+    firestore.getMembership.mockResolvedValue({
+      id: 'user-a__tenant-a', userId: 'user-a', tenantId: 'tenant-a',
+      role: 'FINANCE_VIEWER', roles: ['FINANCE_VIEWER'],
+    });
+    await expect(controller().updateRoles('user-a', {
+      roles: ['CONTENT_MANAGER'],
     })).rejects.toThrow(ForbiddenException);
     expect(memberships.assignRoles).not.toHaveBeenCalled();
   });
