@@ -899,6 +899,194 @@ export class FirestoreService implements OnModuleInit {
     await batch.commit();
   }
 
+  async createGivingCampaign(input: {
+    tenantId: string;
+    actorUserId: string;
+    name: string;
+    description?: string;
+    targetAmountPaise?: number;
+  }) {
+    if (!Number.isSafeInteger(input.targetAmountPaise ?? 1) || (input.targetAmountPaise ?? 1) < 1) {
+      throw new Error('Campaign target amount must be a positive safe integer in paise');
+    }
+    const id = randomUUID();
+    const now = Timestamp.now();
+    const campaign = {
+      id,
+      tenantId: input.tenantId,
+      name: input.name.trim(),
+      description: input.description?.trim() || null,
+      targetAmountPaise: input.targetAmountPaise ?? null,
+      currency: 'INR',
+      status: 'DRAFT',
+      createdBy: input.actorUserId,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await this.getDb().collection('givingCampaigns').doc(id).create(campaign);
+    return { ...campaign, createdAt: now.toDate(), updatedAt: now.toDate() };
+  }
+
+  async listGivingCampaigns(tenantId: string, includeInactive = false) {
+    const snapshot = await this.getDb().collection('givingCampaigns')
+      .where('tenantId', '==', tenantId).get();
+    return snapshot.docs
+      .map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          tenantId: data.tenantId as string,
+          name: data.name as string,
+          description: (data.description as string | null) ?? undefined,
+          targetAmountPaise: (data.targetAmountPaise as number | null) ?? undefined,
+          currency: 'INR' as const,
+          status: data.status as 'DRAFT' | 'ACTIVE' | 'CLOSED',
+          createdBy: data.createdBy as string,
+          createdAt: toDate(data.createdAt),
+          updatedAt: toDate(data.updatedAt),
+        };
+      })
+      .filter((campaign) => includeInactive || campaign.status === 'ACTIVE')
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async updateGivingCampaignStatus(
+    tenantId: string,
+    campaignId: string,
+    status: 'DRAFT' | 'ACTIVE' | 'CLOSED',
+  ) {
+    const ref = this.getDb().collection('givingCampaigns').doc(campaignId);
+    const updated = await this.getDb().runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(ref);
+      if (!snapshot.exists || snapshot.data()?.tenantId !== tenantId) return false;
+      transaction.update(ref, { status, updatedAt: Timestamp.now() });
+      return true;
+    });
+    if (!updated) return null;
+    const snapshot = await ref.get();
+    if (!snapshot.exists || snapshot.data()?.tenantId !== tenantId) return null;
+    const data = snapshot.data() ?? {};
+    return {
+      id: snapshot.id,
+      tenantId: data.tenantId as string,
+      name: data.name as string,
+      description: (data.description as string | null) ?? undefined,
+      targetAmountPaise: (data.targetAmountPaise as number | null) ?? undefined,
+      currency: 'INR' as const,
+      status: data.status as 'DRAFT' | 'ACTIVE' | 'CLOSED',
+      createdBy: data.createdBy as string,
+      createdAt: toDate(data.createdAt),
+      updatedAt: toDate(data.updatedAt),
+    };
+  }
+
+
+  async createDonationPledge(input: {
+    tenantId: string;
+    donorUserId: string;
+    campaignId: string;
+    pledgedAmountPaise: number;
+    idempotencyKey: string;
+  }) {
+    if (!Number.isSafeInteger(input.pledgedAmountPaise) || input.pledgedAmountPaise < 1) {
+      throw new Error('Pledge amount must be a positive safe integer in paise');
+    }
+    const user = await this.getUser(input.donorUserId);
+    if (!user) throw new Error('Donor user not found');
+    const id = createHash('sha256')
+      .update('pledge:' + input.tenantId + ':' + input.donorUserId + ':' + input.idempotencyKey.trim())
+      .digest('hex');
+    const db = this.getDb();
+    const campaignRef = db.collection('givingCampaigns').doc(input.campaignId);
+    const pledgeRef = db.collection('donationPledges').doc(id);
+    const donorId = createHash('sha256')
+      .update('tenant-donor:' + input.tenantId + ':' + input.donorUserId)
+      .digest('hex');
+    const donorRef = db.collection('tenantDonors').doc(donorId);
+    return db.runTransaction(async (transaction) => {
+      const [campaignSnapshot, pledgeSnapshot, donorSnapshot] = await Promise.all([
+        transaction.get(campaignRef),
+        transaction.get(pledgeRef),
+        transaction.get(donorRef),
+      ]);
+      if (pledgeSnapshot.exists) {
+        const existing = pledgeSnapshot.data() ?? {};
+        if (
+          existing.tenantId !== input.tenantId ||
+          existing.donorUserId !== input.donorUserId ||
+          existing.campaignId !== input.campaignId ||
+          existing.pledgedAmountPaise !== input.pledgedAmountPaise
+        ) {
+          throw new Error('IDEMPOTENCY_CONFLICT');
+        }
+        return this.toDonationPledge(pledgeSnapshot.id, existing);
+      }
+      if (donorSnapshot.exists && donorSnapshot.data()?.status === 'INACTIVE') {
+        throw new Error('DONOR_INACTIVE');
+      }
+      if (
+        !campaignSnapshot.exists ||
+        campaignSnapshot.data()?.tenantId !== input.tenantId ||
+        campaignSnapshot.data()?.status !== 'ACTIVE'
+      ) {
+        throw new Error('CAMPAIGN_NOT_FOUND');
+      }
+      const now = Timestamp.now();
+      if (!donorSnapshot.exists) {
+        transaction.create(donorRef, {
+          tenantId: input.tenantId,
+          userId: input.donorUserId,
+          status: 'ACTIVE',
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+      const data = {
+        tenantId: input.tenantId,
+        campaignId: input.campaignId,
+        donorId,
+        donorUserId: input.donorUserId,
+        pledgedAmountPaise: input.pledgedAmountPaise,
+        paidAmountPaise: 0,
+        currency: 'INR',
+        status: 'PLEDGED',
+        createdAt: now,
+        updatedAt: now,
+      };
+      transaction.create(pledgeRef, data);
+      return this.toDonationPledge(id, data);
+    });
+  }
+
+  async listDonationPledgesForTenant(tenantId: string) {
+    const snapshot = await this.getDb().collection('donationPledges')
+      .where('tenantId', '==', tenantId).get();
+    return snapshot.docs
+      .map((doc) => this.toDonationPledge(doc.id, doc.data()))
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async listDonationPledgesForDonor(tenantId: string, donorUserId: string) {
+    const pledges = await this.listDonationPledgesForTenant(tenantId);
+    return pledges.filter((pledge) => pledge.donorUserId === donorUserId);
+  }
+
+  private toDonationPledge(id: string, data: Record<string, unknown>) {
+    return {
+      id,
+      tenantId: data.tenantId as string,
+      campaignId: data.campaignId as string,
+      donorId: data.donorId as string,
+      donorUserId: data.donorUserId as string,
+      pledgedAmountPaise: data.pledgedAmountPaise as number,
+      paidAmountPaise: data.paidAmountPaise as number,
+      currency: 'INR' as const,
+      status: data.status as 'PLEDGED' | 'PARTIALLY_PAID' | 'PAID' | 'CANCELLED',
+      createdAt: toDate(data.createdAt),
+      updatedAt: toDate(data.updatedAt),
+    };
+  }
+
   async getWebsiteConfig(tenantId: string): Promise<WebsiteSiteConfig | null> {
     const snapshot = await this.getDb().collection('tenantSiteConfigs').doc(tenantId).get();
     if (!snapshot.exists) return null;
