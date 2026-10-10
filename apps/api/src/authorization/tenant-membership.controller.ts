@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Body,
   Controller,
   Get,
@@ -56,6 +57,7 @@ export class TenantMembershipController {
     if (!tenant || !actor) {
       throw new BadRequestException('Tenant context is required');
     }
+    this.assertNoFinancialRoleAssignment(dto.roles);
     const membership = await this.memberships.assignRolesByEmail(
       dto.email,
       tenant.id,
@@ -89,6 +91,7 @@ export class TenantMembershipController {
       throw new BadRequestException('Tenant context is required');
     }
 
+    this.assertNoFinancialRoleAssignment(dto.roles);
     const membership = await this.memberships.assignRoles(
       userId,
       tenant.id,
@@ -109,5 +112,24 @@ export class TenantMembershipController {
       role: membership.role,
       roles: membership.roles,
     };
+  }
+  /**
+   * General tenant membership management must not grant financial privileges.
+   * A dedicated, separately authorized finance-team workflow will own these
+   * assignments; fail closed until that workflow is available.
+   */
+  private assertNoFinancialRoleAssignment(roles: string[]): void {
+    const financialRoles = new Set([
+      'TENANT_FINANCE',
+      'FINANCE_VIEWER',
+      'FINANCE_OPERATOR',
+      'FINANCE_APPROVER',
+      'CA_AUDITOR',
+    ]);
+    if (roles.some((role) => financialRoles.has(role))) {
+      throw new ForbiddenException(
+        'Financial roles must be assigned through the authorized finance-team workflow',
+      );
+    }
   }
 }

@@ -8,6 +8,7 @@ import {
 
 const MEMBERSHIP_ROLES = new Set<MembershipRole>([
   'TENANT_ADMIN',
+  'TENANT_FINANCE',
   'CONTENT_MANAGER',
   'EVENT_MANAGER',
   'INVENTORY_MANAGER',

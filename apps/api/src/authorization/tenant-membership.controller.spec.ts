@@ -1,3 +1,5 @@
+import { ForbiddenException } from '@nestjs/common';
+
 import { TenantMembershipController } from './tenant-membership.controller';
 
 describe('TenantMembershipController', () => {
@@ -12,8 +14,8 @@ describe('TenantMembershipController', () => {
         id: 'user-a__tenant-a',
         userId: 'user-a',
         tenantId: 'tenant-a',
-        role: 'FINANCE_VIEWER',
-        roles: ['FINANCE_VIEWER', 'INVENTORY_MANAGER'],
+        role: 'CONTENT_MANAGER',
+        roles: ['CONTENT_MANAGER'],
         user: { email: 'member@example.test', displayName: 'Member', primaryPhone: null },
       },
     ]),
@@ -21,17 +23,24 @@ describe('TenantMembershipController', () => {
       id: 'user-a__tenant-a',
       userId: 'user-a',
       tenantId: 'tenant-a',
-      role: 'FINANCE_VIEWER',
-      roles: ['FINANCE_VIEWER', 'INVENTORY_MANAGER'],
+      role: 'CONTENT_MANAGER',
+      roles: ['CONTENT_MANAGER'],
     }),
     assignRoles: jest.fn().mockResolvedValue({
       id: 'user-a__tenant-a',
       userId: 'user-a',
       tenantId: 'tenant-a',
-      role: 'FINANCE_VIEWER',
-      roles: ['FINANCE_VIEWER', 'INVENTORY_MANAGER'],
+      role: 'CONTENT_MANAGER',
+      roles: ['CONTENT_MANAGER'],
     }),
   };
+
+  const controller = () => new TenantMembershipController(
+    memberships as never,
+    tenant as never,
+    context as never,
+    firestore as never,
+  );
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -40,44 +49,30 @@ describe('TenantMembershipController', () => {
   });
 
   it('lists team members without exposing phone details', async () => {
-    const controller = new TenantMembershipController(
-      memberships as never,
-      tenant as never,
-      context as never,
-      firestore as never,
-    );
-
-    await expect(controller.listMemberships()).resolves.toEqual([
+    await expect(controller().listMemberships()).resolves.toEqual([
       {
         userId: 'user-a',
         email: 'member@example.test',
         displayName: 'Member',
-        role: 'FINANCE_VIEWER',
-        roles: ['FINANCE_VIEWER', 'INVENTORY_MANAGER'],
+        role: 'CONTENT_MANAGER',
+        roles: ['CONTENT_MANAGER'],
       },
     ]);
   });
 
-  it('assigns multiple roles by email and writes an audit record', async () => {
-    const controller = new TenantMembershipController(
-      memberships as never,
-      tenant as never,
-      context as never,
-      firestore as never,
-    );
-
-    await expect(controller.assignRolesByEmail({
+  it('allows general tenant membership assignment for non-financial roles and audits it', async () => {
+    await expect(controller().assignRolesByEmail({
       email: 'member@example.test',
-      roles: ['FINANCE_VIEWER', 'INVENTORY_MANAGER'],
+      roles: ['CONTENT_MANAGER'],
     })).resolves.toMatchObject({
       userId: 'user-a',
-      roles: ['FINANCE_VIEWER', 'INVENTORY_MANAGER'],
+      roles: ['CONTENT_MANAGER'],
     });
 
     expect(memberships.assignRolesByEmail).toHaveBeenCalledWith(
       'member@example.test',
       'tenant-a',
-      ['FINANCE_VIEWER', 'INVENTORY_MANAGER'],
+      ['CONTENT_MANAGER'],
     );
     expect(firestore.recordAudit).toHaveBeenCalledWith(expect.objectContaining({
       action: 'TENANT_MEMBERSHIP_ROLES_UPDATED',
@@ -86,24 +81,38 @@ describe('TenantMembershipController', () => {
     }));
   });
 
-  it('updates an existing member role set by user ID', async () => {
-    const controller = new TenantMembershipController(
-      memberships as never,
-      tenant as never,
-      context as never,
-      firestore as never,
-    );
+  it.each([
+    'TENANT_FINANCE',
+    'FINANCE_VIEWER',
+    'FINANCE_OPERATOR',
+    'FINANCE_APPROVER',
+    'CA_AUDITOR',
+  ])('rejects assignment of financial role %s through general membership endpoint', async (role) => {
+    await expect(controller().assignRolesByEmail({
+      email: 'member@example.test',
+      roles: [role],
+    })).rejects.toThrow(ForbiddenException);
+    expect(memberships.assignRolesByEmail).not.toHaveBeenCalled();
+  });
 
-    await expect(controller.updateRoles('user-a', {
-      roles: ['FINANCE_VIEWER', 'INVENTORY_MANAGER'],
+  it('rejects financial role changes through the general membership endpoint', async () => {
+    await expect(controller().updateRoles('user-a', {
+      roles: ['TENANT_FINANCE'],
+    })).rejects.toThrow(ForbiddenException);
+    expect(memberships.assignRoles).not.toHaveBeenCalled();
+  });
+
+  it('updates an existing member role set when it contains only general roles', async () => {
+    await expect(controller().updateRoles('user-a', {
+      roles: ['CONTENT_MANAGER'],
     })).resolves.toMatchObject({
       userId: 'user-a',
-      roles: ['FINANCE_VIEWER', 'INVENTORY_MANAGER'],
+      roles: ['CONTENT_MANAGER'],
     });
     expect(memberships.assignRoles).toHaveBeenCalledWith(
       'user-a',
       'tenant-a',
-      ['FINANCE_VIEWER', 'INVENTORY_MANAGER'],
+      ['CONTENT_MANAGER'],
     );
   });
 });

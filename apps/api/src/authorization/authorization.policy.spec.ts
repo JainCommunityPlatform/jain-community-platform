@@ -60,34 +60,17 @@ describe('AuthorizationPolicy', () => {
     expect(policy.hasPermission(tenantB, 'finance.read')).toBe(false);
   });
 
-  it('enforces role permissions', () => {
-    const financeViewer = context('user-a', 'tenant-a', {
-      userId: 'user-a',
-      tenantId: 'tenant-a',
-      role: 'FINANCE_VIEWER',
-    });
-
-    expect(policy.hasPermission(financeViewer, 'finance.read')).toBe(true);
-    expect(policy.hasPermission(financeViewer, 'finance.write')).toBe(false);
-    expect(policy.hasPermission(financeViewer, 'finance.approve')).toBe(false);
-  });
-
-  it('combines permissions from multiple roles without elevating unrelated permissions', () => {
-    const combined = context('user-a', 'tenant-a', {
-      userId: 'user-a',
-      tenantId: 'tenant-a',
-      role: 'FINANCE_VIEWER',
-      roles: ['FINANCE_VIEWER', 'INVENTORY_MANAGER'],
-    });
-
-    expect(policy.hasPermission(combined, 'finance.read')).toBe(true);
-    expect(policy.hasPermission(combined, 'inventory.manage')).toBe(true);
-    expect(policy.hasPermission(combined, 'finance.approve')).toBe(false);
-    expect(policy.hasPermission(combined, 'tenant.manage')).toBe(false);
-  });
-
-  it('allows tenant admins all defined tenant permissions', () => {
+  it('does not grant finance access to Tenant Admin by default', () => {
     const admin = context();
+
+    for (const permission of [
+      'finance.read',
+      'finance.write',
+      'finance.approve',
+      'audit.read',
+    ] as const) {
+      expect(policy.hasPermission(admin, permission)).toBe(false);
+    }
 
     for (const permission of [
       'tenant.read',
@@ -95,16 +78,62 @@ describe('AuthorizationPolicy', () => {
       'content.manage',
       'events.manage',
       'inventory.manage',
-      'finance.read',
-      'finance.write',
-      'finance.approve',
-      'audit.read',
     ] as const) {
       expect(policy.hasPermission(admin, permission)).toBe(true);
     }
   });
 
-  it('supports the documented finance role separation', () => {
+  it('grants Tenant Finance basic financial operations but not approval', () => {
+    const finance = context('user-a', 'tenant-a', {
+      userId: 'user-a',
+      tenantId: 'tenant-a',
+      role: 'TENANT_FINANCE',
+    });
+
+    expect(policy.hasPermission(finance, 'finance.read')).toBe(true);
+    expect(policy.hasPermission(finance, 'finance.write')).toBe(true);
+    expect(policy.hasPermission(finance, 'finance.approve')).toBe(false);
+    expect(policy.hasPermission(finance, 'tenant.manage')).toBe(false);
+    expect(policy.hasPermission(finance, 'platform.tenant.manage')).toBe(false);
+  });
+
+  it('keeps finance viewer read-only', () => {
+    const viewer = context('user-a', 'tenant-a', {
+      userId: 'user-a',
+      tenantId: 'tenant-a',
+      role: 'FINANCE_VIEWER',
+    });
+
+    expect(policy.hasPermission(viewer, 'finance.read')).toBe(true);
+    expect(policy.hasPermission(viewer, 'finance.write')).toBe(false);
+    expect(policy.hasPermission(viewer, 'finance.approve')).toBe(false);
+  });
+
+  it('combines explicitly assigned roles without elevating unrelated permissions', () => {
+    const combined = context('user-a', 'tenant-a', {
+      userId: 'user-a',
+      tenantId: 'tenant-a',
+      role: 'TENANT_ADMIN',
+      roles: ['TENANT_ADMIN', 'TENANT_FINANCE'],
+    });
+
+    expect(policy.hasPermission(combined, 'finance.read')).toBe(true);
+    expect(policy.hasPermission(combined, 'tenant.manage')).toBe(true);
+    expect(policy.hasPermission(combined, 'finance.approve')).toBe(false);
+  });
+
+  it('does not let a role from another tenant authorize the current tenant', () => {
+    const contextForWrongTenant = context('user-a', 'tenant-b', {
+      userId: 'user-a',
+      tenantId: 'tenant-a',
+      role: 'TENANT_FINANCE',
+    });
+
+    expect(policy.hasPermission(contextForWrongTenant, 'finance.read')).toBe(false);
+    expect(policy.hasPermission(contextForWrongTenant, 'finance.write')).toBe(false);
+  });
+
+  it('supports the existing finance operator and approver separation', () => {
     const operator = context('user-a', 'tenant-a', {
       userId: 'user-a',
       tenantId: 'tenant-a',
@@ -120,21 +149,15 @@ describe('AuthorizationPolicy', () => {
     expect(policy.hasPermission(operator, 'finance.approve')).toBe(false);
     expect(policy.hasPermission(approver, 'finance.approve')).toBe(true);
   });
-});
 
-
-  it('allows a platform admin to manage tenants without tenant membership', () => {
-    const policy = new AuthorizationPolicy();
+  it('keeps platform administration separate from tenant roles', () => {
     expect(() => policy.assertPlatformPermission({
       userId: 'platform-user',
       tenantId: '',
       platformRoles: ['PLATFORM_ADMIN'],
       membership: null,
     }, 'platform.tenant.manage')).not.toThrow();
-  });
 
-  it('rejects a tenant administrator from platform administration', () => {
-    const policy = new AuthorizationPolicy();
     expect(() => policy.assertPlatformPermission({
       userId: 'tenant-admin',
       tenantId: 'tenant-a',
@@ -146,3 +169,4 @@ describe('AuthorizationPolicy', () => {
       },
     }, 'platform.tenant.manage')).toThrow('Platform administrator permission is required');
   });
+});
