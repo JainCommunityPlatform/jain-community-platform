@@ -467,8 +467,8 @@ describe('FirestoreService donation payment workflow', () => {
       .rejects.toThrow('PAYMENT_SELF_APPROVAL');
     const verified = await instance.approveDonationPayment('tenant-a', payment.id, 'finance-approver');
     expect(verified.status).toBe('VERIFIED');
-    const pledge = (await instance.listDonationPledgesForTenant('tenant-a')).find(p => p.id === payment.pledgeId);
-    expect(pledge).toMatchObject({ paidAmountPaise: 25000, status: 'PARTIALLY_PAID' });
+    const updatedPledge = (await instance.listDonationPledgesForTenant('tenant-a')).find(p => p.id === payment.pledgeId);
+    expect(updatedPledge).toMatchObject({ paidAmountPaise: 25000, status: 'PARTIALLY_PAID' });
   });
 
   it('rejects overpayment during recording and approval, and rejects do not update the pledge', async () => {
