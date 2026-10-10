@@ -43,6 +43,7 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
   final _availableLanguages = const ['हिन्दी', 'मराठी', 'English', 'ગુજરાતી'];
   final Set<String> _selectedLanguages = {'हिन्दी', 'मराठी', 'English'};
   bool _uploading = false;
+  TextEditingController? _uploadingTarget;
   final _logoUrl = TextEditingController();
   final _directoryTitle = TextEditingController();
   final _directorySubtitle = TextEditingController();
@@ -143,15 +144,54 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
       if (result == null || result.files.isEmpty) return;
       final file = result.files.single;
       final bytes = file.bytes;
-      if (bytes == null || bytes.isEmpty) return;
-      if (mounted) setState(() => _uploading = true);
+      if (bytes == null || bytes.isEmpty) {
+        if (mounted) setState(() => _message = 'Could not read the selected image.');
+        return;
+      }
+      if (bytes.length > 10 * 1024 * 1024) {
+        if (mounted) setState(() => _message = 'Please choose an image smaller than 10 MB.');
+        return;
+      }
+      if (!mounted) return;
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Preview image'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 280),
+                  child: Image.memory(bytes, fit: BoxFit.contain),
+                ),
+                const SizedBox(height: 12),
+                Text(file.name, maxLines: 2, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 4),
+                Text('${(bytes.length / 1024).ceil()} KB'),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Discard')),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              icon: const Icon(Icons.cloud_upload_outlined),
+              label: const Text('Confirm upload'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+      setState(() { _uploading = true; _uploadingTarget = target; _message = null; });
       final url = await widget.repository.uploadImage(bytes, file.name);
       target.text = url;
-      if (mounted) setState(() => _message = 'चित्र अपलोड हो गया।');
+      if (mounted) setState(() => _message = 'Image uploaded. Save the page to publish this change.');
     } catch (error) {
-      if (mounted) setState(() => _message = 'चित्र अपलोड नहीं हुआ: $error');
+      if (mounted) setState(() => _message = 'Image upload failed: $error');
     } finally {
-      if (mounted) setState(() => _uploading = false);
+      if (mounted) setState(() { _uploading = false; _uploadingTarget = null; });
     }
   }
 
@@ -406,8 +446,6 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          if (_uploading)
-            const _BusyBanner(message: 'Uploading image securely…'),
           if (_message != null) _Message(message: _message!),
           _EditorSection(
             title: 'Theme & header',
@@ -440,7 +478,7 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
                   );
                 }).toList(),
               ),
-              _ImageField(controller: _logoUrl, label: 'Temple logo', onUpload: () => _uploadTo(_logoUrl)),
+              _ImageField(controller: _logoUrl, label: 'Temple logo', onUpload: () => _uploadTo(_logoUrl), isUploading: identical(_uploadingTarget, _logoUrl)),
             ],
           ),
           _EditorSection(
@@ -481,7 +519,7 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
               _field(_heroSubtitle, 'उपशीर्षक'),
               _field(_heroDescription, 'विवरण', maxLines: 3),
               _field(_heroCta, 'मुख्य बटन का टेक्स्ट'),
-              _ImageField(controller: _heroImage, label: 'Hero image', onUpload: () => _uploadTo(_heroImage)),
+              _ImageField(controller: _heroImage, label: 'Hero image', onUpload: () => _uploadTo(_heroImage), isUploading: identical(_uploadingTarget, _heroImage)),
             ],
           ),
           _EditorSection(
@@ -489,7 +527,7 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
             children: [
               _field(_aboutTitle, 'शीर्षक'),
               _field(_aboutBody, 'परिचय', maxLines: 6),
-              _ImageField(controller: _aboutImage, label: 'About image', onUpload: () => _uploadTo(_aboutImage)),
+              _ImageField(controller: _aboutImage, label: 'About image', onUpload: () => _uploadTo(_aboutImage), isUploading: identical(_uploadingTarget, _aboutImage)),
             ],
           ),
           _EditorSection(
@@ -850,17 +888,46 @@ class _EditorSection extends StatelessWidget {
 }
 
 class _ImageField extends StatelessWidget {
-  const _ImageField({required this.controller, required this.label, required this.onUpload});
+  const _ImageField({required this.controller, required this.label, required this.onUpload, this.isUploading = false});
   final TextEditingController controller;
   final String label;
   final VoidCallback onUpload;
+  final bool isUploading;
 
   @override
-  Widget build(BuildContext context) => Row(
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Expanded(child: TextField(controller: controller, decoration: InputDecoration(labelText: label))),
-      const SizedBox(width: 8),
-      OutlinedButton.icon(onPressed: onUpload, icon: const Icon(Icons.upload), label: const Text('Upload')),
+      Row(children: [
+        Expanded(child: TextField(controller: controller, decoration: InputDecoration(labelText: label))),
+        const SizedBox(width: 8),
+        OutlinedButton.icon(
+          onPressed: isUploading ? null : onUpload,
+          icon: isUploading
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.upload),
+          label: Text(isUploading ? 'Uploading…' : 'Choose image'),
+        ),
+      ]),
+      if (isUploading) ...[
+        const SizedBox(height: 6),
+        const LinearProgressIndicator(),
+        const SizedBox(height: 4),
+        Text('Uploading this image…', style: Theme.of(context).textTheme.bodySmall),
+      ],
+      if (controller.text.trim().isNotEmpty) ...[
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(
+            controller.text.trim(),
+            height: 96,
+            width: 144,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+          ),
+        ),
+      ],
     ],
   );
 }
