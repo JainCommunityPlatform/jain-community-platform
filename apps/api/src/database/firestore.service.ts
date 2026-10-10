@@ -996,10 +996,15 @@ export class FirestoreService implements OnModuleInit {
     const db = this.getDb();
     const campaignRef = db.collection('givingCampaigns').doc(input.campaignId);
     const pledgeRef = db.collection('donationPledges').doc(id);
+    const donorId = createHash('sha256')
+      .update('tenant-donor:' + input.tenantId + ':' + input.donorUserId)
+      .digest('hex');
+    const donorRef = db.collection('tenantDonors').doc(donorId);
     return db.runTransaction(async (transaction) => {
-      const [campaignSnapshot, pledgeSnapshot] = await Promise.all([
+      const [campaignSnapshot, pledgeSnapshot, donorSnapshot] = await Promise.all([
         transaction.get(campaignRef),
         transaction.get(pledgeRef),
+        transaction.get(donorRef),
       ]);
       if (pledgeSnapshot.exists) {
         const existing = pledgeSnapshot.data() ?? {};
@@ -1013,6 +1018,9 @@ export class FirestoreService implements OnModuleInit {
         }
         return this.toDonationPledge(pledgeSnapshot.id, existing);
       }
+      if (donorSnapshot.exists && donorSnapshot.data()?.status === 'INACTIVE') {
+        throw new Error('DONOR_INACTIVE');
+      }
       if (
         !campaignSnapshot.exists ||
         campaignSnapshot.data()?.tenantId !== input.tenantId ||
@@ -1021,9 +1029,19 @@ export class FirestoreService implements OnModuleInit {
         throw new Error('CAMPAIGN_NOT_FOUND');
       }
       const now = Timestamp.now();
+      if (!donorSnapshot.exists) {
+        transaction.create(donorRef, {
+          tenantId: input.tenantId,
+          userId: input.donorUserId,
+          status: 'ACTIVE',
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
       const data = {
         tenantId: input.tenantId,
         campaignId: input.campaignId,
+        donorId,
         donorUserId: input.donorUserId,
         pledgedAmountPaise: input.pledgedAmountPaise,
         paidAmountPaise: 0,
@@ -1055,6 +1073,7 @@ export class FirestoreService implements OnModuleInit {
       id,
       tenantId: data.tenantId as string,
       campaignId: data.campaignId as string,
+      donorId: data.donorId as string,
       donorUserId: data.donorUserId as string,
       pledgedAmountPaise: data.pledgedAmountPaise as number,
       paidAmountPaise: data.paidAmountPaise as number,
