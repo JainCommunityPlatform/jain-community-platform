@@ -76,6 +76,34 @@ function service(db = new FakeDb()) {
   return { instance, db };
 }
 
+describe('FirestoreService notification preferences', () => {
+  it('defaults every external channel to opt-out when no preference exists', async () => {
+    const { instance } = service();
+    await expect(instance.getNotificationPreferences('tenant-a', 'user-a')).resolves.toMatchObject({
+      tenantId: 'tenant-a', userId: 'user-a', email: false, whatsapp: false, push: false, updatedAt: null,
+    });
+  });
+
+  it('persists preferences separately for each tenant and user', async () => {
+    const { instance } = service();
+    await instance.updateNotificationPreferences({
+      tenantId: 'tenant-a', userId: 'user-a', email: true, whatsapp: false, push: true,
+    });
+    await instance.updateNotificationPreferences({
+      tenantId: 'tenant-b', userId: 'user-a', email: false, whatsapp: true, push: false,
+    });
+
+    await expect(instance.getNotificationPreferences('tenant-a', 'user-a')).resolves.toMatchObject({
+      tenantId: 'tenant-a', userId: 'user-a', email: true, whatsapp: false, push: true,
+      updatedAt: expect.any(Date),
+    });
+    await expect(instance.getNotificationPreferences('tenant-b', 'user-a')).resolves.toMatchObject({
+      tenantId: 'tenant-b', userId: 'user-a', email: false, whatsapp: true, push: false,
+      updatedAt: expect.any(Date),
+    });
+  });
+});
+
 describe('FirestoreService identity/profile persistence', () => {
   it('creates and reuses a stable auth identity', async () => {
     const { instance } = service();
