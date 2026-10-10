@@ -117,7 +117,7 @@ describe('AuthorizationPolicy', () => {
       roles: ['TENANT_ADMIN', 'TENANT_FINANCE'],
     });
 
-    expect(policy.hasPermission(combined, 'finance.read')).toBe(true);
+    expect(policy.hasPermission(combined, 'finance.read')).toBe(false);
     expect(policy.hasPermission(combined, 'tenant.manage')).toBe(true);
     expect(policy.hasPermission(combined, 'finance.approve')).toBe(false);
   });
@@ -148,6 +148,24 @@ describe('AuthorizationPolicy', () => {
     expect(policy.hasPermission(operator, 'finance.write')).toBe(true);
     expect(policy.hasPermission(operator, 'finance.approve')).toBe(false);
     expect(policy.hasPermission(approver, 'finance.approve')).toBe(true);
+  });
+
+  it('denies financial permissions even if a tenant admin has a legacy financial role', () => {
+    const legacyCombined = context('user-a', 'tenant-a', {
+      userId: 'user-a', tenantId: 'tenant-a', role: 'TENANT_ADMIN',
+      roles: ['TENANT_ADMIN', 'FINANCE_APPROVER', 'CA_AUDITOR'],
+    });
+    expect(policy.hasPermission(legacyCombined, 'finance.read')).toBe(false);
+    expect(policy.hasPermission(legacyCombined, 'finance.write')).toBe(false);
+    expect(policy.hasPermission(legacyCombined, 'finance.approve')).toBe(false);
+    expect(policy.hasPermission(legacyCombined, 'audit.read')).toBe(false);
+  });
+
+  it('allows platform administrators to manage finance team assignments without tenant membership', () => {
+    const platformContext: AuthorizationContext = {
+      userId: 'platform-user', tenantId: '', platformRoles: ['PLATFORM_ADMIN'], membership: null,
+    };
+    expect(() => policy.assertPlatformPermission(platformContext, 'platform.finance.team.manage')).not.toThrow();
   });
 
   it('keeps platform administration separate from tenant roles', () => {
