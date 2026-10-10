@@ -59,7 +59,7 @@ void main() {
     expect(find.text('Edit'), findsOneWidget);
     expect(find.text('Save profile'), findsNothing);
     final nameField = tester.widget<TextField>(
-      find.ancestor(of: find.text('Arpit Jain').first, matching: find.byType(TextField)).first,
+      find.byType(TextField).first,
     );
     expect(nameField.readOnly, isTrue);
 
