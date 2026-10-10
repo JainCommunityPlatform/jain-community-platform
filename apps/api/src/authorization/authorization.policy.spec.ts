@@ -202,4 +202,82 @@ describe('AuthorizationPolicy', () => {
       },
     }, 'platform.tenant.manage')).toThrow('Platform administrator permission is required');
   });
+
+  it.each([
+    {
+      role: 'TENANT_ADMIN',
+      allowed: ['tenant.read', 'tenant.manage', 'content.manage', 'events.manage', 'inventory.manage'],
+      denied: ['finance.read', 'finance.write', 'finance.approve', 'audit.read'],
+    },
+    {
+      role: 'CONTENT_MANAGER',
+      allowed: ['tenant.read', 'content.manage'],
+      denied: ['tenant.manage', 'finance.read', 'finance.write', 'finance.approve', 'events.manage', 'inventory.manage'],
+    },
+    {
+      role: 'EVENT_MANAGER',
+      allowed: ['tenant.read', 'events.manage'],
+      denied: ['tenant.manage', 'content.manage', 'finance.read', 'finance.write', 'finance.approve'],
+    },
+    {
+      role: 'INVENTORY_MANAGER',
+      allowed: ['tenant.read', 'inventory.manage'],
+      denied: ['tenant.manage', 'content.manage', 'finance.read', 'finance.write', 'finance.approve'],
+    },
+    {
+      role: 'TENANT_FINANCE',
+      allowed: ['tenant.read', 'finance.read', 'finance.write'],
+      denied: ['tenant.manage', 'content.manage', 'finance.approve', 'audit.read'],
+    },
+    {
+      role: 'FINANCE_VIEWER',
+      allowed: ['tenant.read', 'finance.read'],
+      denied: ['tenant.manage', 'content.manage', 'finance.write', 'finance.approve', 'audit.read'],
+    },
+    {
+      role: 'FINANCE_OPERATOR',
+      allowed: ['tenant.read', 'finance.read', 'finance.write'],
+      denied: ['tenant.manage', 'content.manage', 'finance.approve', 'audit.read'],
+    },
+    {
+      role: 'FINANCE_APPROVER',
+      allowed: ['tenant.read', 'finance.read', 'finance.write', 'finance.approve'],
+      denied: ['tenant.manage', 'content.manage', 'audit.read'],
+    },
+    {
+      role: 'CA_AUDITOR',
+      allowed: ['tenant.read', 'finance.read', 'audit.read'],
+      denied: ['tenant.manage', 'content.manage', 'finance.write', 'finance.approve'],
+    },
+  ])('enforces the full permission boundary for $role', ({ role, allowed, denied }) => {
+    const roleContext = context('user-a', 'tenant-a', {
+      userId: 'user-a',
+      tenantId: 'tenant-a',
+      role,
+    });
+
+    for (const permission of allowed) {
+      expect(policy.hasPermission(roleContext, permission as never))
+        .toBe(true);
+    }
+    for (const permission of denied) {
+      expect(policy.hasPermission(roleContext, permission as never))
+        .toBe(false);
+    }
+  });
+
+  it('does not allow a mixed tenant-admin and finance role to gain finance privileges', () => {
+    const mixed = context('user-a', 'tenant-a', {
+      userId: 'user-a',
+      tenantId: 'tenant-a',
+      role: 'TENANT_ADMIN',
+      roles: ['TENANT_ADMIN', 'FINANCE_OPERATOR', 'FINANCE_APPROVER'],
+    });
+
+    expect(policy.hasPermission(mixed, 'content.manage')).toBe(true);
+    expect(policy.hasPermission(mixed, 'finance.read')).toBe(false);
+    expect(policy.hasPermission(mixed, 'finance.write')).toBe(false);
+    expect(policy.hasPermission(mixed, 'finance.approve')).toBe(false);
+  });
+
 });
