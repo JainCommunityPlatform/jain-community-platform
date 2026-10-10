@@ -9,11 +9,13 @@ class MemberHomePage extends StatefulWidget {
   const MemberHomePage({
     this.profileRepository,
     this.api,
+    this.onSignOut,
     this.initialIndex = 0,
     super.key,
   });
   final ProfileRepository? profileRepository;
   final ApiClient? api;
+  final Future<void> Function()? onSignOut;
   final int initialIndex;
 
   @override
@@ -36,7 +38,7 @@ class _MemberHomePageState extends State<MemberHomePage> {
       const _TemplesTab(),
       const _EventsTab(),
       widget.api == null ? const _DonationsTab() : DonorGivingPage(api: widget.api!),
-      widget.profileRepository == null ? const _ProfileTab() : ProfilePage(repository: widget.profileRepository!),
+      widget.profileRepository == null ? const _ProfileTab() : ProfilePage(repository: widget.profileRepository!, onSignOut: widget.onSignOut),
     ];
 
     return Scaffold(
