@@ -378,4 +378,61 @@ describe('FirestoreService identity/profile persistence', () => {
     expect(instance.getFirebaseApp()).toBeDefined();
   });
 
+
+describe('FirestoreService giving persistence', () => {
+  it('creates campaigns in the owning tenant and only lists active campaigns publicly', async () => {
+    const { instance, db } = service();
+    const draft = await instance.createGivingCampaign({
+      tenantId: 'tenant-a', actorUserId: 'finance-user', name: 'Temple Renovation',
+      targetAmountPaise: 2500000,
+    });
+    expect(draft).toMatchObject({ tenantId: 'tenant-a', name: 'Temple Renovation', status: 'DRAFT', targetAmountPaise: 2500000 });
+    await instance.updateGivingCampaignStatus('tenant-a', draft.id, 'ACTIVE');
+    await instance.createGivingCampaign({ tenantId: 'tenant-b', actorUserId: 'finance-user-b', name: 'Other Temple' });
+    expect(await instance.listGivingCampaigns('tenant-a')).toHaveLength(1);
+    expect((await instance.listGivingCampaigns('tenant-a'))[0].id).toBe(draft.id);
+    expect(db.get('givingCampaigns', draft.id)?.tenantId).toBe('tenant-a');
+  });
+
+  it('creates an idempotent pledge and refuses to reuse the key for different pledge data', async () => {
+    const { instance, db } = service();
+    const user = await instance.upsertUser({ subject: 'donor:1', email: 'donor@example.test' });
+    const campaign = await instance.createGivingCampaign({ tenantId: 'tenant-a', actorUserId: 'finance-user', name: 'Renovation' });
+    await instance.updateGivingCampaignStatus('tenant-a', campaign.id, 'ACTIVE');
+    const input = { tenantId: 'tenant-a', donorUserId: user.id, campaignId: campaign.id, pledgedAmountPaise: 500000, idempotencyKey: 'request-123' };
+    const first = await instance.createDonationPledge(input);
+    const retry = await instance.createDonationPledge(input);
+    expect(retry.id).toBe(first.id);
+    expect(db.entries('donationPledges')).toHaveLength(1);
+    await expect(instance.createDonationPledge({ ...input, pledgedAmountPaise: 700000 }))
+      .rejects.toThrow('IDEMPOTENCY_CONFLICT');
+  });
+
+  it('does not allow pledges against another tenant campaign or a draft campaign', async () => {
+    const { instance } = service();
+    const user = await instance.upsertUser({ subject: 'donor:2' });
+    const draft = await instance.createGivingCampaign({ tenantId: 'tenant-b', actorUserId: 'finance-user', name: 'Draft' });
+    await expect(instance.createDonationPledge({
+      tenantId: 'tenant-a', donorUserId: user.id, campaignId: draft.id,
+      pledgedAmountPaise: 10000, idempotencyKey: 'wrong-tenant',
+    })).rejects.toThrow('CAMPAIGN_NOT_FOUND');
+  });
+
+  it('returns only pledges belonging to the requested donor and tenant', async () => {
+    const { instance } = service();
+    const donorA = await instance.upsertUser({ subject: 'donor:a' });
+    const donorB = await instance.upsertUser({ subject: 'donor:b' });
+    const campaignA = await instance.createGivingCampaign({ tenantId: 'tenant-a', actorUserId: 'finance-user', name: 'A' });
+    const campaignB = await instance.createGivingCampaign({ tenantId: 'tenant-b', actorUserId: 'finance-user', name: 'B' });
+    await instance.updateGivingCampaignStatus('tenant-a', campaignA.id, 'ACTIVE');
+    await instance.updateGivingCampaignStatus('tenant-b', campaignB.id, 'ACTIVE');
+    await instance.createDonationPledge({ tenantId: 'tenant-a', donorUserId: donorA.id, campaignId: campaignA.id, pledgedAmountPaise: 10000, idempotencyKey: 'a1' });
+    await instance.createDonationPledge({ tenantId: 'tenant-a', donorUserId: donorB.id, campaignId: campaignA.id, pledgedAmountPaise: 20000, idempotencyKey: 'b1' });
+    await instance.createDonationPledge({ tenantId: 'tenant-b', donorUserId: donorA.id, campaignId: campaignB.id, pledgedAmountPaise: 30000, idempotencyKey: 'a2' });
+    const own = await instance.listDonationPledgesForDonor('tenant-a', donorA.id);
+    expect(own).toHaveLength(1);
+    expect(own[0]).toMatchObject({ tenantId: 'tenant-a', donorUserId: donorA.id, pledgedAmountPaise: 10000 });
+    expect(await instance.listDonationPledgesForTenant('tenant-a')).toHaveLength(2);
+  });
+});
 });
