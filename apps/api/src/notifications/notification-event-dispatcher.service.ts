@@ -71,7 +71,7 @@ export class NotificationEventDispatcher {
       }
 
       await Promise.all(tasks);
-    } catch (error) {
+    } catch {
       // Notification delivery is best-effort and cannot roll back a pledge,
       // payment, receipt, or finance decision that has already committed.
       this.logger.warn(
