@@ -124,6 +124,44 @@ export class GivingService {
     return this.firestore.listDonationPaymentsForTenant(tenantId);
   }
 
+  async createExpense(input: {
+    tenantId: string; actorUserId: string; category: string; description: string; amountPaise: number;
+    incurredAt?: string; reference?: string; evidenceReferences?: string[]; idempotencyKey: string;
+  }) {
+    if (!input.idempotencyKey.trim() || input.idempotencyKey.length > 200) throw new BadRequestException('A valid Idempotency-Key header is required');
+    try { return await this.firestore.createDonationExpense(input); } catch (error) {
+      if (!(error instanceof Error)) throw error;
+      if (error.message === 'EXPENSE_AMOUNT_INVALID') throw new BadRequestException('Expense amount must be a positive integer in paise');
+      if (error.message === 'EXPENSE_IDEMPOTENCY_CONFLICT') throw new ConflictException('Idempotency key was already used for different expense details');
+      if (error.message === 'EXPENSE_DATE_INVALID') throw new BadRequestException('Expense date is invalid');
+      throw error;
+    }
+  }
+
+  async approveExpense(tenantId: string, expenseId: string, approverUserId: string) {
+    try { return await this.firestore.approveDonationExpense(tenantId, expenseId, approverUserId); } catch (error) {
+      if (!(error instanceof Error)) throw error;
+      if (error.message === 'EXPENSE_NOT_FOUND') throw new NotFoundException('Expense not found for this tenant');
+      if (error.message === 'EXPENSE_SELF_APPROVAL') throw new ForbiddenException('The person who recorded an expense cannot approve it');
+      if (error.message === 'EXPENSE_NOT_PENDING') throw new ConflictException('Expense is no longer pending approval');
+      throw error;
+    }
+  }
+
+  async rejectExpense(tenantId: string, expenseId: string, approverUserId: string, reason: string) {
+    try { return await this.firestore.rejectDonationExpense(tenantId, expenseId, approverUserId, reason); } catch (error) {
+      if (!(error instanceof Error)) throw error;
+      if (error.message === 'EXPENSE_NOT_FOUND') throw new NotFoundException('Expense not found for this tenant');
+      if (error.message === 'EXPENSE_SELF_APPROVAL') throw new ForbiddenException('The person who recorded an expense cannot reject it');
+      if (error.message === 'EXPENSE_NOT_PENDING') throw new ConflictException('Expense is no longer pending review');
+      if (error.message === 'EXPENSE_REJECTION_REASON_REQUIRED') throw new BadRequestException('A rejection reason is required');
+      throw error;
+    }
+  }
+
+  listTenantExpenses(tenantId: string) { return this.firestore.listDonationExpensesForTenant(tenantId); }
+  getReconciliationReport(tenantId: string) { return this.firestore.getDonationReconciliationReport(tenantId); }
+
   listTenantReceipts(tenantId: string) {
     return this.firestore.listDonationReceiptsForTenant(tenantId);
   }

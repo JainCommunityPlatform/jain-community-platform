@@ -1231,6 +1231,111 @@ export class FirestoreService implements OnModuleInit {
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
+  async createDonationExpense(input: {
+    tenantId: string; actorUserId: string; category: string; description: string;
+    amountPaise: number; incurredAt?: string; reference?: string; evidenceReferences?: string[]; idempotencyKey: string;
+  }) {
+    if (!Number.isSafeInteger(input.amountPaise) || input.amountPaise < 1) throw new Error('EXPENSE_AMOUNT_INVALID');
+    const id = createHash('sha256').update('expense:' + input.tenantId + ':' + input.actorUserId + ':' + input.idempotencyKey.trim()).digest('hex');
+    const db = this.getDb(); const ref = db.collection('donationExpenses').doc(id);
+    return db.runTransaction(async (transaction) => {
+      const snap = await transaction.get(ref);
+      if (snap.exists) {
+        const old = snap.data() ?? {};
+        if (old.tenantId !== input.tenantId || old.createdBy !== input.actorUserId || old.category !== input.category.trim() ||
+          old.description !== input.description.trim() || old.amountPaise !== input.amountPaise ||
+          old.reference !== (input.reference?.trim() || null) ||
+          JSON.stringify(old.evidenceReferences ?? []) !== JSON.stringify(input.evidenceReferences ?? [])) throw new Error('EXPENSE_IDEMPOTENCY_CONFLICT');
+        return this.toDonationExpense(snap.id, old);
+      }
+      const now = Timestamp.now(); const incurredAt = input.incurredAt ? new Date(input.incurredAt) : now.toDate();
+      if (Number.isNaN(incurredAt.getTime())) throw new Error('EXPENSE_DATE_INVALID');
+      const expense = { tenantId: input.tenantId, category: input.category.trim(), description: input.description.trim(),
+        amountPaise: input.amountPaise, currency: 'INR', incurredAt: Timestamp.fromDate(incurredAt),
+        reference: input.reference?.trim() || null, evidenceReferences: input.evidenceReferences ?? [],
+        status: 'PENDING_APPROVAL', createdBy: input.actorUserId, approvedBy: null, rejectionReason: null, createdAt: now, updatedAt: now };
+      transaction.create(ref, expense);
+      return this.toDonationExpense(id, expense);
+    });
+  }
+
+  async approveDonationExpense(tenantId: string, expenseId: string, approverUserId: string) {
+    const ref = this.getDb().collection('donationExpenses').doc(expenseId);
+    const result = await this.getDb().runTransaction(async (transaction) => {
+      const snap = await transaction.get(ref);
+      if (!snap.exists || snap.data()?.tenantId !== tenantId) return { error: 'EXPENSE_NOT_FOUND' as const };
+      const expense = snap.data() ?? {};
+      if (expense.status !== 'PENDING_APPROVAL') return { error: 'EXPENSE_NOT_PENDING' as const };
+      if (expense.createdBy === approverUserId) return { error: 'EXPENSE_SELF_APPROVAL' as const };
+      const now = Timestamp.now();
+      transaction.update(ref, { status: 'APPROVED', approvedBy: approverUserId, updatedAt: now });
+      return { expense: { ...expense, id: snap.id, status: 'APPROVED', approvedBy: approverUserId, updatedAt: now }, error: null };
+    });
+    if (result.error) throw new Error(result.error);
+    return this.toDonationExpense(result.expense.id as string, result.expense);
+  }
+
+  async rejectDonationExpense(tenantId: string, expenseId: string, approverUserId: string, reason: string) {
+    if (!reason.trim()) throw new Error('EXPENSE_REJECTION_REASON_REQUIRED');
+    const ref = this.getDb().collection('donationExpenses').doc(expenseId);
+    const result = await this.getDb().runTransaction(async (transaction) => {
+      const snap = await transaction.get(ref);
+      if (!snap.exists || snap.data()?.tenantId !== tenantId) return { error: 'EXPENSE_NOT_FOUND' as const };
+      const expense = snap.data() ?? {};
+      if (expense.status !== 'PENDING_APPROVAL') return { error: 'EXPENSE_NOT_PENDING' as const };
+      if (expense.createdBy === approverUserId) return { error: 'EXPENSE_SELF_APPROVAL' as const };
+      const now = Timestamp.now();
+      transaction.update(ref, { status: 'REJECTED', approvedBy: approverUserId, rejectionReason: reason.trim(), updatedAt: now });
+      return { expense: { ...expense, id: snap.id, status: 'REJECTED', approvedBy: approverUserId, rejectionReason: reason.trim(), updatedAt: now }, error: null };
+    });
+    if (result.error) throw new Error(result.error);
+    return this.toDonationExpense(result.expense.id as string, result.expense);
+  }
+
+  async listDonationExpensesForTenant(tenantId: string) {
+    const snapshot = await this.getDb().collection('donationExpenses').where('tenantId', '==', tenantId).get();
+    return snapshot.docs.map((doc) => this.toDonationExpense(doc.id, doc.data())).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async getDonationReconciliationReport(tenantId: string) {
+    const [payments, receipts, expenses] = await Promise.all([
+      this.listDonationPaymentsForTenant(tenantId), this.listDonationReceiptsForTenant(tenantId), this.listDonationExpensesForTenant(tenantId),
+    ]);
+    const verified = payments.filter((p) => p.status === 'VERIFIED');
+    const approved = expenses.filter((e) => e.status === 'APPROVED');
+    const pending = expenses.filter((e) => e.status === 'PENDING_APPROVAL');
+    const rejected = expenses.filter((e) => e.status === 'REJECTED');
+    const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
+    const receiptByPayment = new Map(receipts.map((receipt) => [receipt.paymentId, receipt]));
+    const verifiedById = new Map(verified.map((payment) => [payment.id, payment]));
+    const missingReceiptPaymentIds = verified.filter((p) => !receiptByPayment.has(p.id)).map((p) => p.id);
+    const orphanReceiptPaymentIds = receipts.filter((r) => !verifiedById.has(r.paymentId)).map((r) => r.paymentId);
+    const amountMismatchPaymentIds = receipts.filter((r) => { const p = verifiedById.get(r.paymentId); return p !== undefined && p.amountPaise !== r.amountPaise; }).map((r) => r.paymentId);
+    const verifiedAmountPaise = sum(verified.map((p) => p.amountPaise));
+    const receiptAmountPaise = sum(receipts.map((r) => r.amountPaise));
+    const approvedExpenseAmountPaise = sum(approved.map((e) => e.amountPaise));
+    return {
+      tenantId, currency: 'INR' as const, generatedAt: new Date(),
+      donations: { verifiedAmountPaise, verifiedPaymentCount: verified.length },
+      receipts: { issuedAmountPaise: receiptAmountPaise, issuedReceiptCount: receipts.length,
+        amountDifferencePaise: verifiedAmountPaise - receiptAmountPaise, missingReceiptPaymentIds, orphanReceiptPaymentIds, amountMismatchPaymentIds,
+        isBalanced: !missingReceiptPaymentIds.length && !orphanReceiptPaymentIds.length && !amountMismatchPaymentIds.length && verifiedAmountPaise === receiptAmountPaise },
+      expenses: { approvedAmountPaise: approvedExpenseAmountPaise, approvedCount: approved.length,
+        pendingAmountPaise: sum(pending.map((e) => e.amountPaise)), pendingCount: pending.length,
+        rejectedAmountPaise: sum(rejected.map((e) => e.amountPaise)), rejectedCount: rejected.length },
+      netAfterApprovedExpensesPaise: verifiedAmountPaise - approvedExpenseAmountPaise,
+    };
+  }
+
+  private toDonationExpense(id: string, data: Record<string, unknown>) {
+    return { id, tenantId: data.tenantId as string, category: data.category as string, description: data.description as string,
+      amountPaise: data.amountPaise as number, currency: 'INR' as const, incurredAt: toDate(data.incurredAt),
+      reference: (data.reference as string | null) ?? undefined, evidenceReferences: (data.evidenceReferences as string[] | null) ?? [],
+      status: data.status as 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED', createdBy: data.createdBy as string,
+      approvedBy: (data.approvedBy as string | null) ?? undefined, rejectionReason: (data.rejectionReason as string | null) ?? undefined,
+      createdAt: toDate(data.createdAt), updatedAt: toDate(data.updatedAt) };
+  }
+
   async listDonationReceiptsForTenant(tenantId: string) {
     const snapshot = await this.getDb().collection('donationReceipts')
       .where('tenantId', '==', tenantId).get();

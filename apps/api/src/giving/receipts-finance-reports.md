@@ -21,3 +21,13 @@ A receipt confirms a verified manual/offline payment recorded in JCP. It does no
 - Cancelled pledges are excluded from active pledged/outstanding totals and reported separately.
 
 This summary is an operational giving report, not a double-entry ledger or audited financial statement. Expenses, refunds/reversals, date-range exports, and ledger reconciliation remain separate phases.
+
+
+## Expenses and reconciliation
+
+- `POST /api/giving/expenses` — finance.write; requires an `Idempotency-Key`, records amount in integer paise and stores evidence references. New expenses start in `PENDING_APPROVAL`.
+- `GET /api/giving/expenses` — finance.read, tenant scoped.
+- `POST /api/giving/expenses/:expenseId/approve` and `/reject` — finance.approve; only a different reviewer can act on a pending expense, and rejection requires a reason.
+- `GET /api/giving/reports/reconciliation` — finance.read; compares verified payments with issued receipts, lists missing/orphan/mismatched receipt IDs, and reports approved/pending/rejected expenses plus net verified donations after approved expenses.
+
+Only approved expenses reduce the operational net balance. This is a control/reconciliation summary, not a general ledger; it does not itself settle bank transactions or prove that cash/bank statements match.

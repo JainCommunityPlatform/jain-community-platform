@@ -26,6 +26,8 @@ import { CreatePledgeDto } from './dto/create-pledge.dto';
 import { UpdateCampaignStatusDto } from './dto/update-campaign-status.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { RejectPaymentDto } from './dto/reject-payment.dto';
+import { CreateExpenseDto } from './dto/create-expense.dto';
+import { RejectExpenseDto } from './dto/reject-expense.dto';
 import { GivingService } from './giving.service';
 
 @Controller('giving')
@@ -170,6 +172,45 @@ export class GivingController {
     const tenant = this.requireTenant();
     return this.giving.listTenantPayments(tenant.id);
   }
+
+  @Post('expenses')
+  @RequirePermission('finance.write')
+  async createExpense(@Body() dto: CreateExpenseDto, @Headers('idempotency-key') idempotencyKey?: string) {
+    const tenant = this.requireTenant(); const actor = await this.requireActor();
+    if (!idempotencyKey) throw new BadRequestException('Idempotency-Key header is required');
+    const expense = await this.giving.createExpense({ tenantId: tenant.id, actorUserId: actor.id, ...dto, idempotencyKey });
+    await this.audit.record({ action: 'DONATION_EXPENSE_RECORDED', entity: 'DonationExpense', entityId: expense.id,
+      metadata: { category: expense.category, amountPaise: expense.amountPaise, status: expense.status } });
+    return expense;
+  }
+
+  @Get('expenses')
+  @RequirePermission('finance.read')
+  async listTenantExpenses() { return this.giving.listTenantExpenses(this.requireTenant().id); }
+
+  @Post('expenses/:expenseId/approve')
+  @RequirePermission('finance.approve')
+  async approveExpense(@Param('expenseId') expenseId: string) {
+    const tenant = this.requireTenant(); const actor = await this.requireActor();
+    const expense = await this.giving.approveExpense(tenant.id, expenseId, actor.id);
+    await this.audit.record({ action: 'DONATION_EXPENSE_APPROVED', entity: 'DonationExpense', entityId: expense.id,
+      metadata: { amountPaise: expense.amountPaise, status: expense.status } });
+    return expense;
+  }
+
+  @Post('expenses/:expenseId/reject')
+  @RequirePermission('finance.approve')
+  async rejectExpense(@Param('expenseId') expenseId: string, @Body() dto: RejectExpenseDto) {
+    const tenant = this.requireTenant(); const actor = await this.requireActor();
+    const expense = await this.giving.rejectExpense(tenant.id, expenseId, actor.id, dto.reason);
+    await this.audit.record({ action: 'DONATION_EXPENSE_REJECTED', entity: 'DonationExpense', entityId: expense.id,
+      metadata: { reason: dto.reason, amountPaise: expense.amountPaise, status: expense.status } });
+    return expense;
+  }
+
+  @Get('reports/reconciliation')
+  @RequirePermission('finance.read')
+  async reconciliationReport() { return this.giving.getReconciliationReport(this.requireTenant().id); }
 
   @Get('receipts')
   @RequirePermission('finance.read')
