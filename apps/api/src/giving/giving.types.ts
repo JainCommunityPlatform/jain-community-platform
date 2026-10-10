@@ -18,6 +18,7 @@ export interface DonationPledge {
   id: string;
   tenantId: string;
   campaignId: string;
+  donorId: string;
   donorUserId: string;
   pledgedAmountPaise: number;
   paidAmountPaise: number;
