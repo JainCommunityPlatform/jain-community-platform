@@ -1,3 +1,7 @@
+// The compact API-driven console composes display strings and uses dialog contexts
+// only within the dialog builders; the analyzer reports these as informational lints.
+// ignore_for_file: prefer_interpolation_to_compose_strings, use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_exception.dart';
