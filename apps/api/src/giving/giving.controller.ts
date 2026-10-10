@@ -24,6 +24,8 @@ import { TenantContextStore } from '../tenant/tenant-context.store';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { CreatePledgeDto } from './dto/create-pledge.dto';
 import { UpdateCampaignStatusDto } from './dto/update-campaign-status.dto';
+import { RecordPaymentDto } from './dto/record-payment.dto';
+import { RejectPaymentDto } from './dto/reject-payment.dto';
 import { GivingService } from './giving.service';
 
 @Controller('giving')
@@ -101,6 +103,72 @@ export class GivingController {
       metadata: { campaignId: pledge.campaignId, pledgedAmountPaise: pledge.pledgedAmountPaise },
     });
     return pledge;
+  }
+
+  @Post('pledges/:pledgeId/payments')
+  @RequirePermission('finance.write')
+  async recordPayment(
+    @Param('pledgeId') pledgeId: string,
+    @Body() dto: RecordPaymentDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    const tenant = this.requireTenant();
+    const actor = await this.requireActor();
+    if (!idempotencyKey) throw new BadRequestException('Idempotency-Key header is required');
+    const payment = await this.giving.recordPayment({
+      tenantId: tenant.id,
+      pledgeId,
+      actorUserId: actor.id,
+      ...dto,
+      idempotencyKey,
+    });
+    await this.audit.record({
+      action: 'DONATION_PAYMENT_RECORDED',
+      entity: 'DonationPayment',
+      entityId: payment.id,
+      metadata: { pledgeId, amountPaise: payment.amountPaise, method: payment.method, status: payment.status },
+    });
+    return payment;
+  }
+
+  @Post('payments/:paymentId/approve')
+  @RequirePermission('finance.approve')
+  async approvePayment(@Param('paymentId') paymentId: string) {
+    const tenant = this.requireTenant();
+    const actor = await this.requireActor();
+    const payment = await this.giving.approvePayment(tenant.id, paymentId, actor.id);
+    await this.audit.record({
+      action: 'DONATION_PAYMENT_VERIFIED',
+      entity: 'DonationPayment',
+      entityId: payment.id,
+      metadata: { pledgeId: payment.pledgeId, amountPaise: payment.amountPaise, status: payment.status },
+    });
+    return payment;
+  }
+
+  @Post('payments/:paymentId/reject')
+  @RequirePermission('finance.approve')
+  async rejectPayment(
+    @Param('paymentId') paymentId: string,
+    @Body() dto: RejectPaymentDto,
+  ) {
+    const tenant = this.requireTenant();
+    const actor = await this.requireActor();
+    const payment = await this.giving.rejectPayment(tenant.id, paymentId, actor.id, dto.reason);
+    await this.audit.record({
+      action: 'DONATION_PAYMENT_REJECTED',
+      entity: 'DonationPayment',
+      entityId: payment.id,
+      metadata: { pledgeId: payment.pledgeId, reason: dto.reason, status: payment.status },
+    });
+    return payment;
+  }
+
+  @Get('payments')
+  @RequirePermission('finance.read')
+  async listTenantPayments() {
+    const tenant = this.requireTenant();
+    return this.giving.listTenantPayments(tenant.id);
   }
 
   @Get('my-pledges')
