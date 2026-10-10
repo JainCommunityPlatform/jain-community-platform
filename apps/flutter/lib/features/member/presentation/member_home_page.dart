@@ -482,37 +482,23 @@ class _JainFlagSmall extends StatelessWidget {
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title, this.action});
+  const _SectionTitle({required this.title});
 
   final String title;
-  final String? action;
 
   @override
   Widget build(BuildContext context) => Row(
         children: [
           Expanded(child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
-          if (action != null) Text(action!, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600)),
         ],
       );
 }
 
-class _SearchBox extends StatelessWidget {
-  const _SearchBox({required this.hint});
-
-  final String hint;
-
-  @override
-  Widget build(BuildContext context) => TextField(
-        decoration: InputDecoration(prefixIcon: const Icon(Icons.search), hintText: hint),
-      );
-}
-
 class _TempleCard extends StatelessWidget {
-  const _TempleCard({required this.name, required this.location, this.distance, this.imageUrl});
+  const _TempleCard({required this.name, required this.location, this.imageUrl});
 
   final String name;
   final String location;
-  final String? distance;
   final String? imageUrl;
 
   @override
@@ -531,8 +517,7 @@ class _TempleCard extends StatelessWidget {
                 : ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.network(imageUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.temple_hindu, color: Colors.white, size: 34))),
           ),
           title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: Text([location, if (distance != null && distance!.isNotEmpty) distance!].join('\n')),
-          isThreeLine: distance != null && distance!.isNotEmpty,
+          subtitle: Text(location),
           trailing: const Icon(Icons.chevron_right),
         ),
       );
@@ -577,27 +562,4 @@ class _DonationCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class _EventTile extends StatelessWidget {
-  const _EventTile({required this.title, required this.date, required this.location});
-
-  final String title;
-  final String date;
-  final String location;
-
-  @override
-  Widget build(BuildContext context) => Card(
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(14),
-          leading: CircleAvatar(
-            backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
-            child: Icon(Icons.event, color: Theme.of(context).colorScheme.primary),
-          ),
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: Text('$date\n$location'),
-          isThreeLine: true,
-          trailing: const Icon(Icons.chevron_right),
-        ),
-      );
 }
