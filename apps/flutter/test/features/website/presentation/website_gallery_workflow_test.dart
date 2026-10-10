@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jain_community_platform/core/api/api_client.dart';
@@ -10,6 +13,8 @@ class RecordingWebsiteRepository extends WebsiteRepository {
 
   final Map<String, dynamic> site;
   Map<String, dynamic>? published;
+  String? uploadedFilename;
+  Uint8List? uploadedBytes;
 
   @override
   Future<Map<String, dynamic>> getSite() async =>
@@ -19,6 +24,13 @@ class RecordingWebsiteRepository extends WebsiteRepository {
   Future<Map<String, dynamic>> updateSite(Map<String, dynamic> config) async {
     published = Map<String, dynamic>.from(config);
     return Map<String, dynamic>.from(config);
+  }
+
+  @override
+  Future<String> uploadImage(Uint8List bytes, String filename) async {
+    uploadedFilename = filename;
+    uploadedBytes = bytes;
+    return 'https://cdn.example.test/gallery/uploaded.jpg';
   }
 }
 
@@ -50,6 +62,13 @@ void main() {
       home: WebsiteEditorPage(
         repository: repository,
         tenantName: 'Bade Baba Kharadi',
+        imagePicker: () async => FilePickerResult([
+          PlatformFile(
+            name: 'gallery.jpg',
+            size: 4,
+            bytes: Uint8List.fromList([1, 2, 3, 4]),
+          ),
+        ]),
       ),
     ));
     await tester.pumpAndSettle();
@@ -87,8 +106,12 @@ void main() {
     }
 
     await enterField('title', 'Main temple');
-    await enterField('Image URL', 'https://cdn.example.test/gallery/main.jpg');
     await enterField('Alt text', 'Main temple entrance');
+    await tester.tap(find.text('Upload'));
+    await tester.pumpAndSettle();
+    expect(find.text('Image uploaded. Save this item, then Save & Publish Website.'), findsOneWidget);
+    expect(repository.uploadedFilename, 'gallery.jpg');
+    expect(repository.uploadedBytes, isNotNull);
     await tester.tap(find.text('Save').last);
     await tester.pumpAndSettle();
 
@@ -102,7 +125,7 @@ void main() {
     expect(items.single, containsPair('title', 'Main temple'));
     expect(
       items.single,
-      containsPair('imageUrl', 'https://cdn.example.test/gallery/main.jpg'),
+      containsPair('imageUrl', 'https://cdn.example.test/gallery/uploaded.jpg'),
     );
     expect(items.single, containsPair('alt', 'Main temple entrance'));
     expect(tester.takeException(), isNull);
