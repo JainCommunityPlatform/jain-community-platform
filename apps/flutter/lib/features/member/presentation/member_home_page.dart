@@ -531,8 +531,8 @@ class _TempleCard extends StatelessWidget {
                 : ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.network(imageUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.temple_hindu, color: Colors.white, size: 34))),
           ),
           title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: Text('$location\n$distance'),
-          isThreeLine: true,
+          subtitle: Text([location, if (distance != null && distance!.isNotEmpty) distance!].join('\n')),
+          isThreeLine: distance != null && distance!.isNotEmpty,
           trailing: const Icon(Icons.chevron_right),
         ),
       );
