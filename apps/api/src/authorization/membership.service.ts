@@ -134,7 +134,6 @@ export class MembershipService {
     const membership = await this.firestore.getMembership(userId, tenantId);
 
     if (!membership) return null;
-    if (membership.status === 'INACTIVE') return null;
 
     const roles = [...new Set(
       (membership.roles?.length ? membership.roles : [membership.role])
