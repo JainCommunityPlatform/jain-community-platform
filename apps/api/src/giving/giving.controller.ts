@@ -171,6 +171,27 @@ export class GivingController {
     return this.giving.listTenantPayments(tenant.id);
   }
 
+  @Get('receipts')
+  @RequirePermission('finance.read')
+  async listTenantReceipts() {
+    const tenant = this.requireTenant();
+    return this.giving.listTenantReceipts(tenant.id);
+  }
+
+  @Get('my-receipts')
+  async listMyReceipts() {
+    const tenant = this.requireTenant();
+    const actor = await this.requireActor();
+    return this.giving.listMyReceipts(tenant.id, actor.id);
+  }
+
+  @Get('reports/summary')
+  @RequirePermission('finance.read')
+  async financeReport() {
+    const tenant = this.requireTenant();
+    return this.giving.getFinanceReport(tenant.id);
+  }
+
   @Get('my-pledges')
   async listMyPledges() {
     const tenant = this.requireTenant();

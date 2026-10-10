@@ -13,10 +13,24 @@ describe('GivingService', () => {
     approveDonationPayment: jest.fn(),
     rejectDonationPayment: jest.fn(),
     listDonationPaymentsForTenant: jest.fn(),
+    listDonationReceiptsForTenant: jest.fn(),
+    listDonationReceiptsForDonor: jest.fn(),
+    getDonationFinanceReport: jest.fn(),
   };
   const service = () => new GivingService(firestore as never);
 
   beforeEach(() => jest.clearAllMocks());
+
+  it('exposes receipts and finance summaries through tenant-scoped persistence methods', async () => {
+    firestore.listDonationReceiptsForTenant.mockResolvedValue([{ id: 'receipt-1', tenantId: 'tenant-a' }]);
+    firestore.listDonationReceiptsForDonor.mockResolvedValue([{ id: 'receipt-2', donorUserId: 'donor-a' }]);
+    firestore.getDonationFinanceReport.mockResolvedValue({ tenantId: 'tenant-a', totals: { receivedAmountPaise: 5000 } });
+    await expect(service().listTenantReceipts('tenant-a')).resolves.toHaveLength(1);
+    await expect(service().listMyReceipts('tenant-a', 'donor-a')).resolves.toMatchObject([{ donorUserId: 'donor-a' }]);
+    await expect(service().getFinanceReport('tenant-a')).resolves.toMatchObject({ totals: { receivedAmountPaise: 5000 } });
+    expect(firestore.listDonationReceiptsForDonor).toHaveBeenCalledWith('tenant-a', 'donor-a');
+    expect(firestore.getDonationFinanceReport).toHaveBeenCalledWith('tenant-a');
+  });
 
   it('requires an idempotency key for pledge creation', async () => {
     await expect(service().createPledge({

@@ -124,6 +124,18 @@ export class GivingService {
     return this.firestore.listDonationPaymentsForTenant(tenantId);
   }
 
+  listTenantReceipts(tenantId: string) {
+    return this.firestore.listDonationReceiptsForTenant(tenantId);
+  }
+
+  listMyReceipts(tenantId: string, donorUserId: string) {
+    return this.firestore.listDonationReceiptsForDonor(tenantId, donorUserId);
+  }
+
+  getFinanceReport(tenantId: string) {
+    return this.firestore.getDonationFinanceReport(tenantId);
+  }
+
   listMyPledges(tenantId: string, donorUserId: string) {
     return this.firestore.listDonationPledgesForDonor(tenantId, donorUserId);
   }

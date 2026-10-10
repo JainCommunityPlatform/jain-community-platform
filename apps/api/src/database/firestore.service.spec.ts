@@ -467,8 +467,31 @@ describe('FirestoreService donation payment workflow', () => {
       .rejects.toThrow('PAYMENT_SELF_APPROVAL');
     const verified = await instance.approveDonationPayment('tenant-a', payment.id, 'finance-approver');
     expect(verified.status).toBe('VERIFIED');
+    expect(verified.receiptNumber).toMatch(/^JCP-TENANTA-\d{4}-\d{6}$/);
+    const receipts = await instance.listDonationReceiptsForTenant('tenant-a');
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0]).toMatchObject({
+      paymentId: payment.id, pledgeId: pledge.id, donorUserId: pledge.donorUserId,
+      amountPaise: 25000, receiptNumber: verified.receiptNumber,
+    });
+    expect(await instance.listDonationReceiptsForDonor('tenant-a', pledge.donorUserId)).toHaveLength(1);
+    expect(await instance.listDonationReceiptsForDonor('tenant-b', pledge.donorUserId)).toHaveLength(0);
     const updatedPledge = (await instance.listDonationPledgesForTenant('tenant-a')).find(p => p.id === payment.pledgeId);
     expect(updatedPledge).toMatchObject({ paidAmountPaise: 25000, status: 'PARTIALLY_PAID' });
+  });
+
+  it('builds a tenant-scoped summary from verified and pending payments only', async () => {
+    const { instance, pledge } = await setup();
+    await instance.recordDonationPayment({
+      tenantId: 'tenant-a', pledgeId: pledge.id, actorUserId: 'operator-a',
+      amountPaise: 20000, method: 'UPI', idempotencyKey: 'pending-payment',
+    });
+    const report = await instance.getDonationFinanceReport('tenant-a');
+    expect(report.totals).toMatchObject({
+      pledgedAmountPaise: 100000, receivedAmountPaise: 0, outstandingAmountPaise: 100000,
+      pendingApprovalAmountPaise: 20000, pendingPaymentCount: 1, verifiedPaymentCount: 0,
+    });
+    expect(report.byPaymentMethod.find(item => item.method === 'UPI')?.verifiedAmountPaise).toBe(0);
   });
 
   it('rejects overpayment during recording and approval, and rejects do not update the pledge', async () => {
