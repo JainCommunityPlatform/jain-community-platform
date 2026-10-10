@@ -1841,6 +1841,51 @@ export class FirestoreService implements OnModuleInit {
     }).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   }
 
+  async listFailedNotificationDeliveries(limit = 100) {
+    const safeLimit = Math.max(1, Math.min(250, Math.floor(limit)));
+    const snapshot = await this.getDb().collection('notificationDeliveries')
+      .where('status', '==', 'FAILED')
+      .get();
+    return snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        tenantId: data.tenantId as string,
+        notificationId: data.notificationId as string,
+        userId: data.userId as string,
+        channel: data.channel as 'EMAIL' | 'WHATSAPP' | 'PUSH',
+        status: data.status as 'FAILED',
+        attempts: Number(data.attempts ?? 0),
+        providerMessageId: data.providerMessageId as string | undefined,
+        errorCode: data.errorCode as string | undefined,
+        errorMessage: data.errorMessage as string | undefined,
+        createdAt: toDate(data.createdAt),
+        updatedAt: toDate(data.updatedAt),
+      };
+    }).sort((a, b) => a.updatedAt.getTime() - b.updatedAt.getTime()).slice(0, safeLimit);
+  }
+
+  async getNotificationForUser(tenantId: string, userId: string, notificationId: string) {
+    const snapshot = await this.getDb().collection('notifications').doc(notificationId).get();
+    if (!snapshot.exists) return null;
+    const data = snapshot.data() ?? {};
+    if (data.tenantId !== tenantId || data.userId !== userId) return null;
+    return {
+      id: snapshot.id,
+      tenantId,
+      userId,
+      type: data.type as string,
+      title: data.title as string,
+      body: data.body as string,
+      entityType: data.entityType as string,
+      entityId: data.entityId as string,
+      metadata: (data.metadata as Record<string, unknown> | undefined) ?? {},
+      readAt: data.readAt ? toDate(data.readAt) : null,
+      createdAt: toDate(data.createdAt),
+      updatedAt: toDate(data.updatedAt),
+    };
+  }
+
   async getNotificationPreferences(tenantId: string, userId: string) {
     const id = createHash('sha256').update(tenantId + ':' + userId).digest('hex');
     const snapshot = await this.getDb().collection('notificationPreferences').doc(id).get();
