@@ -467,7 +467,7 @@ describe('FirestoreService donation payment workflow', () => {
       .rejects.toThrow('PAYMENT_SELF_APPROVAL');
     const verified = await instance.approveDonationPayment('tenant-a', payment.id, 'finance-approver');
     expect(verified.status).toBe('VERIFIED');
-    expect(verified.receiptNumber).toMatch(/^JCP-TENANTA-\\d{4}-\\d{6}$/);
+    expect(verified.receiptNumber).toMatch(/^JCP-TENANTA-\d{4}-\d{6}$/);
     const receipts = await instance.listDonationReceiptsForTenant('tenant-a');
     expect(receipts).toHaveLength(1);
     expect(receipts[0]).toMatchObject({
