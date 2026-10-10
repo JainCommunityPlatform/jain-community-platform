@@ -57,8 +57,13 @@ export class AuthorizationPolicy {
   ): void {
     this.assertTenantAccess(context);
 
-    const permissions = ROLE_PERMISSIONS[context.membership!.role] ?? [];
-    if (!permissions.includes(permission)) {
+    const roles = context.membership!.roles?.length
+      ? context.membership!.roles
+      : [context.membership!.role];
+    const permissions = new Set(
+      roles.flatMap((role) => ROLE_PERMISSIONS[role] ?? []),
+    );
+    if (!permissions.has(permission)) {
       throw new ForbiddenException('Permission denied');
     }
   }

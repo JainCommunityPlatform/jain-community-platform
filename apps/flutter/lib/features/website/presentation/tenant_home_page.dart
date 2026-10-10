@@ -82,6 +82,9 @@ class _TenantHomePageState extends State<TenantHomePage> {
           site: snapshot.data!,
           onFindTemples: () => widget.selection.select(null),
           showAdmin: widget.sessionController.session.isAdmin,
+          showFinance: widget.sessionController.session.isFinance,
+          showInventory: widget.sessionController.session.isInventory,
+          showPlatformAdmin: widget.sessionController.session.isPlatformAdmin,
           showSignIn: !widget.sessionController.session.isAuthenticated,
         );
       },
@@ -112,6 +115,8 @@ class TempleDirectoryPage extends StatefulWidget {
 class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
   late Future<List<TenantSummary>> _future;
   String _query = '';
+  String _selectedCity = 'All';
+  int _selectedTab = 0;
 
   @override
   void initState() {
@@ -150,13 +155,68 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
             ),
         ],
       ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedTab,
+        onDestinationSelected: (index) {
+          if (widget.showPlatformAdmin && index == 5) {
+            context.go(AppRoutes.platformAdmin);
+          } else if (index == 0 || index == 1) {
+            setState(() => _selectedTab = index);
+          } else {
+            context.go('${AppRoutes.member}?tab=$index');
+          }
+        },
+        destinations: [
+          const NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.temple_hindu_outlined),
+            selectedIcon: Icon(Icons.temple_hindu),
+            label: 'Temples',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.event_outlined),
+            selectedIcon: Icon(Icons.event),
+            label: 'Events',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.volunteer_activism_outlined),
+            selectedIcon: Icon(Icons.volunteer_activism),
+            label: 'Donations',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+          if (widget.showPlatformAdmin)
+            const NavigationDestination(
+              icon: Icon(Icons.admin_panel_settings_outlined),
+              selectedIcon: Icon(Icons.admin_panel_settings),
+              label: 'Manage',
+            ),
+        ],
+      ),
       body: FutureBuilder<List<TenantSummary>>(
         future: _future,
         builder: (context, snapshot) {
-          final items = (snapshot.data ?? [])
+          final allTemples = snapshot.data ?? <TenantSummary>[];
+          final cities = allTemples
+              .map((item) => item.city?.trim() ?? '')
+              .where((city) => city.isNotEmpty)
+              .toSet()
+              .toList()
+            ..sort();
+          final items = allTemples
               .where((item) =>
                   item.name.toLowerCase().contains(_query.toLowerCase()) ||
-                  (item.city ?? '').toLowerCase().contains(_query.toLowerCase()))
+                  (item.city ?? '').toLowerCase().contains(_query.toLowerCase()) ||
+                  (item.state ?? '').toLowerCase().contains(_query.toLowerCase()))
+              .where((item) =>
+                  _selectedCity == 'All' || item.city == _selectedCity)
               .toList();
 
           return Center(
@@ -165,8 +225,6 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(18, 18, 18, 40),
                 children: [
-                  _TempleDirectoryHero(strings: strings),
-                  const SizedBox(height: 18),
                   Card(
                     elevation: 0,
                     child: Padding(
@@ -186,13 +244,30 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 12),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final city in ['All', ...cities])
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: FilterChip(
+                              selected: _selectedCity == city,
+                              label: Text(city == 'All' ? 'All temples' : city),
+                              onSelected: (_) => setState(() => _selectedCity = city),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
                   Row(
                     children: [
                       Expanded(
                         child: Text(
                           strings.temples,
-                          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
+                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
                         ),
                       ),
                       if (snapshot.hasData)
@@ -213,112 +288,21 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
                   else if (items.isEmpty)
                     _EmptyContent(message: strings.noTemples)
                   else
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final columns = constraints.maxWidth >= 1000
-                            ? 4
-                            : constraints.maxWidth >= 650
-                                ? 3
-                                : 2;
-                        return GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: items.length,
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: columns,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                            childAspectRatio: 0.78,
-                          ),
-                          itemBuilder: (context, index) {
-                            final temple = items[index];
-                            return _TempleCard(
-                              temple: temple,
-                              onTap: () async {
-                                widget.selection.select(temple.toContext());
-                                await widget.onSelect?.call(temple);
-                              },
-                            );
-                          },
-                        );
-                      },
-                    ),
+                    ...items.map((temple) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _TempleCard(
+                        temple: temple,
+                        onTap: () async {
+                          widget.selection.select(temple.toContext());
+                          await widget.onSelect?.call(temple);
+                        },
+                      ),
+                    )),
                 ],
               ),
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-class _TempleDirectoryHero extends StatelessWidget {
-  const _TempleDirectoryHero({required this.strings});
-
-  final AppStrings strings;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            colors.secondary,
-            colors.primary,
-            const Color(0xFFE8A32A),
-          ],
-        ),
-        boxShadow: const [
-          BoxShadow(blurRadius: 24, offset: Offset(0, 12)),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 76,
-            height: 76,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: const Icon(Icons.temple_hindu, color: Colors.white, size: 48),
-          ),
-          const SizedBox(width: 18),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '॥ जय जिनेन्द्र ॥',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.86),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  strings.findTemples,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 30,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  _directoryDescription(strings),
-                  style: const TextStyle(color: Colors.white70, height: 1.35),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -334,30 +318,54 @@ class _TempleCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       clipBehavior: Clip.antiAlias,
+      elevation: 1,
       child: InkWell(
         onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: _RemoteImage(url: temple.primaryImageUrl, icon: Icons.temple_hindu)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(temple.name, maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 4),
-                  Text(
-                    [temple.city, temple.state].whereType<String>().where((v) => v.isNotEmpty).join(', '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ],
+        child: SizedBox(
+          height: 116,
+          child: Row(
+            children: [
+              SizedBox(
+                width: 112,
+                child: _RemoteImage(
+                  url: temple.primaryImageUrl,
+                  icon: Icons.temple_hindu,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 14),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        temple.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        [temple.city, temple.state]
+                            .whereType<String>()
+                            .where((v) => v.isNotEmpty)
+                            .join(', '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 13, color: Color(0xFF766A60)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Icon(Icons.chevron_right, color: Color(0xFF8B2E1B)),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -370,6 +378,9 @@ class _WebsiteView extends StatelessWidget {
     required this.site,
     required this.onFindTemples,
     required this.showAdmin,
+    required this.showFinance,
+    required this.showInventory,
+    required this.showPlatformAdmin,
     required this.showSignIn,
   });
 
@@ -377,6 +388,9 @@ class _WebsiteView extends StatelessWidget {
   final Map<String, dynamic> site;
   final VoidCallback onFindTemples;
   final bool showAdmin;
+  final bool showFinance;
+  final bool showInventory;
+  final bool showPlatformAdmin;
   final bool showSignIn;
 
   @override
@@ -426,9 +440,96 @@ class _WebsiteView extends StatelessWidget {
           ],
         ),
       ),
+      bottomNavigationBar: _TempleBottomNavigation(
+        showAdmin: showAdmin,
+        showFinance: showFinance,
+        showInventory: showInventory,
+        showPlatformAdmin: showPlatformAdmin,
+        onFindTemples: onFindTemples,
+      ),
     );
   }
 }
+
+class _TempleNavItem {
+  const _TempleNavItem({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+}
+
+class _TempleBottomNavigation extends StatelessWidget {
+  const _TempleBottomNavigation({
+    required this.showAdmin,
+    required this.showFinance,
+    required this.showInventory,
+    required this.showPlatformAdmin,
+    required this.onFindTemples,
+  });
+
+  final bool showAdmin;
+  final bool showFinance;
+  final bool showInventory;
+  final bool showPlatformAdmin;
+  final VoidCallback onFindTemples;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <_TempleNavItem>[
+      const _TempleNavItem(label: 'Home', icon: Icons.home_outlined, onTap: _noOp),
+      _TempleNavItem(label: 'Temples', icon: Icons.temple_hindu_outlined, onTap: onFindTemples),
+      _TempleNavItem(label: 'Events', icon: Icons.event_outlined, onTap: () => context.go('${AppRoutes.member}?tab=2')),
+      _TempleNavItem(label: 'Donations', icon: Icons.volunteer_activism_outlined, onTap: () => context.go('${AppRoutes.member}?tab=3')),
+      _TempleNavItem(label: 'Profile', icon: Icons.person_outline, onTap: () => context.go('${AppRoutes.member}?tab=4')),
+      if (showAdmin)
+        _TempleNavItem(label: 'Website', icon: Icons.web_outlined, onTap: () => context.go(AppRoutes.adminSite)),
+      if (showFinance)
+        _TempleNavItem(label: 'Finance', icon: Icons.account_balance_wallet_outlined, onTap: () => context.go(AppRoutes.finance)),
+      if (showInventory)
+        _TempleNavItem(label: 'Inventory', icon: Icons.inventory_2_outlined, onTap: () => context.go(AppRoutes.inventory)),
+      if (showPlatformAdmin)
+        _TempleNavItem(label: 'Manage', icon: Icons.admin_panel_settings_outlined, onTap: () => context.go(AppRoutes.platformAdmin)),
+    ];
+
+    return Material(
+      elevation: 12,
+      color: const Color(0xFFFFFBF1),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 68,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: items.map((item) => InkWell(
+                onTap: item.onTap,
+                child: SizedBox(
+                  width: 76,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(item.icon, size: 22, color: const Color(0xFF8B2E1B)),
+                      const SizedBox(height: 3),
+                      Text(item.label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 11, color: Color(0xFF5D4037))),
+                    ],
+                  ),
+                ),
+              )).toList(),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+void _noOp() {}
 
 class _Header extends StatelessWidget {
   const _Header({required this.tenantName, required this.header, required this.onFindTemples, required this.colors, required this.showAdmin, required this.showSignIn});
@@ -1109,13 +1210,6 @@ class _LanguageSelector extends StatelessWidget {
     );
   }
 }
-
-String _directoryDescription(AppStrings strings) => switch (strings.languageCode) {
-  'hi' => 'JCP में उपलब्ध मंदिरों को खोजें और उनकी पूरी वेबसाइट देखें।',
-  'mr' => 'JCP वरील मंदिरे शोधा आणि त्यांची संपूर्ण वेबसाइट पहा.',
-  'gu' => 'JCP પર ઉપલબ્ધ દેરાસરો શોધો અને તેમની સંપૂર્ણ વેબસાઇટ જુઓ.',
-  _ => 'Find temples available on JCP and explore their complete websites.',
-};
 
 String _sevaLabel(String? icon, String? fallback, AppStrings strings) => switch (icon) {
   'favorite' => strings.foodSeva,

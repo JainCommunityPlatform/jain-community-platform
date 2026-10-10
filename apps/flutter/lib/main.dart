@@ -97,6 +97,7 @@ class JainCommunityPlatformApp extends StatelessWidget {
             supportedLocales: AppLanguageController.supported,
             localizationsDelegates: GlobalMaterialLocalizations.delegates,
             routerConfig: router.router,
+            builder: (context, child) => child ?? const SizedBox.shrink(),
           ),
         ),
       ),

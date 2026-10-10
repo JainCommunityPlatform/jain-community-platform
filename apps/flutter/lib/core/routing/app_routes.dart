@@ -7,4 +7,5 @@ abstract final class AppRoutes {
   static const platformAdmin = '/platform-admin';
   static const finance = '/finance';
   static const library = '/library';
+  static const inventory = '/inventory';
 }

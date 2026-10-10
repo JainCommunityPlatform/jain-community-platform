@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:jain_community_platform/core/api/api_client.dart';
 import 'package:jain_community_platform/core/auth/firebase_auth_provider.dart';
+import 'package:jain_community_platform/core/i18n/app_language.dart';
 import 'package:jain_community_platform/core/routing/app_router.dart';
 import 'package:jain_community_platform/core/routing/app_routes.dart';
 import 'package:jain_community_platform/core/session/app_session.dart';
@@ -17,10 +18,13 @@ import 'package:jain_community_platform/core/tenant/tenant_context.dart';
 import 'package:jain_community_platform/core/tenant/tenant_selection_controller.dart';
 import 'package:jain_community_platform/features/auth/presentation/login_page.dart';
 import 'package:jain_community_platform/features/member/presentation/member_home_page.dart';
+import 'package:jain_community_platform/features/platform/presentation/platform_admin_page.dart';
 import 'package:jain_community_platform/features/profile/data/profile_repository.dart';
 import 'package:jain_community_platform/features/tenant/data/tenant_repository.dart';
 import 'package:jain_community_platform/features/website/data/website_repository.dart';
 import 'package:jain_community_platform/features/website/presentation/tenant_home_page.dart';
+import 'package:jain_community_platform/features/website/presentation/website_editor_page.dart';
+import 'package:jain_community_platform/main.dart' as app;
 
 const temple = TenantContext(
   id: 'tenant-1',
@@ -168,6 +172,85 @@ void main() {
     controller.dispose();
   });
 
+  testWidgets('platform admin hero stays readable on narrow phones',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final client = MockClient(
+      (_) async => http.Response(jsonEncode([]), 200),
+    );
+    final api = ApiClient(
+      baseUrl: Uri.parse('https://example.test/'),
+      client: client,
+    );
+    await tester.pumpWidget(MaterialApp(home: PlatformAdminPage(api: api)));
+    await _pumpRouter(tester);
+
+    final heading = find.text('Temple administration');
+    expect(heading, findsOneWidget);
+    expect(tester.getSize(heading).width, greaterThan(100));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('temple directory exposes MyJinalay bottom navigation',
+      (tester) async {
+    final (_, selection, controller) = await _router();
+    selection.select(null);
+    await tester.pumpWidget(MaterialApp(
+      home: TenantHomePage(
+        selection: selection,
+        tenantRepository: TenantRepository(_apiClient()),
+        websiteRepository: FakeWebsiteRepository(),
+        sessionController: controller,
+      ),
+    ));
+    await _pumpRouter(tester);
+
+    final navigation = find.byType(NavigationBar);
+    for (final label in ['Home', 'Temples', 'Events', 'Donations', 'Profile']) {
+      expect(
+        find.descendant(of: navigation, matching: find.text(label)),
+        findsOneWidget,
+      );
+    }
+    expect(tester.takeException(), isNull);
+    controller.dispose();
+  });
+
+  testWidgets('Android back from a nested route returns to temple directory',
+      (tester) async {
+    final (appRouter, selection, controller) = await _router(
+      session: const AppSession(
+        isAuthenticated: true,
+        userId: 'user-1',
+      ),
+    );
+    final language = AppLanguageController();
+
+    await tester.pumpWidget(app.JainCommunityPlatformApp(
+      router: appRouter,
+      tenantSelection: selection,
+      language: language,
+    ));
+    await _pumpRouter(tester);
+
+    appRouter.router.push(AppRoutes.member);
+    await _pumpRouter(tester);
+    expect(appRouter.router.state.uri.path, AppRoutes.member);
+
+    await tester.binding.handlePopRoute();
+    await _pumpRouter(tester);
+
+    expect(appRouter.router.state.uri.path, AppRoutes.home);
+    expect(selection.selected?.id, temple.id);
+    appRouter.router.dispose();
+    controller.dispose();
+    language.dispose();
+  });
+
   testWidgets('home sign-in action navigates to login', (tester) async {
     final (_, selection, controller) = await _router();
     final router = GoRouter(
@@ -250,6 +333,33 @@ void main() {
     controller.dispose();
   });
 
+  testWidgets('inventory console requires an inventory or admin role',
+      (tester) async {
+    final (appRouter, _, controller) = await _router(
+      session: const AppSession(
+        isAuthenticated: true,
+        userId: 'user-1',
+        roles: ['FINANCE_VIEWER', 'INVENTORY_MANAGER'],
+      ),
+    );
+    final router = GoRouter(
+      initialLocation: AppRoutes.inventory,
+      redirect: appRouter.redirect,
+      routes: [
+        GoRoute(path: '/login', builder: (_, __) => const Scaffold(body: Text('login'))),
+        GoRoute(path: AppRoutes.member, builder: (_, __) => const Scaffold(body: Text('member'))),
+        GoRoute(path: AppRoutes.inventory, builder: (_, __) => const Scaffold(body: Text('inventory'))),
+      ],
+    );
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await _pumpRouter(tester);
+    expect(router.state.uri.path, AppRoutes.inventory);
+    expect(find.text('inventory'), findsOneWidget);
+    router.dispose();
+    controller.dispose();
+  });
+
   testWidgets('member experience exposes the demo navigation tabs',
       (tester) async {
     await tester.pumpWidget(const MaterialApp(home: MemberHomePage()));
@@ -279,6 +389,193 @@ void main() {
     await tester.tap(find.text('Profile'));
     await _pumpRouter(tester);
     expect(find.text('MyJinalay Member'), findsOneWidget);
+  });
+
+  testWidgets('JCP administration remains readable on a narrow mobile viewport',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final client = MockClient((request) async {
+      if (request.method == 'GET' &&
+          request.url.path == '/api/platform/tenants') {
+        return http.Response(jsonEncode([
+          {
+            'id': 'tenant-1',
+            'name': 'Bade Baba Kharadi',
+            'city': 'Pune',
+            'state': 'Maharashtra',
+            'hostname': 'badebaba.example.test',
+          },
+        ]), 200);
+      }
+      return http.Response(jsonEncode([]), 200);
+    });
+    final api = ApiClient(
+      baseUrl: Uri.parse('https://example.test/'),
+      client: client,
+    );
+
+    await tester.pumpWidget(MaterialApp(home: PlatformAdminPage(api: api)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Temple administration'), findsOneWidget);
+    expect(find.text('Add temple'), findsOneWidget);
+    expect(find.text('Bade Baba Kharadi'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit temple'), findsOneWidget);
+    expect(find.text('City'), findsOneWidget);
+    expect(find.text('State'), findsOneWidget);
+    expect(find.text('PIN'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  test('tenant session resolves multiple simultaneous roles', () {
+    final session = AppSession.fromAuthMe({
+      'userId': 'user-1',
+      'role': 'FINANCE_VIEWER',
+      'roles': ['INVENTORY_MANAGER', 'TENANT_ADMIN'],
+    });
+
+    expect(session.isAuthenticated, isTrue);
+    expect(session.isAdmin, isTrue);
+    expect(session.isFinance, isTrue);
+    expect(session.isInventory, isTrue);
+  });
+
+  testWidgets('website editor keeps secondary sections collapsed by default',
+      (tester) async {
+    final client = MockClient((request) async {
+      if (request.method == 'GET' &&
+          request.url.path == '/api/memberships') {
+        return http.Response(jsonEncode([]), 200);
+      }
+      if (request.method == 'GET' &&
+          request.url.path == '/api/website/site') {
+        return http.Response(jsonEncode({
+          'tenantId': 'tenant-1',
+          'theme': {
+            'primary': '#F57C00',
+            'secondary': '#8B2E1B',
+            'background': '#FFF4DE',
+            'surface': '#FFFDF8',
+            'accent': '#E65100',
+          },
+          'header': {'languages': ['हिन्दी']},
+          'hero': {'title': 'Bade Baba Kharadi'},
+          'about': {},
+          'contact': {},
+          'templeDirectory': {'enabled': true, 'limit': 6},
+          'events': {'enabled': true, 'items': []},
+          'gallery': {'enabled': true, 'items': []},
+          'seva': {'enabled': true, 'items': []},
+          'quickInfo': [],
+        }), 200);
+      }
+      return http.Response('{}', 200);
+    });
+    final repository = WebsiteRepository(ApiClient(
+      baseUrl: Uri.parse('https://example.test/'),
+      client: client,
+    ));
+
+    final editorRouter = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, __) => WebsiteEditorPage(
+            repository: repository,
+            tenantName: 'Bade Baba Kharadi',
+          ),
+        ),
+        GoRoute(
+          path: '/member',
+          builder: (_, __) => const Scaffold(body: Text('member page')),
+        ),
+      ],
+    );
+    await tester.pumpWidget(MaterialApp.router(routerConfig: editorRouter));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Theme & header'), findsOneWidget);
+    final scrollable = find.descendant(
+      of: find.byType(ListView).first,
+      matching: find.byType(Scrollable),
+    ).first;
+    await tester.scrollUntilVisible(
+      find.text('Section controls'),
+      250,
+      scrollable: scrollable,
+    );
+    expect(find.text('Section controls'), findsOneWidget);
+    expect(find.text('Temple directory title'), findsNothing);
+
+    await tester.tap(find.text('Section controls'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Temple directory title'),
+      250,
+      scrollable: scrollable,
+    );
+    expect(find.text('Temple directory title'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('Temple team & roles'),
+      350,
+      scrollable: scrollable,
+    );
+    expect(find.text('Temple team & roles'), findsOneWidget);
+    await tester.tap(find.text('Temple team & roles'));
+    await tester.pumpAndSettle();
+    expect(find.text('Assign multiple roles to a JCP user'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is TextField &&
+            widget.decoration?.labelText == 'Existing JCP user email',
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+    editorRouter.dispose();
+  });
+
+  test('website repository sends multiple tenant roles to the API', () async {
+    Map<String, dynamic>? requestBody;
+    final client = MockClient((request) async {
+      if (request.method == 'GET' && request.url.path == '/api/memberships') {
+        return http.Response(jsonEncode([]), 200);
+      }
+      if (request.method == 'POST' && request.url.path == '/api/memberships/roles') {
+        requestBody = Map<String, dynamic>.from(jsonDecode(request.body) as Map);
+        return http.Response(jsonEncode({
+          'userId': 'user-1',
+          'roles': requestBody!['roles'],
+        }), 200);
+      }
+      return http.Response('{}', 404);
+    });
+    final repository = WebsiteRepository(
+      ApiClient(baseUrl: Uri.parse('https://example.test/'), client: client),
+    );
+
+    await expectLater(repository.listTenantMemberships(), completion(isEmpty));
+    await repository.assignTenantRoles(
+      email: 'member@example.test',
+      roles: ['FINANCE_VIEWER', 'INVENTORY_MANAGER'],
+    );
+
+    expect(requestBody?['email'], 'member@example.test');
+    expect(
+      (requestBody?['roles'] as List<dynamic>?)?.toSet(),
+      {'FINANCE_VIEWER', 'INVENTORY_MANAGER'},
+    );
   });
 
   testWidgets('login page invokes the Google sign-in callback',

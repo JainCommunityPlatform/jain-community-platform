@@ -1,7 +1,9 @@
-import { Body, Controller, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, UseGuards, UseInterceptors } from '@nestjs/common';
 
 import { AuthenticationGuard } from '../auth/authentication.guard';
+import { AuthenticationContextInterceptor } from '../auth/authentication-context.interceptor';
 import { AuthorizationGuard } from '../authorization/authorization.guard';
+import { MembershipContextInterceptor } from '../authorization/membership-context.interceptor';
 import { RequirePermission } from '../authorization/require-permission.decorator';
 import { AuthContextStore } from '../auth/auth-context.store';
 import { UserIdentityService } from '../identity/user-identity.service';
@@ -12,6 +14,7 @@ import { PlatformService } from './platform.service';
 
 @Controller('platform')
 @UseGuards(AuthenticationGuard, AuthorizationGuard)
+@UseInterceptors(AuthenticationContextInterceptor, MembershipContextInterceptor)
 @RequirePermission('platform.tenant.manage')
 export class PlatformController {
   constructor(

@@ -8,6 +8,7 @@ import { AuditService } from '../audit/audit.service';
 import { FirestoreService } from '../database/firestore.service';
 import { TenantContextStore } from './tenant-context.store';
 import { MembershipRole } from '../authorization/authorization.types';
+import { MembershipService } from '../authorization/membership.service';
 
 export interface TenantMemberSummary {
   id: string;
@@ -25,6 +26,7 @@ export class TenantMemberService {
     private readonly firestore: FirestoreService,
     private readonly tenantContext: TenantContextStore,
     private readonly audit: AuditService,
+    private readonly memberships: MembershipService,
   ) {}
 
   async list(): Promise<TenantMemberSummary[]> {
@@ -75,10 +77,15 @@ export class TenantMemberService {
   ): Promise<TenantMemberSummary> {
     const membership = await this.findMembership(userId);
 
-    const updated = await this.firestore.updateMembership(
+    const existingRoles = membership.roles ?? [membership.role];
+    const nextRoles = [
+      ...existingRoles.filter((existingRole) => existingRole !== membership.role),
+      role,
+    ];
+    const updated = await this.memberships.assignRoles(
       userId,
       membership.tenantId,
-      role,
+      nextRoles,
     );
 
     await this.audit.record({
@@ -93,6 +100,17 @@ export class TenantMemberService {
 
   async remove(userId: string): Promise<void> {
     const membership = await this.findMembership(userId);
+    if ((membership.roles ?? [membership.role]).includes('TENANT_ADMIN')) {
+      const allMemberships = await this.firestore.listMemberships(membership.tenantId);
+      const adminCount = allMemberships.filter((item) =>
+        (item.roles ?? [item.role]).includes('TENANT_ADMIN'),
+      ).length;
+      if (adminCount <= 1) {
+        throw new ConflictException(
+          'At least one temple administrator must remain assigned',
+        );
+      }
+    }
     await this.firestore.deleteMembership(userId, membership.tenantId);
 
     await this.audit.record({

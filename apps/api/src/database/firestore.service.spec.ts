@@ -216,6 +216,49 @@ describe('FirestoreService identity/profile persistence', () => {
     expect((await instance.listUserActivities('u1')).length).toBe(1);
   });
 
+  it('lists tenant memberships in creation order without requiring orderBy index', async () => {
+    const { instance, db } = service();
+    db.set('memberships', 'u-new__t1', {
+      userId: 'u-new',
+      tenantId: 't1',
+      role: 'TENANT_ADMIN',
+      createdAt: new Date('2026-10-02T00:00:00Z'),
+    });
+    db.set('memberships', 'u-old__t1', {
+      userId: 'u-old',
+      tenantId: 't1',
+      role: 'TENANT_ADMIN',
+      createdAt: new Date('2026-10-01T00:00:00Z'),
+    });
+    db.set('users', 'u-old', { email: 'old@example.test', displayName: 'Older admin' });
+    db.set('users', 'u-new', { email: 'new@example.test', displayName: 'Newer admin' });
+
+    const memberships = await instance.listMemberships('t1');
+
+    expect(memberships.map((membership) => membership.userId)).toEqual([
+      'u-old',
+      'u-new',
+    ]);
+    expect(memberships[0].user?.displayName).toBe('Older admin');
+  });
+
+  it('preserves existing roles when adding a tenant administrator role', async () => {
+    const { instance } = service();
+    await instance.createMembership({
+      userId: 'user-finance',
+      tenantId: 'tenant-1',
+      role: 'FINANCE_VIEWER',
+      roles: ['FINANCE_VIEWER'],
+    });
+
+    await instance.assignTenantAdmin('user-finance', 'tenant-1');
+
+    const membership = await instance.getMembership('user-finance', 'tenant-1');
+    expect(membership?.roles).toEqual(['FINANCE_VIEWER', 'TENANT_ADMIN']);
+    expect((await instance.listTenantAdmins('tenant-1')).map((item) => item.userId))
+      .toContain('user-finance');
+  });
+
   it('resolves tenants and membership lifecycle', async () => {
     const { instance, db } = service();
     expect(await instance.getTenantByHostname('missing.test')).toBeNull();

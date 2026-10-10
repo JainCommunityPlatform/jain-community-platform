@@ -72,6 +72,20 @@ describe('AuthorizationPolicy', () => {
     expect(policy.hasPermission(financeViewer, 'finance.approve')).toBe(false);
   });
 
+  it('combines permissions from multiple roles without elevating unrelated permissions', () => {
+    const combined = context('user-a', 'tenant-a', {
+      userId: 'user-a',
+      tenantId: 'tenant-a',
+      role: 'FINANCE_VIEWER',
+      roles: ['FINANCE_VIEWER', 'INVENTORY_MANAGER'],
+    });
+
+    expect(policy.hasPermission(combined, 'finance.read')).toBe(true);
+    expect(policy.hasPermission(combined, 'inventory.manage')).toBe(true);
+    expect(policy.hasPermission(combined, 'finance.approve')).toBe(false);
+    expect(policy.hasPermission(combined, 'tenant.manage')).toBe(false);
+  });
+
   it('allows tenant admins all defined tenant permissions', () => {
     const admin = context();
 

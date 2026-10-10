@@ -32,60 +32,68 @@ class AppRouter {
     final websiteRepository = WebsiteRepository(api);
     _websiteRepository = websiteRepository;
     router = GoRouter(
+      navigatorKey: navigatorKey,
       initialLocation: AppRoutes.home,
       refreshListenable: sessionController,
       redirect: redirect,
       routes: [
         GoRoute(
           path: AppRoutes.home,
-          builder: (_, __) => HomePage(
+          builder: (context, __) => _withBackGuard(context, HomePage(
             selection: _tenantSelection,
             tenantRepository: _tenantRepository,
             websiteRepository: websiteRepository,
             onTenantSelected: (_) => _sessionController.refreshCurrentSession(),
             sessionController: _sessionController,
-          ),
+          )),
         ),
         GoRoute(
           path: AppRoutes.login,
-          builder: (_, __) => LoginPage(
+          builder: (context, __) => _withBackGuard(context, LoginPage(
             onSignInWithGoogle: sessionController.signInWithGoogle,
             isLoading: sessionController.status == AppSessionStatus.initializing,
             error: sessionController.error,
-          ),
+          )),
         ),
         GoRoute(
           path: '/link-contact',
-          builder: (_, __) => LinkContactPage(
+          builder: (context, __) => _withBackGuard(context, LinkContactPage(
             onLink: (value) => _sessionController.linkContact(value),
-          ),
+          )),
         ),
         GoRoute(
           path: AppRoutes.member,
-          builder: (_, __) => MemberHomePage(profileRepository: _profileRepository),
+          builder: (context, state) => _withBackGuard(context, MemberHomePage(
+            profileRepository: _profileRepository,
+            initialIndex: int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0,
+          )),
         ),
         GoRoute(
           path: AppRoutes.admin,
-          builder: (_, __) => AdminHomePage(api: _api),
+          builder: (context, __) => _withBackGuard(context, AdminHomePage(api: _api)),
         ),
         GoRoute(
           path: AppRoutes.adminSite,
-          builder: (_, __) => WebsiteEditorPage(
+          builder: (context, __) => _withBackGuard(context, WebsiteEditorPage(
             repository: _websiteRepository,
             tenantName: _tenantSelection.selected?.name ?? 'Temple',
-          ),
+          )),
         ),
         GoRoute(
           path: AppRoutes.platformAdmin,
-          builder: (_, __) => PlatformAdminPage(api: _api),
+          builder: (context, __) => _withBackGuard(context, PlatformAdminPage(api: _api)),
         ),
         GoRoute(
           path: AppRoutes.finance,
-          builder: (_, __) => const _PlaceholderPage(title: 'Finance console'),
+          builder: (context, __) => _withBackGuard(context, const _PlaceholderPage(title: 'Finance console')),
         ),
         GoRoute(
           path: AppRoutes.library,
-          builder: (_, __) => const _PlaceholderPage(title: 'Digital library'),
+          builder: (context, __) => _withBackGuard(context, const _PlaceholderPage(title: 'Digital library')),
+        ),
+        GoRoute(
+          path: AppRoutes.inventory,
+          builder: (context, __) => _withBackGuard(context, const _PlaceholderPage(title: 'Inventory console')),
         ),
       ],
     );
@@ -97,9 +105,27 @@ class AppRouter {
   final ProfileRepository _profileRepository;
   final ApiClient _api;
   late final WebsiteRepository _websiteRepository;
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
   late final GoRouter router;
 
   AppSession get currentSession => _sessionController.session;
+
+  Widget _withBackGuard(BuildContext context, Widget child) {
+    final currentPath = router.routeInformationProvider.value.uri.path;
+    return PopScope<Object?>(
+      canPop: router.canPop() || Navigator.of(context).canPop(),
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (currentPath != AppRoutes.home) {
+          _tenantSelection.select(null);
+          router.go(AppRoutes.home);
+        } else if (_tenantSelection.selected != null) {
+          _tenantSelection.select(null);
+        }
+      },
+      child: child,
+    );
+  }
 
   String? redirect(BuildContext context, GoRouterState state) {
     final location = state.matchedLocation;
@@ -110,6 +136,7 @@ class AppRouter {
       AppRoutes.adminSite,
       AppRoutes.finance,
       AppRoutes.library,
+      AppRoutes.inventory,
       AppRoutes.platformAdmin,
     }.contains(location);
 
@@ -142,6 +169,10 @@ class AppRouter {
     }
 
     if (location == AppRoutes.finance && !session.isFinance) {
+      return AppRoutes.member;
+    }
+
+    if (location == AppRoutes.inventory && !session.isInventory) {
       return AppRoutes.member;
     }
 

@@ -16,6 +16,21 @@ class AdminHomePage extends StatelessWidget {
     final repository = TenantMemberRepository(api);
     return Scaffold(
       appBar: AppBar(title: const Text('Temple Admin')),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: 5,
+        onDestinationSelected: (index) {
+          if (index == 5) return;
+          context.go('${AppRoutes.member}?tab=$index');
+        },
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
+          NavigationDestination(icon: Icon(Icons.temple_hindu_outlined), selectedIcon: Icon(Icons.temple_hindu), label: 'Temples'),
+          NavigationDestination(icon: Icon(Icons.event_outlined), selectedIcon: Icon(Icons.event), label: 'Events'),
+          NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined), selectedIcon: Icon(Icons.volunteer_activism), label: 'Donations'),
+          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
+          NavigationDestination(icon: Icon(Icons.admin_panel_settings_outlined), selectedIcon: Icon(Icons.admin_panel_settings), label: 'Manage'),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

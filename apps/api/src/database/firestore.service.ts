@@ -47,6 +47,7 @@ export interface FirestoreMembership {
   userId: string;
   tenantId: string;
   role: string;
+  roles: string[];
   createdAt: Date;
   user?: { email: string | null; displayName: string | null; primaryPhone: string | null };
 }
@@ -449,13 +450,17 @@ export class FirestoreService implements OnModuleInit {
   }
 
   async listMemberships(tenantId: string): Promise<FirestoreMembership[]> {
+    // Filter by tenant without requiring a composite Firestore index on
+    // (tenantId, createdAt). Sort the small tenant-scoped result set in memory
+    // so administrator management keeps working in newly provisioned projects.
     const snapshot = await this.getDb()
       .collection('memberships')
       .where('tenantId', '==', tenantId)
-      .orderBy('createdAt', 'asc')
       .get();
 
-    const memberships = snapshot.docs.map((doc) => this.toMembership(doc));
+    const memberships = snapshot.docs
+      .map((doc) => this.toMembership(doc))
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     await Promise.all(
       memberships.map(async (membership) => {
         const user = await this.getUser(membership.userId);
@@ -474,6 +479,7 @@ export class FirestoreService implements OnModuleInit {
     userId: string;
     tenantId: string;
     role: string;
+    roles?: string[];
   }): Promise<FirestoreMembership> {
     const db = this.getDb();
     const ref = db
@@ -485,6 +491,7 @@ export class FirestoreService implements OnModuleInit {
       userId: input.userId,
       tenantId: input.tenantId,
       role: input.role,
+      roles: [...new Set(input.roles ?? [input.role])],
       createdAt: now,
     });
 
@@ -496,10 +503,30 @@ export class FirestoreService implements OnModuleInit {
     tenantId: string,
     role: string,
   ): Promise<FirestoreMembership> {
+    return this.updateMembershipRoles(userId, tenantId, [role]);
+  }
+
+  async updateMembershipRoles(
+    userId: string,
+    tenantId: string,
+    roles: string[],
+    preferredRole?: string,
+  ): Promise<FirestoreMembership> {
+    const normalizedRoles = [...new Set(roles.map((role) => role.trim()).filter(Boolean))];
+    if (normalizedRoles.length === 0) {
+      throw new Error('A membership must have at least one role');
+    }
     const ref = this.getDb()
       .collection('memberships')
       .doc(membershipId(userId, tenantId));
-    await ref.update({ role });
+    const current = await ref.get();
+    const currentRole = current.data()?.role as string | undefined;
+    const role = preferredRole && normalizedRoles.includes(preferredRole)
+      ? preferredRole
+      : currentRole && normalizedRoles.includes(currentRole)
+          ? currentRole
+          : normalizedRoles[0];
+    await ref.update({ role, roles: normalizedRoles, updatedAt: Timestamp.now() });
 
     return this.toMembership(await ref.get());
   }
@@ -526,6 +553,9 @@ export class FirestoreService implements OnModuleInit {
       userId: data.userId as string,
       tenantId: data.tenantId as string,
       role: data.role as string,
+      roles: Array.isArray(data.roles)
+        ? (data.roles as unknown[]).filter((role): role is string => typeof role === 'string')
+        : typeof data.role === 'string' ? [data.role] : [],
       createdAt: toDate(data.createdAt),
     };
   }
@@ -741,7 +771,7 @@ export class FirestoreService implements OnModuleInit {
 
   async listTenantAdmins(tenantId: string): Promise<FirestoreMembership[]> {
     const memberships = await this.listMemberships(tenantId);
-    return memberships.filter((membership) => membership.role === 'TENANT_ADMIN');
+    return memberships.filter((membership) => membership.roles.includes('TENANT_ADMIN'));
   }
 
   async getTenantPrimaryDomainDetails(tenantId: string): Promise<{
@@ -810,12 +840,17 @@ export class FirestoreService implements OnModuleInit {
   async assignTenantAdmin(userId: string, tenantId: string): Promise<void> {
     const existing = await this.getMembership(userId, tenantId);
     if (existing) {
-      if (existing.role !== 'TENANT_ADMIN') {
-        await this.updateMembership(userId, tenantId, 'TENANT_ADMIN');
+      if (!existing.roles.includes('TENANT_ADMIN')) {
+        await this.updateMembershipRoles(
+          userId,
+          tenantId,
+          [...existing.roles, 'TENANT_ADMIN'],
+          'TENANT_ADMIN',
+        );
       }
       return;
     }
-    await this.createMembership({ userId, tenantId, role: 'TENANT_ADMIN' });
+    await this.createMembership({ userId, tenantId, role: 'TENANT_ADMIN', roles: ['TENANT_ADMIN'] });
   }
 
   async createTenantAdminInvite(input: { tenantId: string; email: string }): Promise<void> {
@@ -845,11 +880,19 @@ export class FirestoreService implements OnModuleInit {
     for (const invite of snapshot.docs) {
       const tenantId = invite.data().tenantId as string;
       const membershipRef = this.getDb().collection('memberships').doc(membershipId(userId, tenantId));
+      const existing = await membershipRef.get();
+      const data = existing.data() ?? {};
+      const existingRoles = Array.isArray(data.roles)
+        ? (data.roles as unknown[]).filter((role): role is string => typeof role === 'string')
+        : typeof data.role === 'string' ? [data.role as string] : [];
+      const roles = [...new Set([...existingRoles, 'TENANT_ADMIN'])];
       batch.set(membershipRef, {
         userId,
         tenantId,
         role: 'TENANT_ADMIN',
-        createdAt: Timestamp.now(),
+        roles,
+        createdAt: data.createdAt ?? Timestamp.now(),
+        updatedAt: Timestamp.now(),
       }, { merge: true });
       batch.update(invite.ref, { status: 'CLAIMED', userId, claimedAt: Timestamp.now(), updatedAt: Timestamp.now() });
     }

@@ -13,6 +13,7 @@ import { ProfileModule } from './profile/profile.module';
 import { WebsiteModule } from './website/website.module';
 import { PlatformModule } from './platform/platform.module';
 import { DirectoryModule } from './directory/directory.module';
+import { TenantMembershipModule } from './authorization/tenant-membership.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { DirectoryModule } from './directory/directory.module';
     WebsiteModule,
     PlatformModule,
     DirectoryModule,
+    TenantMembershipModule,
   ],
 })
 export class AppModule {}

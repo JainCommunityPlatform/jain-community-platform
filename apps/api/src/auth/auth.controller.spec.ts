@@ -28,6 +28,7 @@ describe('AuthController', () => {
           userId: 'database-user-1',
           tenantId: 'tenant-1',
           role: 'TENANT_ADMIN',
+          roles: ['TENANT_ADMIN'],
         },
       }),
     } as unknown as MembershipContextStore;
@@ -39,6 +40,7 @@ describe('AuthController', () => {
       userId: 'database-user-1',
       tenantId: 'tenant-1',
       role: 'TENANT_ADMIN',
+      roles: ['TENANT_ADMIN'],
       platformRoles: [],
     }));
   });
@@ -69,6 +71,7 @@ describe('AuthController', () => {
     return controller.getCurrentUser().then((result) => expect(result).toEqual({
       subject: 'user-1',
       userId: 'database-user-1',
+      roles: [],
       platformRoles: [],
     }));
   });

@@ -139,6 +139,13 @@ function detectImageContentType(buffer: Buffer): string | undefined {
   if (buffer.length >= 2 && buffer[0] === 0x42 && buffer[1] === 0x4d) {
     return 'image/bmp';
   }
+  // iPhone cameras commonly produce HEIC/HEIF files. They are ISO-BMFF
+  // containers whose major brand follows the "ftyp" marker at byte 4.
+  if (buffer.length >= 12 && buffer.toString('ascii', 4, 8) === 'ftyp') {
+    const brand = buffer.toString('ascii', 8, 12).toLowerCase();
+    if (['heic', 'heix', 'hevc', 'hevx'].includes(brand)) return 'image/heic';
+    if (['mif1', 'msf1'].includes(brand)) return 'image/heif';
+  }
   return undefined;
 }
 

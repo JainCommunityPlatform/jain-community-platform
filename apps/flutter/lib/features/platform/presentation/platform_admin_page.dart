@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../core/routing/app_routes.dart';
 
 import '../../../core/api/api_client.dart';
 
@@ -114,20 +117,33 @@ class _PlatformAdminPageState extends State<PlatformAdminPage> {
           title: const Text('Edit temple'),
           content: SingleChildScrollView(
             child: SizedBox(
-              width: 520,
+              width: MediaQuery.sizeOf(dialogContext).width * 0.82,
               child: Column(
                 children: [
                   _dialogField(name, 'Temple name'),
                   _dialogField(hostname, 'Primary domain'),
                   _dialogField(address, 'Address', maxLines: 2),
-                  Row(
-                    children: [
-                      Expanded(child: _dialogField(city, 'City')),
-                      const SizedBox(width: 8),
-                      Expanded(child: _dialogField(state, 'State')),
-                      const SizedBox(width: 8),
-                      Expanded(child: _dialogField(pin, 'PIN')),
-                    ],
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      if (constraints.maxWidth < 440) {
+                        return Column(
+                          children: [
+                            _dialogField(city, 'City'),
+                            _dialogField(state, 'State'),
+                            _dialogField(pin, 'PIN'),
+                          ],
+                        );
+                      }
+                      return Row(
+                        children: [
+                          Expanded(child: _dialogField(city, 'City')),
+                          const SizedBox(width: 8),
+                          Expanded(child: _dialogField(state, 'State')),
+                          const SizedBox(width: 8),
+                          Expanded(child: _dialogField(pin, 'PIN')),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 18),
                   _AdminManagement(api: widget.api, tenantId: tenant['id'].toString()),
@@ -211,6 +227,21 @@ class _PlatformAdminPageState extends State<PlatformAdminPage> {
           ),
         ],
       ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: 5,
+        onDestinationSelected: (index) {
+          if (index == 5) return;
+          context.go('${AppRoutes.member}?tab=$index');
+        },
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
+          NavigationDestination(icon: Icon(Icons.temple_hindu_outlined), selectedIcon: Icon(Icons.temple_hindu), label: 'Temples'),
+          NavigationDestination(icon: Icon(Icons.event_outlined), selectedIcon: Icon(Icons.event), label: 'Events'),
+          NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined), selectedIcon: Icon(Icons.volunteer_activism), label: 'Donations'),
+          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
+          NavigationDestination(icon: Icon(Icons.admin_panel_settings_outlined), selectedIcon: Icon(Icons.admin_panel_settings), label: 'Manage'),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 32),
         children: [
@@ -292,9 +323,30 @@ class _AdminHero extends StatelessWidget {
         BoxShadow(blurRadius: 22, offset: Offset(0, 10)),
       ],
     ),
-    child: Row(
-      children: [
-        Container(
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 600;
+        final heading = const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Temple administration',
+              softWrap: true,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'Onboard temples, manage their administrators and maintain their details.',
+              softWrap: true,
+              style: TextStyle(color: Colors.white70),
+            ),
+          ],
+        );
+        final icon = Container(
           width: 58,
           height: 58,
           decoration: BoxDecoration(
@@ -302,24 +354,38 @@ class _AdminHero extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
           ),
           child: const Icon(Icons.temple_hindu, color: Colors.white, size: 34),
-        ),
-        const SizedBox(width: 16),
-        const Expanded(
-          child: Column(
+        );
+        final addButton = FilledButton.icon(
+          onPressed: onAdd,
+          icon: const Icon(Icons.add),
+          label: const Text('Add temple'),
+        );
+
+        if (compact) {
+          // Stack the icon, copy and action on phones. A side-by-side row
+          // leaves too little width for long translated temple headings.
+          return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Temple administration', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
-              SizedBox(height: 4),
-              Text('Onboard temples, manage their administrators and maintain their details.', style: TextStyle(color: Colors.white70)),
+              icon,
+              const SizedBox(height: 16),
+              SizedBox(width: double.infinity, child: heading),
+              const SizedBox(height: 18),
+              Align(alignment: Alignment.centerLeft, child: addButton),
             ],
-          ),
-        ),
-        FilledButton.icon(
-          onPressed: onAdd,
-          icon: Icon(Icons.add),
-          label: Text('Add temple'),
-        ),
-      ],
+          );
+        }
+
+        return Row(
+          children: [
+            icon,
+            const SizedBox(width: 16),
+            Expanded(child: heading),
+            const SizedBox(width: 16),
+            addButton,
+          ],
+        );
+      },
     ),
   );
 }
@@ -540,24 +606,44 @@ class _AdminManagementState extends State<_AdminManagement> {
                   );
                 }),
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(child: TextField(
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final emailField = TextField(
                     controller: _email,
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(
                       labelText: 'Administrator email',
                       prefixIcon: Icon(Icons.email_outlined),
                     ),
-                  )),
-                  const SizedBox(width: 8),
-                  FilledButton(
+                  );
+                  final addButton = FilledButton(
                     onPressed: _adding ? null : _add,
                     child: _adding
-                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
                         : const Text('Add'),
-                  ),
-                ],
+                  );
+                  if (constraints.maxWidth < 360) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        emailField,
+                        const SizedBox(height: 8),
+                        Align(alignment: Alignment.centerLeft, child: addButton),
+                      ],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(child: emailField),
+                      const SizedBox(width: 8),
+                      addButton,
+                    ],
+                  );
+                },
               ),
             ],
           ],

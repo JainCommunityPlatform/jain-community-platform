@@ -19,6 +19,7 @@ import { JwtAuthenticationService } from './jwt-authentication.service';
   ],
   exports: [
     AuthContextStore,
+    AuthenticationContextInterceptor,
     JwtAuthenticationService,
     AuthenticationGuard,
   ],
