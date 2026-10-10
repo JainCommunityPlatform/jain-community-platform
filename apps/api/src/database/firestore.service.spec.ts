@@ -104,6 +104,42 @@ describe('FirestoreService notification preferences', () => {
   });
 });
 
+  it('lists failed notification deliveries oldest first with a bounded result', async () => {
+    const { instance, db } = service();
+    db.set('notificationDeliveries', 'newer', {
+      tenantId: 't1', notificationId: 'n2', userId: 'u1', channel: 'EMAIL', status: 'FAILED',
+      attempts: 2, createdAt: new Date('2026-10-10T00:00:00Z'), updatedAt: new Date('2026-10-10T00:02:00Z'),
+    });
+    db.set('notificationDeliveries', 'older', {
+      tenantId: 't1', notificationId: 'n1', userId: 'u1', channel: 'PUSH', status: 'FAILED',
+      attempts: 1, createdAt: new Date('2026-10-10T00:00:00Z'), updatedAt: new Date('2026-10-10T00:01:00Z'),
+    });
+    db.set('notificationDeliveries', 'sent', {
+      tenantId: 't1', notificationId: 'n3', userId: 'u1', channel: 'EMAIL', status: 'SENT',
+      attempts: 1, createdAt: new Date(), updatedAt: new Date(),
+    });
+
+    await expect(instance.listFailedNotificationDeliveries(1)).resolves.toMatchObject([
+      { id: 'older', status: 'FAILED', attempts: 1 },
+    ]);
+  });
+
+  it('only returns a notification when tenant and user both match', async () => {
+    const { instance, db } = service();
+    db.set('notifications', 'n1', {
+      tenantId: 't1', userId: 'u1', title: 'Receipt ready', body: 'Thanks',
+      type: 'PAYMENT_VERIFIED', entityType: 'DonationReceipt', entityId: 'p1',
+      createdAt: new Date(), updatedAt: new Date(),
+    });
+
+    await expect(instance.getNotificationForUser('t1', 'u1', 'n1')).resolves.toMatchObject({
+      id: 'n1', tenantId: 't1', userId: 'u1', title: 'Receipt ready',
+    });
+    await expect(instance.getNotificationForUser('t2', 'u1', 'n1')).resolves.toBeNull();
+    await expect(instance.getNotificationForUser('t1', 'u2', 'n1')).resolves.toBeNull();
+    await expect(instance.getNotificationForUser('t1', 'u1', 'missing')).resolves.toBeNull();
+  });
+
 describe('FirestoreService identity/profile persistence', () => {
   it('creates and reuses a stable auth identity', async () => {
     const { instance } = service();
