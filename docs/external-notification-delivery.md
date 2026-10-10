@@ -22,7 +22,7 @@ A deterministic tenant + notification + channel key avoids duplicate records. Su
 
 ## Activation boundary
 
-This change provides the delivery adapter and tracking foundation. Channels remain operationally inactive until the relevant provider is configured, the recipient destination is verified, consent is recorded by the caller, and end-to-end delivery is validated. A background worker, provider webhook reconciliation, and user-facing preference management remain follow-up work; do not claim automatic campaign-wide delivery until those are wired.
+The delivery adapter is wired to persisted donation events for pledge creation, payment verification/rejection, and adjustment approval/rejection. Dispatch happens after the Firestore financial transaction returns and is best-effort: provider errors are tracked but never roll back a financial decision. The dispatcher sends only through channels enabled in the member's tenant-scoped preferences. Email verification and verified phone destinations come from trusted Firebase ID-token claims; a WhatsApp destination is not inferred from an unverified profile phone. Push requires a registered device token. Provider configuration and end-to-end delivery must still be validated in each deployment. Push dispatch requires a registered `fcmToken` on the user profile; app-side device-token registration is not included in this phase. A background retry worker and provider webhook reconciliation remain follow-up work.
 
 
 ## User-managed channel preferences

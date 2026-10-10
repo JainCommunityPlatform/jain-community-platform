@@ -1,6 +1,8 @@
 export interface AuthenticatedUser {
   subject: string;
   email?: string;
+  emailVerified?: boolean;
+  verifiedPhoneNumber?: string;
   displayName?: string;
 }
 

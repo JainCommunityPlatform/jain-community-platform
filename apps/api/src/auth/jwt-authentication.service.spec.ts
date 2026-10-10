@@ -21,6 +21,8 @@ describe('JwtAuthenticationService', () => {
     verifyIdToken.mockResolvedValue({
       uid: 'subject-a',
       email: 'a@test',
+      email_verified: true,
+      phone_number: '+919876543210',
       name: 'A',
     });
 
@@ -28,6 +30,8 @@ describe('JwtAuthenticationService', () => {
     await expect(service.verify('token')).resolves.toEqual({
       subject: 'subject-a',
       email: 'a@test',
+      emailVerified: true,
+      verifiedPhoneNumber: '+919876543210',
       displayName: 'A',
     });
     expect(getAuth).toHaveBeenCalledWith({ name: '[DEFAULT]' });

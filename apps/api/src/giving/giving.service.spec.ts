@@ -58,6 +58,19 @@ describe('GivingService', () => {
     await expect(service().listTenantAdjustments('tenant-a')).resolves.toEqual([]);
   });
 
+  it('dispatches a pledge event after persistence without blocking the financial result', async () => {
+    const dispatcher = { dispatchForEntity: jest.fn().mockResolvedValue(undefined) };
+    firestore.createDonationPledge.mockResolvedValue({ id: 'pledge-1', donorUserId: 'donor-a' });
+    const instance = new GivingService(firestore as never, dispatcher as never);
+    await expect(instance.createPledge({
+      tenantId: 'tenant-a', donorUserId: 'donor-a', campaignId: 'campaign-a',
+      pledgedAmountPaise: 10000, idempotencyKey: 'req-dispatch',
+    })).resolves.toMatchObject({ id: 'pledge-1' });
+    expect(dispatcher.dispatchForEntity).toHaveBeenCalledWith({
+      tenantId: 'tenant-a', userId: 'donor-a', entityType: 'DonationPledge', entityId: 'pledge-1',
+    });
+  });
+
   it('requires an idempotency key for pledge creation', async () => {
     await expect(service().createPledge({
       tenantId: 'tenant-a', donorUserId: 'donor-a', campaignId: 'campaign-a',

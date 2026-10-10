@@ -20,6 +20,9 @@ export interface FirestoreUser {
   id: string;
   authSubject: string;
   email?: string;
+  emailVerified?: boolean;
+  verifiedPhoneNumber?: string;
+  fcmToken?: string;
   displayName?: string;
   primaryPhone?: string;
   phoneNumbers: string[];
@@ -129,6 +132,8 @@ export class FirestoreService implements OnModuleInit {
   async upsertUser(input: {
     subject: string;
     email?: string;
+    emailVerified?: boolean;
+    verifiedPhoneNumber?: string;
     displayName?: string;
   }): Promise<FirestoreUser> {
     const db = this.getDb();
@@ -153,6 +158,8 @@ export class FirestoreService implements OnModuleInit {
         {
           authSubject: input.subject,
           email: input.email ?? null,
+          ...(input.emailVerified !== undefined ? { emailVerified: input.emailVerified } : {}),
+          ...(input.verifiedPhoneNumber ? { verifiedPhoneNumber: input.verifiedPhoneNumber } : {}),
           displayName: input.displayName ?? null,
           ...(existing.exists ? {} : { createdAt: now }),
           updatedAt: now,
@@ -172,6 +179,8 @@ export class FirestoreService implements OnModuleInit {
         id: userId,
         authSubject: input.subject,
         email: input.email ?? current.email,
+        ...(input.emailVerified !== undefined ? { emailVerified: input.emailVerified } : {}),
+        ...(input.verifiedPhoneNumber ? { verifiedPhoneNumber: input.verifiedPhoneNumber } : {}),
         displayName: input.displayName ?? current.displayName,
         phoneNumbers: current.phoneNumbers,
         platformRoles: current.platformRoles,
@@ -347,6 +356,9 @@ export class FirestoreService implements OnModuleInit {
     return {
       id, authSubject: data.authSubject as string,
       email: (data.email as string | null) ?? undefined,
+      ...(typeof data.emailVerified === 'boolean' ? { emailVerified: data.emailVerified } : {}),
+      ...(typeof data.verifiedPhoneNumber === 'string' ? { verifiedPhoneNumber: data.verifiedPhoneNumber } : {}),
+      ...(typeof data.fcmToken === 'string' ? { fcmToken: data.fcmToken } : {}),
       displayName: (data.displayName as string | null) ?? undefined,
       primaryPhone: (data.primaryPhone as string | null) ?? undefined,
       phoneNumbers: Array.isArray(data.phoneNumbers) ? data.phoneNumbers as string[] : [],

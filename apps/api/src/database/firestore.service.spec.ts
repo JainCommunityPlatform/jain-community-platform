@@ -113,6 +113,20 @@ describe('FirestoreService identity/profile persistence', () => {
     expect((await instance.getUser(first.id))?.email).toBe('new@test');
   });
 
+  it('persists trusted verification claims from Firebase authentication', async () => {
+    const { instance } = service();
+    const user = await instance.upsertUser({
+      subject: 'firebase:verified-member',
+      email: 'verified@example.test',
+      emailVerified: true,
+      verifiedPhoneNumber: '+919876543210',
+    });
+    await expect(instance.getUser(user.id)).resolves.toMatchObject({
+      emailVerified: true,
+      verifiedPhoneNumber: '+919876543210',
+    });
+  });
+
   it('supports multiple phones and links another Google identity to the same profile', async () => {
     const { instance } = service();
     const first = await instance.upsertUser({ subject: 'google:a' });
