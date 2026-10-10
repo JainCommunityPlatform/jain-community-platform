@@ -43,6 +43,7 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
   final _availableLanguages = const ['हिन्दी', 'मराठी', 'English', 'ગુજરાતી'];
   final Set<String> _selectedLanguages = {'हिन्दी', 'मराठी', 'English'};
   TextEditingController? _uploadingTarget;
+  final Map<TextEditingController, String> _imageMessages = {};
   final _logoUrl = TextEditingController();
   final _directoryTitle = TextEditingController();
   final _directorySubtitle = TextEditingController();
@@ -183,12 +184,12 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
         ),
       );
       if (confirmed != true || !mounted) return;
-      setState(() { _uploadingTarget = target; _message = null; });
+      setState(() { _uploadingTarget = target; _imageMessages.remove(target); _message = null; });
       final url = await widget.repository.uploadImage(bytes, file.name);
       target.text = url;
-      if (mounted) setState(() => _message = 'Image uploaded. Save the page to publish this change.');
+      if (mounted) setState(() => _imageMessages[target] = 'Image uploaded. Tap Save & Publish Website to publish this change.');
     } catch (error) {
-      if (mounted) setState(() => _message = 'Image upload failed: $error');
+      if (mounted) setState(() => _imageMessages[target] = 'Image upload failed: $error');
     } finally {
       if (mounted) setState(() { _uploadingTarget = null; });
     }
@@ -427,20 +428,38 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
             FilledButton.icon(onPressed: _save, icon: const Icon(Icons.publish), label: const Text('Publish')),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: 5,
-        onDestinationSelected: (index) {
-          if (index == 5) return;
-          context.go('${AppRoutes.member}?tab=$index');
-        },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.temple_hindu_outlined), selectedIcon: Icon(Icons.temple_hindu), label: 'Temples'),
-          NavigationDestination(icon: Icon(Icons.event_outlined), selectedIcon: Icon(Icons.event), label: 'Events'),
-          NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined), selectedIcon: Icon(Icons.volunteer_activism), label: 'Donations'),
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
-          NavigationDestination(icon: Icon(Icons.web_outlined), selectedIcon: Icon(Icons.web), label: 'Website'),
-        ],
+      bottomNavigationBar: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _saving || _uploadingTarget != null ? null : _save,
+                  icon: Icon(_saving ? Icons.hourglass_top : Icons.publish),
+                  label: Text(_saving ? 'Publishing…' : 'Save & Publish Website'),
+                ),
+              ),
+            ),
+            NavigationBar(
+              selectedIndex: 5,
+              onDestinationSelected: (index) {
+                if (index == 5) return;
+                context.go('${AppRoutes.member}?tab=$index');
+              },
+              destinations: const [
+                NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
+                NavigationDestination(icon: Icon(Icons.temple_hindu_outlined), selectedIcon: Icon(Icons.temple_hindu), label: 'Temples'),
+                NavigationDestination(icon: Icon(Icons.event_outlined), selectedIcon: Icon(Icons.event), label: 'Events'),
+                NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined), selectedIcon: Icon(Icons.volunteer_activism), label: 'Donations'),
+                NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
+                NavigationDestination(icon: Icon(Icons.web_outlined), selectedIcon: Icon(Icons.web), label: 'Website'),
+              ],
+            ),
+          ],
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(20),
@@ -477,7 +496,7 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
                   );
                 }).toList(),
               ),
-              _ImageField(controller: _logoUrl, label: 'Temple logo', onUpload: () => _uploadTo(_logoUrl), isUploading: identical(_uploadingTarget, _logoUrl)),
+              _ImageField(controller: _logoUrl, label: 'Temple logo', onUpload: () => _uploadTo(_logoUrl), isUploading: identical(_uploadingTarget, _logoUrl), message: _imageMessages[_logoUrl]),
             ],
           ),
           _EditorSection(
@@ -518,7 +537,7 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
               _field(_heroSubtitle, 'उपशीर्षक'),
               _field(_heroDescription, 'विवरण', maxLines: 3),
               _field(_heroCta, 'मुख्य बटन का टेक्स्ट'),
-              _ImageField(controller: _heroImage, label: 'Hero image', onUpload: () => _uploadTo(_heroImage), isUploading: identical(_uploadingTarget, _heroImage)),
+              _ImageField(controller: _heroImage, label: 'Hero image', onUpload: () => _uploadTo(_heroImage), isUploading: identical(_uploadingTarget, _heroImage), message: _imageMessages[_heroImage]),
             ],
           ),
           _EditorSection(
@@ -526,7 +545,7 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
             children: [
               _field(_aboutTitle, 'शीर्षक'),
               _field(_aboutBody, 'परिचय', maxLines: 6),
-              _ImageField(controller: _aboutImage, label: 'About image', onUpload: () => _uploadTo(_aboutImage), isUploading: identical(_uploadingTarget, _aboutImage)),
+              _ImageField(controller: _aboutImage, label: 'About image', onUpload: () => _uploadTo(_aboutImage), isUploading: identical(_uploadingTarget, _aboutImage), message: _imageMessages[_aboutImage]),
             ],
           ),
           _EditorSection(
@@ -887,11 +906,12 @@ class _EditorSection extends StatelessWidget {
 }
 
 class _ImageField extends StatelessWidget {
-  const _ImageField({required this.controller, required this.label, required this.onUpload, this.isUploading = false});
+  const _ImageField({required this.controller, required this.label, required this.onUpload, this.isUploading = false, this.message});
   final TextEditingController controller;
   final String label;
   final VoidCallback onUpload;
   final bool isUploading;
+  final String? message;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -913,6 +933,20 @@ class _ImageField extends StatelessWidget {
         const LinearProgressIndicator(),
         const SizedBox(height: 4),
         Text('Uploading this image…', style: Theme.of(context).textTheme.bodySmall),
+      ],
+      if (message != null) ...[
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: message!.startsWith('Image upload failed')
+                ? Theme.of(context).colorScheme.errorContainer
+                : Theme.of(context).colorScheme.secondaryContainer,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(message!),
+        ),
       ],
       if (controller.text.trim().isNotEmpty) ...[
         const SizedBox(height: 8),

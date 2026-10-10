@@ -4,6 +4,7 @@ import '../../../core/api/api_client.dart';
 import '../../giving/presentation/donor_giving_page.dart';
 import '../../profile/data/profile_repository.dart';
 import '../../profile/presentation/profile_page.dart';
+import '../../tenant/data/tenant_repository.dart';
 
 class MemberHomePage extends StatefulWidget {
   const MemberHomePage({
@@ -34,8 +35,8 @@ class _MemberHomePageState extends State<MemberHomePage> {
   @override
   Widget build(BuildContext context) {
     final pages = <Widget>[
-      const _HomeTab(),
-      const _TemplesTab(),
+      _HomeTab(api: widget.api),
+      _TemplesTab(api: widget.api),
       const _EventsTab(),
       widget.api == null ? const _DonationsTab() : DonorGivingPage(api: widget.api!),
       widget.profileRepository == null ? const _ProfileTab() : ProfilePage(repository: widget.profileRepository!, onSignOut: widget.onSignOut),
@@ -59,75 +60,175 @@ class _MemberHomePageState extends State<MemberHomePage> {
   }
 }
 
-class _HomeTab extends StatelessWidget {
-  const _HomeTab();
+class _HomeTab extends StatefulWidget {
+  const _HomeTab({this.api});
+
+  final ApiClient? api;
+
+  @override
+  State<_HomeTab> createState() => _HomeTabState();
+}
+
+class _HomeTabState extends State<_HomeTab> {
+  List<TenantSummary> _temples = const [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTemples();
+  }
+
+  Future<void> _loadTemples() async {
+    if (mounted) setState(() { _loading = true; _error = null; });
+    try {
+      final api = widget.api;
+      if (api == null) throw StateError('Temple directory is not configured.');
+      final temples = await TenantRepository(api).listTemples();
+      if (!mounted) return;
+      setState(() { _temples = temples; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() { _loading = false; _error = 'Could not load temples. Pull down to retry.'; });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return _PageScaffold(
       title: 'Namaste 🙏',
       subtitle: 'Your connection to Jain temples',
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
-        children: [
-          _HeroCard(
-            title: 'Faith Brings Us Together',
-            subtitle: 'Explore temples, seva and community events in one place.',
-            icon: Icons.temple_hindu,
-          ),
-          const SizedBox(height: 18),
-          const _SectionTitle(title: 'Nearby Jinalays', action: 'View all'),
-          const SizedBox(height: 10),
-          const _TempleCard(
-            name: 'Shri Adinath Jinalay',
-            location: 'Kharadi, Pune',
-            distance: '2.4 km',
-          ),
-          const SizedBox(height: 10),
-          const _TempleCard(
-            name: 'Shri Parshvanath Jinalay',
-            location: 'Viman Nagar, Pune',
-            distance: '3.1 km',
-          ),
-          const SizedBox(height: 18),
-          const _SectionTitle(title: 'Make a Difference'),
-          const SizedBox(height: 10),
-          const _DonationCard(),
-          const SizedBox(height: 18),
-          const _SectionTitle(title: 'Upcoming Events', action: 'View all'),
-          const SizedBox(height: 10),
-          const _EventTile(
-            title: 'Chaturmas Pravachan Series 2026',
-            date: '12 Jul – 20 Sep 2026',
-            location: 'Shri Adinath Jinalay',
-          ),
-        ],
+      child: RefreshIndicator(
+        onRefresh: _loadTemples,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+          children: [
+            const _HeroCard(
+              title: 'Faith Brings Us Together',
+              subtitle: 'Explore temples, seva and community events in one place.',
+              icon: Icons.temple_hindu,
+            ),
+            const SizedBox(height: 18),
+            const _SectionTitle(title: 'Nearby Jinalays'),
+            const SizedBox(height: 10),
+            if (_loading)
+              const Padding(
+                padding: EdgeInsets.all(20),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_error != null)
+              _InlineRetry(message: _error!, onRetry: _loadTemples)
+            else if (_temples.isEmpty)
+              const _EmptyDirectoryMessage(message: 'No temples have been published in the central directory yet.')
+            else
+              for (final temple in _temples.take(2)) ...[
+                _TempleCard(
+                  name: temple.name,
+                  location: _templeLocation(temple),
+                  imageUrl: temple.primaryImageUrl,
+                ),
+                const SizedBox(height: 10),
+              ],
+            const SizedBox(height: 18),
+            const _SectionTitle(title: 'Make a Difference'),
+            const SizedBox(height: 10),
+            const _DonationCard(),
+            const SizedBox(height: 18),
+            const _SectionTitle(title: 'Upcoming Events'),
+            const SizedBox(height: 10),
+            const _EmptyDirectoryMessage(
+              message: 'Events will appear here when they are published by the community.',
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _TemplesTab extends StatelessWidget {
-  const _TemplesTab();
+class _TemplesTab extends StatefulWidget {
+  const _TemplesTab({this.api});
+
+  final ApiClient? api;
+
+  @override
+  State<_TemplesTab> createState() => _TemplesTabState();
+}
+
+class _TemplesTabState extends State<_TemplesTab> {
+  List<TenantSummary> _temples = const [];
+  bool _loading = true;
+  String? _error;
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTemples();
+  }
+
+  Future<void> _loadTemples() async {
+    if (mounted) setState(() { _loading = true; _error = null; });
+    try {
+      final api = widget.api;
+      if (api == null) throw StateError('Temple directory is not configured.');
+      final temples = await TenantRepository(api).listTemples();
+      if (!mounted) return;
+      setState(() { _temples = temples; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() { _loading = false; _error = 'Could not load temples. Pull down to retry.'; });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final query = _query.trim().toLowerCase();
+    final filtered = _temples.where((temple) {
+      final haystack = '${temple.name} ${temple.city ?? ''} ${temple.state ?? ''} ${temple.address ?? ''}'.toLowerCase();
+      return haystack.contains(query);
+    }).toList();
     return _PageScaffold(
       title: 'Explore Temples',
       subtitle: 'Discover Jain temples near you',
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
-        children: const [
-          _SearchBox(hint: 'Search temples, city or area…'),
-          SizedBox(height: 14),
-          _TempleCard(name: 'Shri Adinath Jinalay', location: 'Kharadi, Pune', distance: '2.4 km'),
-          SizedBox(height: 10),
-          _TempleCard(name: 'Shri Parshvanath Jinalay', location: 'Viman Nagar, Pune', distance: '3.1 km'),
-          SizedBox(height: 10),
-          _TempleCard(name: 'Shri Mahavir Swami Jinalay', location: 'Hadapsar, Pune', distance: '5.6 km'),
-          SizedBox(height: 10),
-          _TempleCard(name: 'Shri Shantinath Jinalay', location: 'Aundh, Pune', distance: '7.2 km'),
-        ],
+      child: RefreshIndicator(
+        onRefresh: _loadTemples,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+          children: [
+            TextField(
+              onChanged: (value) => setState(() => _query = value),
+              decoration: const InputDecoration(
+                prefixIcon: Icon(Icons.search),
+                hintText: 'Search temples, city or area…',
+              ),
+            ),
+            const SizedBox(height: 14),
+            if (_loading)
+              const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_error != null)
+              _InlineRetry(message: _error!, onRetry: _loadTemples)
+            else if (filtered.isEmpty)
+              _EmptyDirectoryMessage(
+                message: query.isEmpty
+                    ? 'No temples have been published in the central directory yet.'
+                    : 'No temples match “$_query”.',
+              )
+            else
+              for (final temple in filtered) ...[
+                _TempleCard(
+                  name: temple.name,
+                  location: _templeLocation(temple),
+                  imageUrl: temple.primaryImageUrl,
+                ),
+                const SizedBox(height: 10),
+              ],
+          ],
+        ),
       ),
     );
   }
@@ -142,19 +243,70 @@ class _EventsTab extends StatelessWidget {
       title: 'Events & Community',
       subtitle: 'Stay connected with your community',
       child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
         children: const [
-          _EventTile(title: 'Chaturmas Pravachan Series 2026', date: '12 Jul – 20 Sep 2026', location: 'Shri Adinath Jinalay'),
-          SizedBox(height: 12),
-          _EventTile(title: 'Paryushan Parva', date: '28 Aug – 5 Sep 2026', location: 'Community Hall, Pune'),
-          SizedBox(height: 12),
-          _EventTile(title: 'Samvatsari Pratikraman', date: '5 Sep 2026', location: 'Shri Adinath Jinalay'),
-          SizedBox(height: 12),
-          _EventTile(title: 'Jain Gyan Shivir', date: '15 Oct 2026', location: 'Pune'),
+          _EmptyDirectoryMessage(
+            message: 'No community events are published yet. Check back when organizers publish upcoming events.',
+          ),
         ],
       ),
     );
   }
+}
+
+String _templeLocation(TenantSummary temple) {
+  final cityAndState = [temple.city, temple.state]
+      .whereType<String>()
+      .map((value) => value.trim())
+      .where((value) => value.isNotEmpty)
+      .join(', ');
+  if (cityAndState.isNotEmpty) return cityAndState;
+  final address = temple.address?.trim();
+  return address == null || address.isEmpty ? 'Location not provided' : address;
+}
+
+class _EmptyDirectoryMessage extends StatelessWidget {
+  const _EmptyDirectoryMessage({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(18),
+      child: Text(message),
+    ),
+  );
+}
+
+class _InlineRetry extends StatelessWidget {
+  const _InlineRetry({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(message),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _DonationsTab extends StatelessWidget {
@@ -330,37 +482,24 @@ class _JainFlagSmall extends StatelessWidget {
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title, this.action});
+  const _SectionTitle({required this.title});
 
   final String title;
-  final String? action;
 
   @override
   Widget build(BuildContext context) => Row(
         children: [
           Expanded(child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
-          if (action != null) Text(action!, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600)),
         ],
       );
 }
 
-class _SearchBox extends StatelessWidget {
-  const _SearchBox({required this.hint});
-
-  final String hint;
-
-  @override
-  Widget build(BuildContext context) => TextField(
-        decoration: InputDecoration(prefixIcon: const Icon(Icons.search), hintText: hint),
-      );
-}
-
 class _TempleCard extends StatelessWidget {
-  const _TempleCard({required this.name, required this.location, required this.distance});
+  const _TempleCard({required this.name, required this.location, this.imageUrl});
 
   final String name;
   final String location;
-  final String distance;
+  final String? imageUrl;
 
   @override
   Widget build(BuildContext context) => Card(
@@ -373,11 +512,12 @@ class _TempleCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               gradient: const LinearGradient(colors: [Color(0xFFFFD88A), Color(0xFFC17B2B)]),
             ),
-            child: const Icon(Icons.temple_hindu, color: Colors.white, size: 34),
+            child: imageUrl == null || imageUrl!.trim().isEmpty
+                ? const Icon(Icons.temple_hindu, color: Colors.white, size: 34)
+                : ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.network(imageUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.temple_hindu, color: Colors.white, size: 34))),
           ),
           title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: Text('$location\n$distance'),
-          isThreeLine: true,
+          subtitle: Text(location),
           trailing: const Icon(Icons.chevron_right),
         ),
       );
@@ -422,27 +562,4 @@ class _DonationCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class _EventTile extends StatelessWidget {
-  const _EventTile({required this.title, required this.date, required this.location});
-
-  final String title;
-  final String date;
-  final String location;
-
-  @override
-  Widget build(BuildContext context) => Card(
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(14),
-          leading: CircleAvatar(
-            backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
-            child: Icon(Icons.event, color: Theme.of(context).colorScheme.primary),
-          ),
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: Text('$date\n$location'),
-          isThreeLine: true,
-          trailing: const Icon(Icons.chevron_right),
-        ),
-      );
 }
