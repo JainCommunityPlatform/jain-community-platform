@@ -18,6 +18,7 @@ class _DonorGivingPageState extends State<DonorGivingPage> {
   List<GivingCampaign> _campaigns = [];
   List<DonorPledge> _pledges = [];
   List<DonorReceipt> _receipts = [];
+  List<DonorNotification> _notifications = [];
   bool _loading = true;
   bool _submitting = false;
   Object? _error;
@@ -39,12 +40,14 @@ class _DonorGivingPageState extends State<DonorGivingPage> {
         _repository.listCampaigns(),
         _repository.listMyPledges(),
         _repository.listMyReceipts(),
+        _repository.listMyNotifications(),
       ]);
       if (!mounted) return;
       setState(() {
         _campaigns = results[0] as List<GivingCampaign>;
         _pledges = results[1] as List<DonorPledge>;
         _receipts = results[2] as List<DonorReceipt>;
+        _notifications = results[3] as List<DonorNotification>;
         _loading = false;
       });
     } catch (error) {
@@ -122,6 +125,19 @@ class _DonorGivingPageState extends State<DonorGivingPage> {
     }
   }
 
+  Future<void> _markNotificationRead(DonorNotification notification) async {
+    if (notification.isRead) return;
+    try {
+      await _repository.markNotificationRead(notification.id);
+      await _load();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_friendlyError(error))),
+      );
+    }
+  }
+
   String _friendlyError(Object error) {
     if (error is ApiException) return error.message;
     return 'Could not complete the request. Please try again.';
@@ -150,6 +166,7 @@ class _DonorGivingPageState extends State<DonorGivingPage> {
                 ButtonSegment(value: 0, label: Text('Campaigns'), icon: Icon(Icons.volunteer_activism)),
                 ButtonSegment(value: 1, label: Text('My pledges'), icon: Icon(Icons.favorite_outline)),
                 ButtonSegment(value: 2, label: Text('Receipts'), icon: Icon(Icons.receipt_long_outlined)),
+                ButtonSegment(value: 3, label: Text('Notifications'), icon: Icon(Icons.notifications_outlined)),
               ],
               selected: {_selectedTab},
               onSelectionChanged: (value) => setState(() => _selectedTab = value.first),
@@ -167,7 +184,9 @@ class _DonorGivingPageState extends State<DonorGivingPage> {
                       ? _campaignList()
                       : _selectedTab == 1
                           ? _pledgeList()
-                          : _receiptList(),
+                          : _selectedTab == 2
+                              ? _receiptList()
+                              : _notificationList(),
                 ),
       bottomNavigationBar: _submitting
           ? const LinearProgressIndicator(minHeight: 3)
@@ -263,6 +282,38 @@ class _DonorGivingPageState extends State<DonorGivingPage> {
               title: Text(receipt.receiptNumber, style: const TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text('${receipt.method.replaceAll('_', ' ')} • ${receipt.issuedAt == null ? 'Date unavailable' : MaterialLocalizations.of(context).formatMediumDate(receipt.issuedAt!.toLocal())}'),
               trailing: Text(_money(receipt.amountPaise), style: const TextStyle(fontWeight: FontWeight.w700)),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _notificationList() {
+    if (_notifications.isEmpty) {
+      return _emptyList('No notifications yet', 'Pledge and payment updates will appear here.');
+    }
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      children: [
+        for (final notification in _notifications)
+          Card(
+            margin: const EdgeInsets.only(bottom: 10),
+            child: ListTile(
+              leading: CircleAvatar(
+                child: Icon(notification.isRead ? Icons.notifications_none : Icons.notifications_active_outlined),
+              ),
+              title: Text(notification.title, style: TextStyle(fontWeight: notification.isRead ? FontWeight.normal : FontWeight.w700)),
+              subtitle: Text(notification.body + (notification.createdAt == null ? '' : '\n' + MaterialLocalizations.of(context).formatMediumDate(notification.createdAt!.toLocal()))),
+              isThreeLine: true,
+              trailing: notification.isRead
+                  ? const Icon(Icons.check_circle_outline)
+                  : IconButton(
+                      tooltip: 'Mark as read',
+                      onPressed: () => _markNotificationRead(notification),
+                      icon: const Icon(Icons.mark_email_read_outlined),
+                    ),
+              onTap: notification.isRead ? null : () => _markNotificationRead(notification),
             ),
           ),
       ],
