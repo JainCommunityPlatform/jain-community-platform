@@ -38,12 +38,6 @@ export class GivingController {
     private readonly audit: AuditService,
   ) {}
 
-  @Get('campaigns')
-  async listCampaigns() {
-    const tenant = this.requireTenant();
-    return this.giving.listPublicCampaigns(tenant.id);
-  }
-
   @Post('campaigns')
   @RequirePermission('finance.write')
   async createCampaign(@Body() dto: CreateCampaignDto) {
