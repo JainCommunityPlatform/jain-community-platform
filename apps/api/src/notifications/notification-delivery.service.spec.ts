@@ -1,5 +1,10 @@
 import { createHash } from 'node:crypto';
+import { getApps } from 'firebase-admin/app';
+import { getMessaging } from 'firebase-admin/messaging';
 import { NotificationDeliveryService } from './notification-delivery.service';
+
+jest.mock('firebase-admin/app', () => ({ getApps: jest.fn(() => []) }));
+jest.mock('firebase-admin/messaging', () => ({ getMessaging: jest.fn() }));
 
 describe('NotificationDeliveryService', () => {
   const firestore = {
@@ -24,6 +29,7 @@ describe('NotificationDeliveryService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (getApps as jest.Mock).mockReturnValue([]);
     delete process.env.RESEND_API_KEY;
     delete process.env.NOTIFICATION_EMAIL_FROM;
     delete process.env.WHATSAPP_ACCESS_TOKEN;
@@ -105,10 +111,14 @@ describe('NotificationDeliveryService', () => {
     expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/phone-id/messages'), expect.any(Object));
   });
 
-  it('records a failed push attempt if Firebase Admin is not initialized', async () => {
+  it('records a failed push attempt when Firebase rejects the message', async () => {
+    (getApps as jest.Mock).mockReturnValue([{ name: 'test-app' }]);
+    (getMessaging as jest.Mock).mockReturnValue({
+      send: jest.fn().mockRejectedValue(new Error('Firebase push rejected')),
+    });
     const result = await service().deliver({ ...input, channel: 'PUSH', recipient: 'fcm-token' });
     expect(result.status).toBe('FAILED');
-    expect(result.errorMessage).toContain('Firebase Admin is not initialized');
+    expect(result.errorMessage).toContain('Firebase push rejected');
   });
 
   it('allows retrying a stale processing record', async () => {
