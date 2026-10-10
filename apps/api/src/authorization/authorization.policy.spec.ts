@@ -161,6 +161,21 @@ describe('AuthorizationPolicy', () => {
     expect(policy.hasPermission(legacyCombined, 'audit.read')).toBe(false);
   });
 
+  it('denies finance access to platform administrators even with legacy tenant finance roles', () => {
+    const platformFinanceContext: AuthorizationContext = {
+      userId: 'platform-user',
+      tenantId: 'tenant-a',
+      platformRoles: ['PLATFORM_ADMIN'],
+      membership: {
+        userId: 'platform-user', tenantId: 'tenant-a', role: 'TENANT_FINANCE',
+        roles: ['TENANT_FINANCE', 'FINANCE_APPROVER'],
+      },
+    };
+    expect(policy.hasPermission(platformFinanceContext, 'finance.read')).toBe(false);
+    expect(policy.hasPermission(platformFinanceContext, 'finance.write')).toBe(false);
+    expect(policy.hasPermission(platformFinanceContext, 'finance.approve')).toBe(false);
+  });
+
   it('allows platform administrators to manage finance team assignments without tenant membership', () => {
     const platformContext: AuthorizationContext = {
       userId: 'platform-user', tenantId: '', platformRoles: ['PLATFORM_ADMIN'], membership: null,
