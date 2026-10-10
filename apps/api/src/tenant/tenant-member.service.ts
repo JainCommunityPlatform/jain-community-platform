@@ -82,7 +82,7 @@ export class TenantMemberService {
   ): Promise<TenantMemberSummary> {
     const membership = await this.findMembership(userId);
 
-    const existingRoles = membership.roles ?? [membership.role];
+    const existingRoles = [...new Set([membership.role, ...(membership.roles ?? [])])];
     if (existingRoles.some((existingRole) => FINANCIAL_MEMBERSHIP_ROLES.has(existingRole))) {
       throw new ForbiddenException(
         'Financial memberships must be managed through the finance-team workflow',
@@ -111,7 +111,7 @@ export class TenantMemberService {
 
   async remove(userId: string): Promise<void> {
     const membership = await this.findMembership(userId);
-    if ((membership.roles ?? [membership.role]).some((role) => FINANCIAL_MEMBERSHIP_ROLES.has(role))) {
+    if ([...new Set([membership.role, ...(membership.roles ?? [])])].some((role) => FINANCIAL_MEMBERSHIP_ROLES.has(role))) {
       throw new ForbiddenException(
         'Financial memberships must be managed through the finance-team workflow',
       );
