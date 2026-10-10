@@ -1,4 +1,4 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { GivingService } from './giving.service';
 
 describe('GivingService', () => {
@@ -9,6 +9,10 @@ describe('GivingService', () => {
     createDonationPledge: jest.fn(),
     listDonationPledgesForDonor: jest.fn(),
     listDonationPledgesForTenant: jest.fn(),
+    recordDonationPayment: jest.fn(),
+    approveDonationPayment: jest.fn(),
+    rejectDonationPayment: jest.fn(),
+    listDonationPaymentsForTenant: jest.fn(),
   };
   const service = () => new GivingService(firestore as never);
 
@@ -44,4 +48,33 @@ describe('GivingService', () => {
       .rejects.toBeInstanceOf(NotFoundException);
     expect(firestore.updateGivingCampaignStatus).toHaveBeenCalledWith('tenant-a', 'campaign-b', 'ACTIVE');
   });
+
+  it('requires an idempotency key before recording a payment', async () => {
+    await expect(service().recordPayment({
+      tenantId: 'tenant-a', pledgeId: 'pledge-a', actorUserId: 'operator',
+      amountPaise: 10000, method: 'CASH', idempotencyKey: ' ',
+    })).rejects.toThrow('Idempotency-Key');
+    expect(firestore.recordDonationPayment).not.toHaveBeenCalled();
+  });
+
+  it('maps payment self-approval to forbidden', async () => {
+    firestore.approveDonationPayment.mockRejectedValue(new Error('PAYMENT_SELF_APPROVAL'));
+    await expect(service().approvePayment('tenant-a', 'payment-a', 'operator'))
+      .rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('maps overpayment approval to conflict', async () => {
+    firestore.approveDonationPayment.mockRejectedValue(new Error('PAYMENT_EXCEEDS_BALANCE'));
+    await expect(service().approvePayment('tenant-a', 'payment-a', 'approver'))
+      .rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('maps payment amount over remaining balance to 422', async () => {
+    firestore.recordDonationPayment.mockRejectedValue(new Error('PAYMENT_EXCEEDS_BALANCE'));
+    await expect(service().recordPayment({
+      tenantId: 'tenant-a', pledgeId: 'pledge-a', actorUserId: 'operator',
+      amountPaise: 20000, method: 'UPI', idempotencyKey: 'req-1',
+    })).rejects.toBeInstanceOf(UnprocessableEntityException);
+  });
+
 });

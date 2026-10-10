@@ -1071,6 +1071,158 @@ export class FirestoreService implements OnModuleInit {
     return pledges.filter((pledge) => pledge.donorUserId === donorUserId);
   }
 
+  async recordDonationPayment(input: {
+    tenantId: string;
+    pledgeId: string;
+    actorUserId: string;
+    amountPaise: number;
+    method: 'CASH' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE';
+    reference?: string;
+    note?: string;
+    idempotencyKey: string;
+  }) {
+    if (!Number.isSafeInteger(input.amountPaise) || input.amountPaise < 1) {
+      throw new Error('PAYMENT_AMOUNT_INVALID');
+    }
+    const id = createHash('sha256')
+      .update('payment:' + input.tenantId + ':' + input.pledgeId + ':' + input.actorUserId + ':' + input.idempotencyKey.trim())
+      .digest('hex');
+    const db = this.getDb();
+    const paymentRef = db.collection('donationPayments').doc(id);
+    const pledgeRef = db.collection('donationPledges').doc(input.pledgeId);
+    return db.runTransaction(async (transaction) => {
+      const [paymentSnapshot, pledgeSnapshot] = await Promise.all([
+        transaction.get(paymentRef),
+        transaction.get(pledgeRef),
+      ]);
+      if (paymentSnapshot.exists) {
+        const existing = paymentSnapshot.data() ?? {};
+        if (
+          existing.tenantId !== input.tenantId ||
+          existing.pledgeId !== input.pledgeId ||
+          existing.recordedBy !== input.actorUserId ||
+          existing.amountPaise !== input.amountPaise ||
+          existing.method !== input.method ||
+          (existing.reference ?? undefined) !== (input.reference?.trim() || undefined)
+        ) {
+          throw new Error('PAYMENT_IDEMPOTENCY_CONFLICT');
+        }
+        return this.toDonationPayment(paymentSnapshot.id, existing);
+      }
+      if (!pledgeSnapshot.exists || pledgeSnapshot.data()?.tenantId !== input.tenantId) {
+        throw new Error('PLEDGE_NOT_FOUND');
+      }
+      const pledge = pledgeSnapshot.data() ?? {};
+      if (pledge.status === 'CANCELLED') throw new Error('PLEDGE_CANCELLED');
+      const paid = Number(pledge.paidAmountPaise ?? 0);
+      const pledged = Number(pledge.pledgedAmountPaise ?? 0);
+      if (input.amountPaise > pledged - paid) throw new Error('PAYMENT_EXCEEDS_BALANCE');
+      const now = Timestamp.now();
+      const payment = {
+        tenantId: input.tenantId,
+        pledgeId: input.pledgeId,
+        donorUserId: pledge.donorUserId as string,
+        amountPaise: input.amountPaise,
+        currency: 'INR',
+        method: input.method,
+        reference: input.reference?.trim() || null,
+        note: input.note?.trim() || null,
+        status: 'PENDING_APPROVAL',
+        recordedBy: input.actorUserId,
+        approvedBy: null,
+        rejectionReason: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      transaction.create(paymentRef, payment);
+      return this.toDonationPayment(id, payment);
+    });
+  }
+
+  async approveDonationPayment(tenantId: string, paymentId: string, approverUserId: string) {
+    const db = this.getDb();
+    const paymentRef = db.collection('donationPayments').doc(paymentId);
+    const updated = await db.runTransaction(async (transaction) => {
+      const paymentSnapshot = await transaction.get(paymentRef);
+      if (!paymentSnapshot.exists || paymentSnapshot.data()?.tenantId !== tenantId) return { error: 'PAYMENT_NOT_FOUND' as const };
+      const payment = paymentSnapshot.data() ?? {};
+      if (payment.status !== 'PENDING_APPROVAL') return { error: 'PAYMENT_NOT_PENDING' as const };
+      if (payment.recordedBy === approverUserId) return { error: 'PAYMENT_SELF_APPROVAL' as const };
+      const pledgeRef = db.collection('donationPledges').doc(payment.pledgeId as string);
+      const pledgeSnapshot = await transaction.get(pledgeRef);
+      if (!pledgeSnapshot.exists || pledgeSnapshot.data()?.tenantId !== tenantId) return { error: 'PLEDGE_NOT_FOUND' as const };
+      const pledge = pledgeSnapshot.data() ?? {};
+      if (pledge.status === 'CANCELLED') return { error: 'PLEDGE_CANCELLED' as const };
+      const amount = Number(payment.amountPaise);
+      const paid = Number(pledge.paidAmountPaise ?? 0);
+      const pledged = Number(pledge.pledgedAmountPaise ?? 0);
+      if (!Number.isSafeInteger(amount) || amount < 1 || amount > pledged - paid) return { error: 'PAYMENT_EXCEEDS_BALANCE' as const };
+      const now = Timestamp.now();
+      const nextPaid = paid + amount;
+      const nextPledgeStatus = nextPaid >= pledged ? 'PAID' : 'PARTIALLY_PAID';
+      transaction.update(paymentRef, { status: 'VERIFIED', approvedBy: approverUserId, updatedAt: now });
+      transaction.update(pledgeRef, { paidAmountPaise: nextPaid, status: nextPledgeStatus, updatedAt: now });
+      return { payment: { ...payment, id: paymentSnapshot.id, status: 'VERIFIED', approvedBy: approverUserId, updatedAt: now, createdAt: payment.createdAt }, error: null };
+    });
+    if (updated.error) throw new Error(updated.error);
+    return this.toDonationPayment(updated.payment.id as string, updated.payment);
+  }
+
+  async rejectDonationPayment(
+    tenantId: string,
+    paymentId: string,
+    approverUserId: string,
+    reason: string,
+  ) {
+    const db = this.getDb();
+    const paymentRef = db.collection('donationPayments').doc(paymentId);
+    const updated = await db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(paymentRef);
+      if (!snapshot.exists || snapshot.data()?.tenantId !== tenantId) return { error: 'PAYMENT_NOT_FOUND' as const };
+      const payment = snapshot.data() ?? {};
+      if (payment.status !== 'PENDING_APPROVAL') return { error: 'PAYMENT_NOT_PENDING' as const };
+      if (payment.recordedBy === approverUserId) return { error: 'PAYMENT_SELF_APPROVAL' as const };
+      const now = Timestamp.now();
+      transaction.update(paymentRef, {
+        status: 'REJECTED',
+        approvedBy: approverUserId,
+        rejectionReason: reason.trim(),
+        updatedAt: now,
+      });
+      return { payment: { ...payment, id: snapshot.id, status: 'REJECTED', approvedBy: approverUserId, rejectionReason: reason.trim(), updatedAt: now }, error: null };
+    });
+    if (updated.error) throw new Error(updated.error);
+    return this.toDonationPayment(updated.payment.id as string, updated.payment);
+  }
+
+  async listDonationPaymentsForTenant(tenantId: string) {
+    const snapshot = await this.getDb().collection('donationPayments')
+      .where('tenantId', '==', tenantId).get();
+    return snapshot.docs
+      .map((doc) => this.toDonationPayment(doc.id, doc.data()))
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  private toDonationPayment(id: string, data: Record<string, unknown>) {
+    return {
+      id,
+      tenantId: data.tenantId as string,
+      pledgeId: data.pledgeId as string,
+      donorUserId: data.donorUserId as string,
+      amountPaise: data.amountPaise as number,
+      currency: 'INR' as const,
+      method: data.method as 'CASH' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE',
+      reference: (data.reference as string | null) ?? undefined,
+      note: (data.note as string | null) ?? undefined,
+      status: data.status as 'PENDING_APPROVAL' | 'VERIFIED' | 'REJECTED' | 'REVERSED' | 'REFUNDED',
+      recordedBy: data.recordedBy as string,
+      approvedBy: (data.approvedBy as string | null) ?? undefined,
+      rejectionReason: (data.rejectionReason as string | null) ?? undefined,
+      createdAt: toDate(data.createdAt),
+      updatedAt: toDate(data.updatedAt),
+    };
+  }
+
   private toDonationPledge(id: string, data: Record<string, unknown>) {
     return {
       id,

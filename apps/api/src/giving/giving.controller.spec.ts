@@ -8,6 +8,10 @@ describe('GivingController', () => {
     createPledge: jest.fn(),
     listMyPledges: jest.fn(),
     listTenantPledges: jest.fn(),
+    recordPayment: jest.fn(),
+    approvePayment: jest.fn(),
+    rejectPayment: jest.fn(),
+    listTenantPayments: jest.fn(),
   };
   const tenantContext = { get: jest.fn().mockReturnValue({ id: 'tenant-a' }) };
   const auth = { get: jest.fn().mockReturnValue({ uid: 'auth-user' }) };
@@ -42,6 +46,33 @@ describe('GivingController', () => {
     giving.listMyPledges.mockResolvedValue([]);
     await controller().listMyPledges();
     expect(giving.listMyPledges).toHaveBeenCalledWith('tenant-a', 'user-a');
+  });
+
+
+  it('records a payment using the authenticated finance operator identity', async () => {
+    giving.recordPayment.mockResolvedValue({
+      id: 'payment-1', pledgeId: 'pledge-1', tenantId: 'tenant-a',
+      amountPaise: 10000, method: 'UPI', status: 'PENDING_APPROVAL',
+    });
+    await expect(controller().recordPayment('pledge-1', {
+      amountPaise: 10000, method: 'UPI', reference: 'UPI-1',
+    }, 'payment-key')).resolves.toMatchObject({ id: 'payment-1', status: 'PENDING_APPROVAL' });
+    expect(giving.recordPayment).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-a', pledgeId: 'pledge-1', actorUserId: 'user-a',
+      amountPaise: 10000, idempotencyKey: 'payment-key',
+    }));
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'DONATION_PAYMENT_RECORDED', entityId: 'payment-1',
+    }));
+  });
+
+  it('audits a separate approval action', async () => {
+    giving.approvePayment.mockResolvedValue({ id: 'payment-1', pledgeId: 'pledge-1', status: 'VERIFIED' });
+    await controller().approvePayment('payment-1');
+    expect(giving.approvePayment).toHaveBeenCalledWith('tenant-a', 'payment-1', 'user-a');
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'DONATION_PAYMENT_VERIFIED', entityId: 'payment-1',
+    }));
   });
 
 });
