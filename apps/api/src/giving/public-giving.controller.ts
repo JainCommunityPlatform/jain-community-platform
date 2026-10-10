@@ -14,6 +14,15 @@ export class PublicGivingController {
   async listCampaigns() {
     const tenant = this.tenantContext.get();
     if (!tenant) throw new BadRequestException('Tenant context is required');
-    return this.giving.listPublicCampaigns(tenant.id);
+    const campaigns = await this.giving.listPublicCampaigns(tenant.id);
+    return campaigns.map((campaign) => ({
+      id: campaign.id,
+      name: campaign.name,
+      description: campaign.description,
+      targetAmountPaise: campaign.targetAmountPaise,
+      currency: campaign.currency,
+      status: campaign.status,
+      createdAt: campaign.createdAt,
+    }));
   }
 }
