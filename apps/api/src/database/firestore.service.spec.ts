@@ -438,3 +438,70 @@ describe('FirestoreService giving persistence', () => {
   });
 });
 });
+
+
+describe('FirestoreService donation payment workflow', () => {
+  async function setup() {
+    const { instance, db } = service();
+    const donor = await instance.upsertUser({ subject: 'donor:payment-workflow' });
+    const campaign = await instance.createGivingCampaign({
+      tenantId: 'tenant-a', actorUserId: 'finance-admin', name: 'Temple Repair',
+    });
+    await instance.updateGivingCampaignStatus('tenant-a', campaign.id, 'ACTIVE');
+    const pledge = await instance.createDonationPledge({
+      tenantId: 'tenant-a', donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 100000, idempotencyKey: 'pledge-key',
+    });
+    return { instance, db, donor, campaign, pledge };
+  }
+
+  it('requires a different approver and only counts a payment after verification', async () => {
+    const { instance } = await setup();
+    const payment = await instance.recordDonationPayment({
+      tenantId: 'tenant-a', pledgeId: (await setup()).pledge.id,
+      actorUserId: 'finance-operator', amountPaise: 25000, method: 'UPI',
+      reference: 'UPI-123', idempotencyKey: 'payment-key',
+    });
+    expect(payment.status).toBe('PENDING_APPROVAL');
+    await expect(instance.approveDonationPayment('tenant-a', payment.id, 'finance-operator'))
+      .rejects.toThrow('PAYMENT_SELF_APPROVAL');
+    const verified = await instance.approveDonationPayment('tenant-a', payment.id, 'finance-approver');
+    expect(verified.status).toBe('VERIFIED');
+    const pledge = (await instance.listDonationPledgesForTenant('tenant-a')).find(p => p.id === payment.pledgeId);
+    expect(pledge).toMatchObject({ paidAmountPaise: 25000, status: 'PARTIALLY_PAID' });
+  });
+
+  it('rejects overpayment during recording and approval, and rejects do not update the pledge', async () => {
+    const { instance, pledge } = await setup();
+    await expect(instance.recordDonationPayment({
+      tenantId: 'tenant-a', pledgeId: pledge.id, actorUserId: 'operator',
+      amountPaise: 100001, method: 'CASH', idempotencyKey: 'too-much',
+    })).rejects.toThrow('PAYMENT_EXCEEDS_BALANCE');
+    const payment = await instance.recordDonationPayment({
+      tenantId: 'tenant-a', pledgeId: pledge.id, actorUserId: 'operator',
+      amountPaise: 50000, method: 'CASH', idempotencyKey: 'reject-me',
+    });
+    const rejected = await instance.rejectDonationPayment('tenant-a', payment.id, 'approver', 'Evidence did not match');
+    expect(rejected.status).toBe('REJECTED');
+    expect(rejected.rejectionReason).toBe('Evidence did not match');
+    const current = (await instance.listDonationPledgesForTenant('tenant-a')).find(p => p.id === pledge.id);
+    expect(current).toMatchObject({ paidAmountPaise: 0, status: 'PLEDGED' });
+  });
+
+  it('is idempotent and tenant-scoped when recording payment', async () => {
+    const { instance, pledge } = await setup();
+    const input = {
+      tenantId: 'tenant-a', pledgeId: pledge.id, actorUserId: 'operator',
+      amountPaise: 12000, method: 'BANK_TRANSFER' as const,
+      reference: 'NEFT-100', idempotencyKey: 'same-payment',
+    };
+    const first = await instance.recordDonationPayment(input);
+    const retry = await instance.recordDonationPayment(input);
+    expect(retry.id).toBe(first.id);
+    expect(retry.status).toBe('PENDING_APPROVAL');
+    await expect(instance.recordDonationPayment({ ...input, amountPaise: 13000 }))
+      .rejects.toThrow('PAYMENT_IDEMPOTENCY_CONFLICT');
+    await expect(instance.approveDonationPayment('tenant-b', first.id, 'approver'))
+      .rejects.toThrow('PAYMENT_NOT_FOUND');
+  });
+});
