@@ -21,6 +21,20 @@ describe('MembershipService', () => {
     expect(getMembership).toHaveBeenCalledWith('user-a', 'tenant-a');
   });
 
+  it('preserves the primary role when legacy role arrays are inconsistent', async () => {
+    const service = new MembershipService({
+      getMembership: jest.fn().mockResolvedValue({
+        userId: 'user-a', tenantId: 'tenant-a', role: 'TENANT_ADMIN',
+        roles: ['FINANCE_VIEWER'],
+      }),
+    } as never);
+
+    await expect(service.resolve('user-a', 'tenant-a')).resolves.toEqual({
+      userId: 'user-a', tenantId: 'tenant-a', role: 'TENANT_ADMIN',
+      roles: ['TENANT_ADMIN', 'FINANCE_VIEWER'],
+    });
+  });
+
   it('resolves multiple supported roles and ignores unknown roles', async () => {
     const service = new MembershipService({
       getMembership: jest.fn().mockResolvedValue({
