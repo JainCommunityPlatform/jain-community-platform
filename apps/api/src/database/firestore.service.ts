@@ -958,25 +958,28 @@ export class FirestoreService implements OnModuleInit {
     const ref = this.getDb().collection('givingCampaigns').doc(campaignId);
     const updated = await this.getDb().runTransaction(async (transaction) => {
       const snapshot = await transaction.get(ref);
-      if (!snapshot.exists || snapshot.data()?.tenantId !== tenantId) return null;
-      const now = Timestamp.now();
-      transaction.update(ref, { status, updatedAt: now });
-      return { ...snapshot.data(), id: snapshot.id, status, updatedAt: now, createdAt: snapshot.data()?.createdAt };
+      if (!snapshot.exists || snapshot.data()?.tenantId !== tenantId) return false;
+      transaction.update(ref, { status, updatedAt: Timestamp.now() });
+      return true;
     });
     if (!updated) return null;
+    const snapshot = await ref.get();
+    if (!snapshot.exists || snapshot.data()?.tenantId !== tenantId) return null;
+    const data = snapshot.data() ?? {};
     return {
-      id: updated.id as string,
-      tenantId: updated.tenantId as string,
-      name: updated.name as string,
-      description: (updated.description as string | null) ?? undefined,
-      targetAmountPaise: (updated.targetAmountPaise as number | null) ?? undefined,
+      id: snapshot.id,
+      tenantId: data.tenantId as string,
+      name: data.name as string,
+      description: (data.description as string | null) ?? undefined,
+      targetAmountPaise: (data.targetAmountPaise as number | null) ?? undefined,
       currency: 'INR' as const,
-      status: updated.status as 'DRAFT' | 'ACTIVE' | 'CLOSED',
-      createdBy: updated.createdBy as string,
-      createdAt: toDate(updated.createdAt),
-      updatedAt: toDate(updated.updatedAt),
+      status: data.status as 'DRAFT' | 'ACTIVE' | 'CLOSED',
+      createdBy: data.createdBy as string,
+      createdAt: toDate(data.createdAt),
+      updatedAt: toDate(data.updatedAt),
     };
   }
+
 
   async createDonationPledge(input: {
     tenantId: string;
