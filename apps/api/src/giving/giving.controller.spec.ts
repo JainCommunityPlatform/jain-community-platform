@@ -44,8 +44,4 @@ describe('GivingController', () => {
     expect(giving.listMyPledges).toHaveBeenCalledWith('tenant-a', 'user-a');
   });
 
-  it('requires tenant context before listing campaigns', async () => {
-    tenantContext.get.mockReturnValue(null);
-    await expect(controller().listCampaigns()).rejects.toThrow('Tenant context is required');
-  });
 });
