@@ -77,6 +77,38 @@ void main() {
     );
   });
 
+  test('joins validation messages returned as an array', () async {
+    final client = MockClient((_) async {
+      return http.Response(
+        jsonEncode({
+          'statusCode': 400,
+          'message': [
+            'property tenantId should not exist',
+            'property version should not exist',
+          ],
+          'error': 'Bad Request',
+        }),
+        400,
+      );
+    });
+
+    final api = ApiClient(
+      baseUrl: Uri.parse('https://example.test/'),
+      client: client,
+    );
+
+    await expectLater(
+      api.put('/api/website/site', body: {'tenantId': 't1', 'version': 7}),
+      throwsA(
+        isA<ApiException>().having(
+          (error) => error.message,
+          'message',
+          'property tenantId should not exist; property version should not exist',
+        ),
+      ),
+    );
+  });
+
   test('times out a request instead of waiting forever', () async {
     final client = MockClient((_) async {
       await Future<void>.delayed(const Duration(milliseconds: 100));
