@@ -80,6 +80,73 @@ export class NotificationEventDispatcher {
     }
   }
 
+  /**
+   * Retry failed external sends with bounded exponential backoff. Preferences
+   * and verified destinations are re-read for every attempt, so revoking
+   * consent or changing account verification takes effect before a retry.
+   */
+  async retryFailedDeliveries(limit = 50): Promise<{ examined: number; retried: number }> {
+    let candidates: Array<{
+      id: string; tenantId: string; notificationId: string; userId: string;
+      channel: NotificationChannel; attempts: number; updatedAt: Date;
+    }>;
+    try {
+      candidates = await this.firestore.listFailedNotificationDeliveries(limit);
+    } catch {
+      this.logger.warn('Unable to load failed notification deliveries for retry');
+      return { examined: 0, retried: 0 };
+    }
+
+    let retried = 0;
+    const retryDelaysMs = [60_000, 300_000, 900_000, 3_600_000];
+    for (const candidate of candidates) {
+      if (candidate.attempts < 1 || candidate.attempts >= 5) continue;
+      const delay = retryDelaysMs[candidate.attempts - 1];
+      if (Date.now() - candidate.updatedAt.getTime() < delay) continue;
+
+      try {
+        const [user, preferences, notification] = await Promise.all([
+          this.firestore.getUser(candidate.userId),
+          this.firestore.getNotificationPreferences(candidate.tenantId, candidate.userId),
+          this.firestore.getNotificationForUser(candidate.tenantId, candidate.userId, candidate.notificationId),
+        ]);
+        if (!user || !notification || preferences[candidate.channel.toLowerCase() as 'email' | 'whatsapp' | 'push'] !== true) {
+          continue;
+        }
+
+        let recipient = '';
+        let recipientVerified = false;
+        if (candidate.channel === 'EMAIL') {
+          recipient = user.email ?? '';
+          recipientVerified = user.emailVerified === true;
+        } else if (candidate.channel === 'WHATSAPP') {
+          const verifiedPhone = user.verifiedPhoneNumber ?? '';
+          recipient = verifiedPhone.replace(/[^0-9]/g, '');
+          recipientVerified = recipient.length >= 8;
+        } else {
+          recipient = user.fcmToken ?? '';
+          recipientVerified = Boolean(recipient.trim());
+        }
+
+        await this.delivery.deliver({
+          tenantId: candidate.tenantId,
+          notificationId: candidate.notificationId,
+          userId: candidate.userId,
+          title: notification.title,
+          body: notification.body,
+          channel: candidate.channel,
+          recipient,
+          recipientVerified,
+          consentConfirmed: true,
+        });
+        retried += 1;
+      } catch {
+        this.logger.warn('Retry failed for notification delivery ' + candidate.id);
+      }
+    }
+    return { examined: candidates.length, retried };
+  }
+
   private deliverChannel(input: {
     tenantId: string;
     userId: string;
