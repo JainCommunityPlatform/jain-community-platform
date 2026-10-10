@@ -412,6 +412,11 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
         ),
       );
     } finally {
+      // showDialog completes as soon as the route is popped, before its reverse
+      // transition has finished disposing the TextFields. Keep their
+      // controllers alive for the dialog's closing animation to avoid Flutter
+      // rebuilding a TextField with an already-disposed controller.
+      await Future<void>.delayed(const Duration(milliseconds: 250));
       for (final controller in controllers.values) {
         controller.dispose();
       }
