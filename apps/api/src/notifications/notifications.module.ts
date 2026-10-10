@@ -8,6 +8,8 @@ import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
 import { NotificationDeliveryService } from './notification-delivery.service';
 import { NotificationEventDispatcher } from './notification-event-dispatcher.service';
+import { NotificationRetryWorker } from './notification-retry.worker';
+import { NotificationEventDispatcher } from './notification-event-dispatcher.service';
 
 @Module({
   imports: [AuthModule, AuthorizationModule, DatabaseModule, IdentityModule, TenantContextModule],
