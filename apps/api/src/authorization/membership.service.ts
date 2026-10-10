@@ -122,7 +122,7 @@ export class MembershipService {
       : existing
         ? [existing.role]
         : [];
-    if (existingRoles.includes('TENANT_ADMIN')) {
+    if (existingRoles.includes('TENANT_ADMIN') || existing?.role === 'TENANT_ADMIN') {
       throw new ForbiddenException(
         'Tenant administrators cannot be assigned financial roles',
       );
