@@ -1,9 +1,11 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Get,
   Param,
   Post,
+  Put,
   UnauthorizedException,
   UseGuards,
   UseInterceptors,
@@ -16,6 +18,7 @@ import { MembershipContextInterceptor } from '../authorization/membership-contex
 import { UserIdentityService } from '../identity/user-identity.service';
 import { TenantContextStore } from '../tenant/tenant-context.store';
 import { NotificationsService } from './notifications.service';
+import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
 
 @Controller('notifications')
 @UseGuards(AuthenticationGuard, AuthorizationGuard)
@@ -34,6 +37,22 @@ export class NotificationsController {
     if (!tenant) throw new BadRequestException('Tenant context is required');
     const actor = await this.requireActor();
     return this.notifications.listForUser(tenant.id, actor.id);
+  }
+
+  @Get('preferences')
+  async getMyPreferences() {
+    const tenant = this.tenantContext.get();
+    if (!tenant) throw new BadRequestException('Tenant context is required');
+    const actor = await this.requireActor();
+    return this.notifications.getPreferences(tenant.id, actor.id);
+  }
+
+  @Put('preferences')
+  async updateMyPreferences(@Body() input: UpdateNotificationPreferencesDto) {
+    const tenant = this.tenantContext.get();
+    if (!tenant) throw new BadRequestException('Tenant context is required');
+    const actor = await this.requireActor();
+    return this.notifications.updatePreferences({ tenantId: tenant.id, userId: actor.id, ...input });
   }
 
   @Post(':notificationId/read')
