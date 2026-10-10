@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -58,6 +59,9 @@ export class GivingService {
       }
       if (error instanceof Error && error.message === 'IDEMPOTENCY_CONFLICT') {
         throw new ConflictException('Idempotency key was already used for a different pledge');
+      }
+      if (error instanceof Error && error.message === 'DONOR_INACTIVE') {
+        throw new ForbiddenException('This tenant donor relationship is inactive');
       }
       throw error;
     }
