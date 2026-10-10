@@ -6,6 +6,7 @@ import { AuthorizationModule } from '../authorization/authorization.module';
 import { DatabaseModule } from '../database/database.module';
 import { IdentityModule } from '../identity/identity.module';
 import { TenantContextModule } from '../tenant/tenant-context.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { GivingController } from './giving.controller';
 import { PublicGivingController } from './public-giving.controller';
 import { GivingService } from './giving.service';
@@ -18,6 +19,7 @@ import { GivingService } from './giving.service';
     DatabaseModule,
     IdentityModule,
     TenantContextModule,
+    NotificationsModule,
   ],
   controllers: [GivingController, PublicGivingController],
   providers: [GivingService],
