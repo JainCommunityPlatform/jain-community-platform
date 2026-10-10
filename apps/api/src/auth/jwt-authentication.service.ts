@@ -28,6 +28,8 @@ export class JwtAuthenticationService implements AuthenticationTokenVerifier {
       return {
         subject: decoded.uid,
         email: typeof decoded.email === 'string' ? decoded.email : undefined,
+        emailVerified: decoded.email_verified === true,
+        verifiedPhoneNumber: typeof decoded.phone_number === 'string' ? decoded.phone_number : undefined,
         displayName:
           typeof decoded.name === 'string' ? decoded.name : undefined,
       };
