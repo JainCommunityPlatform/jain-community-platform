@@ -63,7 +63,10 @@ export class AuthorizationPolicy {
       'TENANT_FINANCE', 'FINANCE_VIEWER', 'FINANCE_OPERATOR',
       'FINANCE_APPROVER', 'CA_AUDITOR',
     ]);
-    const effectiveRoles = roles.includes('TENANT_ADMIN')
+    const financeAccessForbidden =
+      roles.includes('TENANT_ADMIN') ||
+      context.platformRoles.includes('PLATFORM_ADMIN');
+    const effectiveRoles = financeAccessForbidden
       ? roles.filter((role) => !financeRoles.has(role))
       : roles;
     const permissions = new Set(
