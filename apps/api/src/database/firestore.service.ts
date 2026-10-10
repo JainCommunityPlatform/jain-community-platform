@@ -1003,6 +1003,8 @@ export class FirestoreService implements OnModuleInit {
       .update('tenant-donor:' + input.tenantId + ':' + input.donorUserId)
       .digest('hex');
     const donorRef = db.collection('tenantDonors').doc(donorId);
+    const notificationId = randomUUID();
+    const notificationRef = db.collection('notifications').doc(notificationId);
     return db.runTransaction(async (transaction) => {
       const [campaignSnapshot, pledgeSnapshot, donorSnapshot] = await Promise.all([
         transaction.get(campaignRef),
@@ -1054,6 +1056,20 @@ export class FirestoreService implements OnModuleInit {
         updatedAt: now,
       };
       transaction.create(pledgeRef, data);
+      transaction.create(notificationRef, {
+        id: notificationId,
+        tenantId: input.tenantId,
+        userId: input.donorUserId,
+        type: 'PLEDGE_CREATED',
+        title: 'Pledge recorded',
+        body: 'Your pledge for ' + String(campaignSnapshot.data()?.name ?? 'this campaign') + ' has been recorded.',
+        entityType: 'DonationPledge',
+        entityId: id,
+        metadata: { campaignId: input.campaignId, pledgedAmountPaise: input.pledgedAmountPaise },
+        readAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
       return this.toDonationPledge(id, data);
     });
   }
@@ -1143,6 +1159,8 @@ export class FirestoreService implements OnModuleInit {
     const db = this.getDb();
     const paymentRef = db.collection('donationPayments').doc(paymentId);
     const receiptRef = db.collection('donationReceipts').doc(paymentId);
+    const notificationId = randomUUID();
+    const notificationRef = db.collection('notifications').doc(notificationId);
     const updated = await db.runTransaction(async (transaction) => {
       const paymentSnapshot = await transaction.get(paymentRef);
       if (!paymentSnapshot.exists || paymentSnapshot.data()?.tenantId !== tenantId) return { error: 'PAYMENT_NOT_FOUND' as const };
@@ -1187,6 +1205,20 @@ export class FirestoreService implements OnModuleInit {
       transaction.update(pledgeRef, { paidAmountPaise: nextPaid, status: nextPledgeStatus, updatedAt: now });
       transaction.set(sequenceRef, { tenantId, year, nextSequence: sequence + 1, updatedAt: now }, { merge: true });
       transaction.create(receiptRef, receipt);
+      transaction.create(notificationRef, {
+        id: notificationId,
+        tenantId,
+        userId: payment.donorUserId as string,
+        type: 'PAYMENT_VERIFIED',
+        title: 'Donation payment verified',
+        body: 'Your payment of ₹' + (amount / 100).toFixed(2) + ' has been verified. Receipt ' + receiptNumber + ' is ready.',
+        entityType: 'DonationReceipt',
+        entityId: paymentId,
+        metadata: { paymentId, pledgeId: payment.pledgeId, receiptNumber, amountPaise: amount },
+        readAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
       return {
         payment: { ...payment, id: paymentSnapshot.id, status: 'VERIFIED', approvedBy: approverUserId, receiptNumber, updatedAt: now, createdAt: payment.createdAt },
         error: null,
@@ -1204,6 +1236,8 @@ export class FirestoreService implements OnModuleInit {
   ) {
     const db = this.getDb();
     const paymentRef = db.collection('donationPayments').doc(paymentId);
+    const notificationId = randomUUID();
+    const notificationRef = db.collection('notifications').doc(notificationId);
     const updated = await db.runTransaction(async (transaction) => {
       const snapshot = await transaction.get(paymentRef);
       if (!snapshot.exists || snapshot.data()?.tenantId !== tenantId) return { error: 'PAYMENT_NOT_FOUND' as const };
@@ -1215,6 +1249,20 @@ export class FirestoreService implements OnModuleInit {
         status: 'REJECTED',
         approvedBy: approverUserId,
         rejectionReason: reason.trim(),
+        updatedAt: now,
+      });
+      transaction.create(notificationRef, {
+        id: notificationId,
+        tenantId,
+        userId: payment.donorUserId as string,
+        type: 'PAYMENT_REJECTED',
+        title: 'Donation payment needs attention',
+        body: 'Your payment of ₹' + (Number(payment.amountPaise) / 100).toFixed(2) + ' was not verified. Reason: ' + reason.trim(),
+        entityType: 'DonationPayment',
+        entityId: paymentId,
+        metadata: { paymentId, pledgeId: payment.pledgeId, reason: reason.trim(), amountPaise: payment.amountPaise },
+        readAt: null,
+        createdAt: now,
         updatedAt: now,
       });
       return { payment: { ...payment, id: snapshot.id, status: 'REJECTED', approvedBy: approverUserId, rejectionReason: reason.trim(), updatedAt: now }, error: null };
@@ -1455,6 +1503,62 @@ export class FirestoreService implements OnModuleInit {
       status: data.status as 'PLEDGED' | 'PARTIALLY_PAID' | 'PAID' | 'CANCELLED',
       createdAt: toDate(data.createdAt),
       updatedAt: toDate(data.updatedAt),
+    };
+  }
+
+  async listNotificationsForUser(tenantId: string, userId: string, limit = 50) {
+    const safeLimit = Math.max(1, Math.min(100, Math.floor(limit)));
+    const snapshot = await this.getDb().collection('notifications')
+      .where('tenantId', '==', tenantId)
+      .where('userId', '==', userId)
+      .get();
+    return snapshot.docs
+      .map((doc) => {
+        const data = doc.data() ?? {};
+        return {
+          id: doc.id,
+          tenantId: data.tenantId as string,
+          userId: data.userId as string,
+          type: data.type as string,
+          title: data.title as string,
+          body: data.body as string,
+          entityType: data.entityType as string,
+          entityId: data.entityId as string,
+          metadata: (data.metadata as Record<string, unknown> | undefined) ?? {},
+          readAt: data.readAt ? toDate(data.readAt) : null,
+          createdAt: toDate(data.createdAt),
+          updatedAt: toDate(data.updatedAt),
+        };
+      })
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, safeLimit);
+  }
+
+  async markNotificationRead(tenantId: string, userId: string, notificationId: string) {
+    const ref = this.getDb().collection('notifications').doc(notificationId);
+    const updated = await this.getDb().runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(ref);
+      if (!snapshot.exists) return null;
+      const data = snapshot.data() ?? {};
+      if (data.tenantId !== tenantId || data.userId !== userId) return null;
+      const now = Timestamp.now();
+      transaction.update(ref, { readAt: data.readAt ?? now, updatedAt: now });
+      return { ...data, id: snapshot.id, readAt: data.readAt ?? now, updatedAt: now };
+    });
+    if (!updated) return null;
+    return {
+      id: updated.id as string,
+      tenantId: updated.tenantId as string,
+      userId: updated.userId as string,
+      type: updated.type as string,
+      title: updated.title as string,
+      body: updated.body as string,
+      entityType: updated.entityType as string,
+      entityId: updated.entityId as string,
+      metadata: (updated.metadata as Record<string, unknown> | undefined) ?? {},
+      readAt: toDate(updated.readAt),
+      createdAt: toDate(updated.createdAt),
+      updatedAt: toDate(updated.updatedAt),
     };
   }
 
