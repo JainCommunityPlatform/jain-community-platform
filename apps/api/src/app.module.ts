@@ -14,6 +14,7 @@ import { WebsiteModule } from './website/website.module';
 import { PlatformModule } from './platform/platform.module';
 import { DirectoryModule } from './directory/directory.module';
 import { TenantMembershipModule } from './authorization/tenant-membership.module';
+import { GivingModule } from './giving/giving.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { TenantMembershipModule } from './authorization/tenant-membership.module
     PlatformModule,
     DirectoryModule,
     TenantMembershipModule,
+    GivingModule,
   ],
 })
 export class AppModule {}
