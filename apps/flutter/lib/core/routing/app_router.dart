@@ -67,6 +67,7 @@ class AppRouter {
           builder: (context, state) => _withBackGuard(context, MemberHomePage(
             profileRepository: _profileRepository,
             api: _api,
+            onSignOut: _sessionController.signOut,
             initialIndex: int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0,
           )),
         ),
