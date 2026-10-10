@@ -64,7 +64,6 @@ export class GivingController {
     @Body() dto: UpdateCampaignStatusDto,
   ) {
     const tenant = this.requireTenant();
-    const actor = await this.requireActor();
     const campaign = await this.giving.updateCampaignStatus(
       tenant.id,
       campaignId,
