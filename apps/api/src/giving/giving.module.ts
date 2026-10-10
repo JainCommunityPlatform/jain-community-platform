@@ -7,6 +7,7 @@ import { DatabaseModule } from '../database/database.module';
 import { IdentityModule } from '../identity/identity.module';
 import { TenantContextModule } from '../tenant/tenant-context.module';
 import { GivingController } from './giving.controller';
+import { PublicGivingController } from './public-giving.controller';
 import { GivingService } from './giving.service';
 
 @Module({
@@ -18,7 +19,7 @@ import { GivingService } from './giving.service';
     IdentityModule,
     TenantContextModule,
   ],
-  controllers: [GivingController],
+  controllers: [GivingController, PublicGivingController],
   providers: [GivingService],
 })
 export class GivingModule {}
