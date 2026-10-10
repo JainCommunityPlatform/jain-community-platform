@@ -42,8 +42,9 @@ class ApiClient {
   Future<Map<String, dynamic>> post(
     String path, {
     Map<String, dynamic>? body,
+    Map<String, String>? headers,
   }) async {
-    final response = await _send('POST', path, body: body);
+    final response = await _send('POST', path, body: body, additionalHeaders: headers);
     return _decodeObject(response);
   }
 
@@ -114,11 +115,12 @@ class ApiClient {
     String method,
     String path, {
     Map<String, dynamic>? body,
+    Map<String, String>? additionalHeaders,
   }) async {
     final token = accessTokenProvider == null
         ? null
         : await accessTokenProvider!.call().timeout(requestTimeout);
-    final headers = <String, String>{'Accept': 'application/json'};
+    final headers = <String, String>{'Accept': 'application/json', ...?additionalHeaders};
     if (body != null) headers['Content-Type'] = 'application/json';
     if (token != null && token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
