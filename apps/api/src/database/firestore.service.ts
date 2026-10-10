@@ -1144,6 +1144,8 @@ export class FirestoreService implements OnModuleInit {
         reference: input.reference?.trim() || null,
         note: input.note?.trim() || null,
         status: 'PENDING_APPROVAL',
+        adjustedAmountPaise: 0,
+        pendingAdjustmentAmountPaise: 0,
         recordedBy: input.actorUserId,
         approvedBy: null,
         rejectionReason: null,
@@ -1525,7 +1527,11 @@ export class FirestoreService implements OnModuleInit {
       if (pending < amount) return { error: 'ADJUSTMENT_BALANCE_INVALID' as const };
       const now = Timestamp.now();
       const rejectionReason = reason.trim();
-      transaction.update(paymentRef, { pendingAdjustmentAmountPaise: pending - amount, updatedAt: now });
+      transaction.update(paymentRef, {
+        pendingAdjustmentAmountPaise: pending - amount,
+        adjustedAmountPaise: Number(payment.adjustedAmountPaise ?? 0),
+        updatedAt: now,
+      });
       transaction.update(adjustmentRef, {
         status: 'REJECTED',
         approvedBy: approverUserId,
