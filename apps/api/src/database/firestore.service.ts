@@ -1538,27 +1538,30 @@ export class FirestoreService implements OnModuleInit {
     const ref = this.getDb().collection('notifications').doc(notificationId);
     const updated = await this.getDb().runTransaction(async (transaction) => {
       const snapshot = await transaction.get(ref);
-      if (!snapshot.exists) return null;
+      if (!snapshot.exists) return false;
       const data = snapshot.data() ?? {};
-      if (data.tenantId !== tenantId || data.userId !== userId) return null;
+      if (data.tenantId !== tenantId || data.userId !== userId) return false;
       const now = Timestamp.now();
       transaction.update(ref, { readAt: data.readAt ?? now, updatedAt: now });
-      return { ...data, id: snapshot.id, readAt: data.readAt ?? now, updatedAt: now };
+      return true;
     });
     if (!updated) return null;
+    const snapshot = await ref.get();
+    if (!snapshot.exists) return null;
+    const data = snapshot.data() ?? {};
     return {
-      id: updated.id as string,
-      tenantId: updated.tenantId as string,
-      userId: updated.userId as string,
-      type: updated.type as string,
-      title: updated.title as string,
-      body: updated.body as string,
-      entityType: updated.entityType as string,
-      entityId: updated.entityId as string,
-      metadata: (updated.metadata as Record<string, unknown> | undefined) ?? {},
-      readAt: toDate(updated.readAt),
-      createdAt: toDate(updated.createdAt),
-      updatedAt: toDate(updated.updatedAt),
+      id: snapshot.id,
+      tenantId: data.tenantId as string,
+      userId: data.userId as string,
+      type: data.type as string,
+      title: data.title as string,
+      body: data.body as string,
+      entityType: data.entityType as string,
+      entityId: data.entityId as string,
+      metadata: (data.metadata as Record<string, unknown> | undefined) ?? {},
+      readAt: toDate(data.readAt),
+      createdAt: toDate(data.createdAt),
+      updatedAt: toDate(data.updatedAt),
     };
   }
 
