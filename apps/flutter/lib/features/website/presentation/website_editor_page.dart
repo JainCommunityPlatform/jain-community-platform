@@ -42,7 +42,6 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
   final _accentColor = TextEditingController();
   final _availableLanguages = const ['हिन्दी', 'मराठी', 'English', 'ગુજરાતી'];
   final Set<String> _selectedLanguages = {'हिन्दी', 'मराठी', 'English'};
-  bool _uploading = false;
   TextEditingController? _uploadingTarget;
   final _logoUrl = TextEditingController();
   final _directoryTitle = TextEditingController();
@@ -184,14 +183,14 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
         ),
       );
       if (confirmed != true || !mounted) return;
-      setState(() { _uploading = true; _uploadingTarget = target; _message = null; });
+      setState(() { _uploadingTarget = target; _message = null; });
       final url = await widget.repository.uploadImage(bytes, file.name);
       target.text = url;
       if (mounted) setState(() => _message = 'Image uploaded. Save the page to publish this change.');
     } catch (error) {
       if (mounted) setState(() => _message = 'Image upload failed: $error');
     } finally {
-      if (mounted) setState(() { _uploading = false; _uploadingTarget = null; });
+      if (mounted) setState(() { _uploadingTarget = null; });
     }
   }
 
