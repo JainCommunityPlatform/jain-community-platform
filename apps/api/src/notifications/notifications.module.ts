@@ -6,10 +6,12 @@ import { IdentityModule } from '../identity/identity.module';
 import { TenantContextModule } from '../tenant/tenant-context.module';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
+import { NotificationDeliveryService } from './notification-delivery.service';
 
 @Module({
   imports: [AuthModule, AuthorizationModule, DatabaseModule, IdentityModule, TenantContextModule],
   controllers: [NotificationsController],
-  providers: [NotificationsService],
+  providers: [NotificationsService, NotificationDeliveryService],
+  exports: [NotificationDeliveryService],
 })
 export class NotificationsModule {}
