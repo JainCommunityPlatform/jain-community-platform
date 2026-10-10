@@ -1,3 +1,5 @@
+import { ForbiddenException } from '@nestjs/common';
+
 import { TenantMemberService } from './tenant-member.service';
 
 describe('TenantMemberService', () => {
@@ -65,6 +67,12 @@ describe('TenantMemberService', () => {
     await expect(
       service.create('00000000-0000-0000-0000-000000000099', 'CONTENT_MANAGER'),
     ).rejects.toThrow('User not found');
+    expect(firestore.createMembership).not.toHaveBeenCalled();
+  });
+
+  it('rejects financial-role assignment through the general membership create endpoint', async () => {
+    await expect(service.create('user-1', 'FINANCE_VIEWER')).rejects.toThrow(ForbiddenException);
+    expect(firestore.getUser).not.toHaveBeenCalled();
     expect(firestore.createMembership).not.toHaveBeenCalled();
   });
 
@@ -144,6 +152,26 @@ describe('TenantMemberService', () => {
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'MEMBERSHIP_ROLE_CHANGED' }),
     );
+  });
+
+  it('rejects assigning a financial role through the general membership update endpoint', async () => {
+    firestore.getMembership.mockResolvedValue({
+      id: 'membership-1', userId: 'user-1', tenantId: 'tenant-1',
+      role: 'CONTENT_MANAGER', roles: ['CONTENT_MANAGER'], createdAt: new Date('2026-01-01'),
+    });
+    await expect(service.update('user-1', 'FINANCE_VIEWER')).rejects.toThrow(ForbiddenException);
+    expect(membershipService.assignRoles).not.toHaveBeenCalled();
+  });
+
+  it('rejects general updates and removal for memberships with financial roles', async () => {
+    firestore.getMembership.mockResolvedValue({
+      id: 'membership-1', userId: 'user-1', tenantId: 'tenant-1',
+      role: 'FINANCE_VIEWER', roles: ['FINANCE_VIEWER'], createdAt: new Date('2026-01-01'),
+    });
+    await expect(service.update('user-1', 'CONTENT_MANAGER')).rejects.toThrow(ForbiddenException);
+    await expect(service.remove('user-1')).rejects.toThrow(ForbiddenException);
+    expect(membershipService.assignRoles).not.toHaveBeenCalled();
+    expect(firestore.deleteMembership).not.toHaveBeenCalled();
   });
 
   it('prevents removing the final tenant administrator', async () => {

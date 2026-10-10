@@ -19,7 +19,8 @@ export type Permission =
   | 'finance.write'
   | 'finance.approve'
   | 'audit.read'
-  | 'platform.tenant.manage';
+  | 'platform.tenant.manage'
+  | 'platform.finance.team.manage';
 
 export interface AuthorizationContext {
   userId: string;

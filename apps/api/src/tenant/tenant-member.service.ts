@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -8,7 +9,10 @@ import { AuditService } from '../audit/audit.service';
 import { FirestoreService } from '../database/firestore.service';
 import { TenantContextStore } from './tenant-context.store';
 import { MembershipRole } from '../authorization/authorization.types';
-import { MembershipService } from '../authorization/membership.service';
+import {
+  FINANCIAL_MEMBERSHIP_ROLES,
+  MembershipService,
+} from '../authorization/membership.service';
 
 export interface TenantMemberSummary {
   id: string;
@@ -44,6 +48,7 @@ export class TenantMemberService {
     role: MembershipRole,
   ): Promise<TenantMemberSummary> {
     const tenantId = this.requireTenantId();
+    this.assertNoFinancialRoleAssignment(role);
     const user = await this.firestore.getUser(userId);
     if (!user) throw new NotFoundException('User not found');
 
@@ -77,7 +82,13 @@ export class TenantMemberService {
   ): Promise<TenantMemberSummary> {
     const membership = await this.findMembership(userId);
 
-    const existingRoles = membership.roles ?? [membership.role];
+    const existingRoles = [...new Set([membership.role, ...(membership.roles ?? [])])];
+    if (existingRoles.some((existingRole) => FINANCIAL_MEMBERSHIP_ROLES.has(existingRole as MembershipRole))) {
+      throw new ForbiddenException(
+        'Financial memberships must be managed through the finance-team workflow',
+      );
+    }
+    this.assertNoFinancialRoleAssignment(role);
     const nextRoles = [
       ...existingRoles.filter((existingRole) => existingRole !== membership.role),
       role,
@@ -100,6 +111,11 @@ export class TenantMemberService {
 
   async remove(userId: string): Promise<void> {
     const membership = await this.findMembership(userId);
+    if ([...new Set([membership.role, ...(membership.roles ?? [])])].some((role) => FINANCIAL_MEMBERSHIP_ROLES.has(role as MembershipRole))) {
+      throw new ForbiddenException(
+        'Financial memberships must be managed through the finance-team workflow',
+      );
+    }
     if ((membership.roles ?? [membership.role]).includes('TENANT_ADMIN')) {
       const allMemberships = await this.firestore.listMemberships(membership.tenantId);
       const adminCount = allMemberships.filter((item) =>
@@ -119,6 +135,14 @@ export class TenantMemberService {
       entityId: membership.id,
       metadata: { targetUserId: userId, role: membership.role },
     });
+  }
+
+  private assertNoFinancialRoleAssignment(role: MembershipRole): void {
+    if (FINANCIAL_MEMBERSHIP_ROLES.has(role)) {
+      throw new ForbiddenException(
+        'Financial roles must be managed through the dedicated finance-team workflow',
+      );
+    }
   }
 
   private async findMembershipWithUser(userId: string) {

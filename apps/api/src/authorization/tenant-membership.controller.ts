@@ -57,6 +57,7 @@ export class TenantMembershipController {
     if (!tenant || !actor) {
       throw new BadRequestException('Tenant context is required');
     }
+    await this.assertNoExistingFinancialRolesByEmail(dto.email, tenant.id);
     this.assertNoFinancialRoleAssignment(dto.roles);
     const membership = await this.memberships.assignRolesByEmail(
       dto.email,
@@ -91,6 +92,15 @@ export class TenantMembershipController {
       throw new BadRequestException('Tenant context is required');
     }
 
+    const existingMembership = await this.firestore.getMembership(userId, tenant.id);
+    if (existingMembership) {
+      this.assertNoFinancialRoleAssignment(
+        [...new Set([
+          existingMembership.role,
+          ...(existingMembership.roles ?? []),
+        ])],
+      );
+    }
     this.assertNoFinancialRoleAssignment(dto.roles);
     const membership = await this.memberships.assignRoles(
       userId,
@@ -113,6 +123,20 @@ export class TenantMembershipController {
       roles: membership.roles,
     };
   }
+  private async assertNoExistingFinancialRolesByEmail(
+    email: string,
+    tenantId: string,
+  ): Promise<void> {
+    const user = await this.firestore.findUserByEmail(email.trim().toLowerCase());
+    if (!user) return;
+    const membership = await this.firestore.getMembership(user.id, tenantId);
+    if (membership) {
+      this.assertNoFinancialRoleAssignment(
+        [...new Set([membership.role, ...(membership.roles ?? [])])],
+      );
+    }
+  }
+
   /**
    * General tenant membership management must not grant financial privileges.
    * A dedicated, separately authorized finance-team workflow will own these
