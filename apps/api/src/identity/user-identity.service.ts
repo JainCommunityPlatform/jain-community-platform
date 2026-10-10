@@ -19,6 +19,8 @@ export class UserIdentityService {
     return this.firestore.upsertUser({
       subject: authenticated.subject,
       email: authenticated.email,
+      emailVerified: authenticated.emailVerified,
+      verifiedPhoneNumber: authenticated.verifiedPhoneNumber,
       displayName: authenticated.displayName,
     });
   }
