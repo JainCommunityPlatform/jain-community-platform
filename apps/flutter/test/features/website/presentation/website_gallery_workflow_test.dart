@@ -1,18 +1,31 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:jain_community_platform/core/api/api_client.dart';
 import 'package:jain_community_platform/features/website/data/website_repository.dart';
 import 'package:jain_community_platform/features/website/presentation/website_editor_page.dart';
 
+class RecordingWebsiteRepository extends WebsiteRepository {
+  RecordingWebsiteRepository(this.site)
+      : super(ApiClient(baseUrl: Uri.parse('https://example.test/')));
+
+  final Map<String, dynamic> site;
+  Map<String, dynamic>? published;
+
+  @override
+  Future<Map<String, dynamic>> getSite() async =>
+      Map<String, dynamic>.from(site);
+
+  @override
+  Future<Map<String, dynamic>> updateSite(Map<String, dynamic> config) async {
+    published = Map<String, dynamic>.from(config);
+    return Map<String, dynamic>.from(config);
+  }
+}
+
 void main() {
   testWidgets('gallery item image URL is included when website is published',
       (tester) async {
-    Map<String, dynamic>? published;
-    final initialSite = <String, dynamic>{
+    final site = <String, dynamic>{
       'tenantId': 'tenant-1',
       'theme': {
         'primary': '#F57C00',
@@ -31,23 +44,7 @@ void main() {
       'seva': {'enabled': true, 'items': []},
       'quickInfo': [],
     };
-
-    final client = MockClient((request) async {
-      if (request.method == 'GET' && request.url.path == '/api/website/site') {
-        return http.Response(jsonEncode(initialSite), 200);
-      }
-      if (request.method == 'PUT' && request.url.path == '/api/website/site') {
-        published = Map<String, dynamic>.from(
-          jsonDecode(request.body) as Map,
-        );
-        return http.Response(jsonEncode({...published!, 'tenantId': 'tenant-1'}), 200);
-      }
-      return http.Response('{}', 404);
-    });
-    final repository = WebsiteRepository(ApiClient(
-      baseUrl: Uri.parse('https://example.test/'),
-      client: client,
-    ));
+    final repository = RecordingWebsiteRepository(site);
 
     await tester.pumpWidget(MaterialApp(
       home: WebsiteEditorPage(
@@ -57,6 +54,7 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
+    expect(find.text('Theme & header'), findsOneWidget);
     final listView = find.byType(ListView).first;
     final editorScrollable = find.descendant(
       of: listView,
@@ -97,8 +95,8 @@ void main() {
     await tester.tap(find.text('Save & Publish Website'));
     await tester.pumpAndSettle();
 
-    expect(published, isNotNull);
-    final gallery = published!['gallery'] as Map<String, dynamic>;
+    expect(repository.published, isNotNull);
+    final gallery = repository.published!['gallery'] as Map<String, dynamic>;
     final items = gallery['items'] as List<dynamic>;
     expect(items, hasLength(1));
     expect(items.single, containsPair('title', 'Main temple'));
