@@ -1142,6 +1142,7 @@ export class FirestoreService implements OnModuleInit {
   async approveDonationPayment(tenantId: string, paymentId: string, approverUserId: string) {
     const db = this.getDb();
     const paymentRef = db.collection('donationPayments').doc(paymentId);
+    const receiptRef = db.collection('donationReceipts').doc(paymentId);
     const updated = await db.runTransaction(async (transaction) => {
       const paymentSnapshot = await transaction.get(paymentRef);
       if (!paymentSnapshot.exists || paymentSnapshot.data()?.tenantId !== tenantId) return { error: 'PAYMENT_NOT_FOUND' as const };
@@ -1157,12 +1158,39 @@ export class FirestoreService implements OnModuleInit {
       const paid = Number(pledge.paidAmountPaise ?? 0);
       const pledged = Number(pledge.pledgedAmountPaise ?? 0);
       if (!Number.isSafeInteger(amount) || amount < 1 || amount > pledged - paid) return { error: 'PAYMENT_EXCEEDS_BALANCE' as const };
+
       const now = Timestamp.now();
+      const year = now.toDate().getUTCFullYear();
+      const sequenceId = createHash('sha256').update('receipt-sequence:' + tenantId + ':' + year).digest('hex');
+      const sequenceRef = db.collection('donationReceiptSequences').doc(sequenceId);
+      const sequenceSnapshot = await transaction.get(sequenceRef);
+      const sequenceData = sequenceSnapshot.data() ?? {};
+      const sequence = Number(sequenceData.nextSequence ?? 1);
+      const tenantCode = tenantId.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10) || 'TENANT';
+      const receiptNumber = 'JCP-' + tenantCode + '-' + year + '-' + String(sequence).padStart(6, '0');
+      const receipt = {
+        tenantId,
+        paymentId,
+        pledgeId: payment.pledgeId,
+        donorUserId: payment.donorUserId,
+        campaignId: pledge.campaignId,
+        amountPaise: amount,
+        currency: 'INR',
+        method: payment.method,
+        receiptNumber,
+        issuedAt: now,
+        issuedBy: approverUserId,
+      };
       const nextPaid = paid + amount;
       const nextPledgeStatus = nextPaid >= pledged ? 'PAID' : 'PARTIALLY_PAID';
-      transaction.update(paymentRef, { status: 'VERIFIED', approvedBy: approverUserId, updatedAt: now });
+      transaction.update(paymentRef, { status: 'VERIFIED', approvedBy: approverUserId, receiptNumber, updatedAt: now });
       transaction.update(pledgeRef, { paidAmountPaise: nextPaid, status: nextPledgeStatus, updatedAt: now });
-      return { payment: { ...payment, id: paymentSnapshot.id, status: 'VERIFIED', approvedBy: approverUserId, updatedAt: now, createdAt: payment.createdAt }, error: null };
+      transaction.set(sequenceRef, { tenantId, year, nextSequence: sequence + 1, updatedAt: now }, { merge: true });
+      transaction.create(receiptRef, receipt);
+      return {
+        payment: { ...payment, id: paymentSnapshot.id, status: 'VERIFIED', approvedBy: approverUserId, receiptNumber, updatedAt: now, createdAt: payment.createdAt },
+        error: null,
+      };
     });
     if (updated.error) throw new Error(updated.error);
     return this.toDonationPayment(updated.payment.id as string, updated.payment);
@@ -1203,6 +1231,91 @@ export class FirestoreService implements OnModuleInit {
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
+  async listDonationReceiptsForTenant(tenantId: string) {
+    const snapshot = await this.getDb().collection('donationReceipts')
+      .where('tenantId', '==', tenantId).get();
+    return snapshot.docs
+      .map((doc) => this.toDonationReceipt(doc.id, doc.data()))
+      .sort((a, b) => b.issuedAt.getTime() - a.issuedAt.getTime());
+  }
+
+  async listDonationReceiptsForDonor(tenantId: string, donorUserId: string) {
+    const snapshot = await this.getDb().collection('donationReceipts')
+      .where('tenantId', '==', tenantId)
+      .where('donorUserId', '==', donorUserId).get();
+    return snapshot.docs
+      .map((doc) => this.toDonationReceipt(doc.id, doc.data()))
+      .sort((a, b) => b.issuedAt.getTime() - a.issuedAt.getTime());
+  }
+
+  async getDonationFinanceReport(tenantId: string) {
+    const [campaigns, pledges, payments] = await Promise.all([
+      this.listGivingCampaigns(tenantId, true),
+      this.listDonationPledgesForTenant(tenantId),
+      this.listDonationPaymentsForTenant(tenantId),
+    ]);
+    const activePledges = pledges.filter((pledge) => pledge.status !== 'CANCELLED');
+    const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
+    const verifiedPayments = payments.filter((payment) => payment.status === 'VERIFIED');
+    const pendingPayments = payments.filter((payment) => payment.status === 'PENDING_APPROVAL');
+    const rejectedPayments = payments.filter((payment) => payment.status === 'REJECTED');
+    const campaignById = new Map(campaigns.map((campaign) => [campaign.id, campaign]));
+    const byCampaign = campaigns.map((campaign) => {
+      const campaignPledges = activePledges.filter((pledge) => pledge.campaignId === campaign.id);
+      const campaignPayments = verifiedPayments.filter((payment) => campaignPledges.some((pledge) => pledge.id === payment.pledgeId));
+      return {
+        campaignId: campaign.id,
+        campaignName: campaign.name,
+        status: campaign.status,
+        pledgedAmountPaise: sum(campaignPledges.map((pledge) => pledge.pledgedAmountPaise)),
+        receivedAmountPaise: sum(campaignPayments.map((payment) => payment.amountPaise)),
+        outstandingAmountPaise: sum(campaignPledges.map((pledge) => Math.max(0, pledge.pledgedAmountPaise - pledge.paidAmountPaise))),
+        currency: 'INR' as const,
+      };
+    });
+    const byPaymentMethod = (['CASH', 'UPI', 'BANK_TRANSFER', 'CHEQUE'] as const).map((method) => ({
+      method,
+      verifiedAmountPaise: sum(verifiedPayments.filter((payment) => payment.method === method).map((payment) => payment.amountPaise)),
+      verifiedCount: verifiedPayments.filter((payment) => payment.method === method).length,
+    }));
+    return {
+      tenantId,
+      currency: 'INR' as const,
+      generatedAt: new Date(),
+      totals: {
+        pledgedAmountPaise: sum(activePledges.map((pledge) => pledge.pledgedAmountPaise)),
+        receivedAmountPaise: sum(verifiedPayments.map((payment) => payment.amountPaise)),
+        outstandingAmountPaise: sum(activePledges.map((pledge) => Math.max(0, pledge.pledgedAmountPaise - pledge.paidAmountPaise))),
+        pendingApprovalAmountPaise: sum(pendingPayments.map((payment) => payment.amountPaise)),
+        rejectedAmountPaise: sum(rejectedPayments.map((payment) => payment.amountPaise)),
+        pledgeCount: activePledges.length,
+        cancelledPledgeCount: pledges.length - activePledges.length,
+        verifiedPaymentCount: verifiedPayments.length,
+        pendingPaymentCount: pendingPayments.length,
+        rejectedPaymentCount: rejectedPayments.length,
+      },
+      byPaymentMethod,
+      byCampaign: byCampaign.filter((campaign) => campaignById.has(campaign.campaignId)),
+    };
+  }
+
+  private toDonationReceipt(id: string, data: Record<string, unknown>) {
+    return {
+      id,
+      tenantId: data.tenantId as string,
+      paymentId: data.paymentId as string,
+      pledgeId: data.pledgeId as string,
+      donorUserId: data.donorUserId as string,
+      campaignId: data.campaignId as string,
+      amountPaise: data.amountPaise as number,
+      currency: 'INR' as const,
+      method: data.method as 'CASH' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE',
+      receiptNumber: data.receiptNumber as string,
+      issuedAt: toDate(data.issuedAt),
+      issuedBy: data.issuedBy as string,
+    };
+  }
+
   private toDonationPayment(id: string, data: Record<string, unknown>) {
     return {
       id,
@@ -1218,6 +1331,7 @@ export class FirestoreService implements OnModuleInit {
       recordedBy: data.recordedBy as string,
       approvedBy: (data.approvedBy as string | null) ?? undefined,
       rejectionReason: (data.rejectionReason as string | null) ?? undefined,
+      receiptNumber: (data.receiptNumber as string | null) ?? undefined,
       createdAt: toDate(data.createdAt),
       updatedAt: toDate(data.updatedAt),
     };
