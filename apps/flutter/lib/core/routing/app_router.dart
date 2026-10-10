@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/admin/presentation/admin_home_page.dart';
+import '../../features/giving/presentation/finance_console_page.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/member/presentation/member_home_page.dart';
 import '../../features/platform/presentation/platform_admin_page.dart';
@@ -86,7 +87,7 @@ class AppRouter {
         ),
         GoRoute(
           path: AppRoutes.finance,
-          builder: (context, __) => _withBackGuard(context, const _PlaceholderPage(title: 'Finance console')),
+          builder: (context, __) => _withBackGuard(context, FinanceConsolePage(api: _api)),
         ),
         GoRoute(
           path: AppRoutes.library,

@@ -27,6 +27,7 @@ class AppSession {
   bool get isAdmin => effectiveRoles.contains('TENANT_ADMIN');
   bool get isPlatformAdmin => platformRoles.contains('PLATFORM_ADMIN');
   bool get isFinance => effectiveRoles.intersection(const {
+    'TENANT_FINANCE',
     'FINANCE_VIEWER',
     'FINANCE_OPERATOR',
     'FINANCE_APPROVER',
