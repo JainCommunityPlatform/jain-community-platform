@@ -36,7 +36,7 @@ class _MemberHomePageState extends State<MemberHomePage> {
   Widget build(BuildContext context) {
     final pages = <Widget>[
       _HomeTab(api: widget.api),
-      const _TemplesTab(),
+      _TemplesTab(api: widget.api),
       const _EventsTab(),
       widget.api == null ? const _DonationsTab() : DonorGivingPage(api: widget.api!),
       widget.profileRepository == null ? const _ProfileTab() : ProfilePage(repository: widget.profileRepository!, onSignOut: widget.onSignOut),
@@ -148,7 +148,9 @@ class _HomeTabState extends State<_HomeTab> {
 }
 
 class _TemplesTab extends StatefulWidget {
-  const _TemplesTab();
+  const _TemplesTab({this.api});
+
+  final ApiClient? api;
 
   @override
   State<_TemplesTab> createState() => _TemplesTabState();
@@ -169,7 +171,7 @@ class _TemplesTabState extends State<_TemplesTab> {
   Future<void> _loadTemples() async {
     if (mounted) setState(() { _loading = true; _error = null; });
     try {
-      final api = context.findAncestorWidgetOfExactType<MemberHomePage>()?.api;
+      final api = widget.api;
       if (api == null) throw StateError('Temple directory is not configured.');
       final temples = await TenantRepository(api).listTemples();
       if (!mounted) return;
