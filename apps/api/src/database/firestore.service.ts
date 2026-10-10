@@ -1144,6 +1144,8 @@ export class FirestoreService implements OnModuleInit {
         reference: input.reference?.trim() || null,
         note: input.note?.trim() || null,
         status: 'PENDING_APPROVAL',
+        adjustedAmountPaise: 0,
+        pendingAdjustmentAmountPaise: 0,
         recordedBy: input.actorUserId,
         approvedBy: null,
         rejectionReason: null,
@@ -1345,14 +1347,264 @@ export class FirestoreService implements OnModuleInit {
     return snapshot.docs.map((doc) => this.toDonationExpense(doc.id, doc.data())).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
+  async createDonationAdjustment(input: {
+    tenantId: string;
+    paymentId: string;
+    actorUserId: string;
+    amountPaise: number;
+    kind: 'REFUND' | 'REVERSAL';
+    reason: string;
+    reference?: string;
+    evidenceReferences?: string[];
+    idempotencyKey: string;
+  }) {
+    if (!Number.isSafeInteger(input.amountPaise) || input.amountPaise < 1) throw new Error('ADJUSTMENT_AMOUNT_INVALID');
+    if (!input.reason.trim()) throw new Error('ADJUSTMENT_REASON_REQUIRED');
+    const id = createHash('sha256')
+      .update('adjustment:' + input.tenantId + ':' + input.paymentId + ':' + input.actorUserId + ':' + input.idempotencyKey.trim())
+      .digest('hex');
+    const db = this.getDb();
+    const ref = db.collection('donationAdjustments').doc(id);
+    const paymentRef = db.collection('donationPayments').doc(input.paymentId);
+    return db.runTransaction(async (transaction) => {
+      const [existingSnapshot, paymentSnapshot] = await Promise.all([
+        transaction.get(ref),
+        transaction.get(paymentRef),
+      ]);
+      const evidenceReferences = (input.evidenceReferences ?? []).map((item) => item.trim()).filter(Boolean);
+      if (existingSnapshot.exists) {
+        const existing = existingSnapshot.data() ?? {};
+        if (
+          existing.tenantId !== input.tenantId ||
+          existing.paymentId !== input.paymentId ||
+          existing.createdBy !== input.actorUserId ||
+          existing.amountPaise !== input.amountPaise ||
+          existing.kind !== input.kind ||
+          existing.reason !== input.reason.trim() ||
+          (existing.reference ?? undefined) !== (input.reference?.trim() || undefined) ||
+          JSON.stringify(existing.evidenceReferences ?? []) !== JSON.stringify(evidenceReferences)
+        ) throw new Error('ADJUSTMENT_IDEMPOTENCY_CONFLICT');
+        return this.toDonationAdjustment(existingSnapshot.id, existing);
+      }
+      if (!paymentSnapshot.exists || paymentSnapshot.data()?.tenantId !== input.tenantId) {
+        throw new Error('PAYMENT_NOT_FOUND');
+      }
+      const payment = paymentSnapshot.data() ?? {};
+      if (payment.status !== 'VERIFIED') throw new Error('PAYMENT_NOT_VERIFIED');
+      const amount = Number(payment.amountPaise);
+      const adjusted = Number(payment.adjustedAmountPaise ?? 0);
+      const pending = Number(payment.pendingAdjustmentAmountPaise ?? 0);
+      if (input.amountPaise > amount - adjusted - pending) throw new Error('ADJUSTMENT_EXCEEDS_PAYMENT');
+      const now = Timestamp.now();
+      const data = {
+        tenantId: input.tenantId,
+        paymentId: input.paymentId,
+        pledgeId: payment.pledgeId as string,
+        donorUserId: payment.donorUserId as string,
+        amountPaise: input.amountPaise,
+        currency: 'INR',
+        kind: input.kind,
+        reason: input.reason.trim(),
+        reference: input.reference?.trim() || null,
+        evidenceReferences,
+        status: 'PENDING_APPROVAL',
+        createdBy: input.actorUserId,
+        approvedBy: null,
+        rejectionReason: null,
+        adjustmentNumber: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      transaction.update(paymentRef, { pendingAdjustmentAmountPaise: pending + input.amountPaise, updatedAt: now });
+      transaction.create(ref, data);
+      return this.toDonationAdjustment(id, data);
+    });
+  }
+
+  async approveDonationAdjustment(tenantId: string, adjustmentId: string, approverUserId: string) {
+    const db = this.getDb();
+    const adjustmentRef = db.collection('donationAdjustments').doc(adjustmentId);
+    const notificationId = randomUUID();
+    const notificationRef = db.collection('notifications').doc(notificationId);
+    const result = await db.runTransaction(async (transaction) => {
+      const adjustmentSnapshot = await transaction.get(adjustmentRef);
+      if (!adjustmentSnapshot.exists || adjustmentSnapshot.data()?.tenantId !== tenantId) return { error: 'ADJUSTMENT_NOT_FOUND' as const };
+      const adjustment = adjustmentSnapshot.data() ?? {};
+      if (adjustment.status !== 'PENDING_APPROVAL') return { error: 'ADJUSTMENT_NOT_PENDING' as const };
+      if (adjustment.createdBy === approverUserId) return { error: 'ADJUSTMENT_SELF_APPROVAL' as const };
+      const paymentRef = db.collection('donationPayments').doc(adjustment.paymentId as string);
+      const pledgeRef = db.collection('donationPledges').doc(adjustment.pledgeId as string);
+      const [paymentSnapshot, pledgeSnapshot] = await Promise.all([
+        transaction.get(paymentRef),
+        transaction.get(pledgeRef),
+      ]);
+      if (!paymentSnapshot.exists || paymentSnapshot.data()?.tenantId !== tenantId) return { error: 'PAYMENT_NOT_FOUND' as const };
+      if (!pledgeSnapshot.exists || pledgeSnapshot.data()?.tenantId !== tenantId) return { error: 'ADJUSTMENT_PLEDGE_NOT_FOUND' as const };
+      const payment = paymentSnapshot.data() ?? {};
+      const pledge = pledgeSnapshot.data() ?? {};
+      if (payment.status !== 'VERIFIED') return { error: 'PAYMENT_NOT_VERIFIED' as const };
+      const amount = Number(adjustment.amountPaise);
+      const pending = Number(payment.pendingAdjustmentAmountPaise ?? 0);
+      const adjusted = Number(payment.adjustedAmountPaise ?? 0);
+      if (pending < amount || adjusted + amount > Number(payment.amountPaise)) return { error: 'ADJUSTMENT_BALANCE_INVALID' as const };
+      const paid = Number(pledge.paidAmountPaise ?? 0);
+      if (paid < amount) return { error: 'ADJUSTMENT_PLEDGE_BALANCE_INVALID' as const };
+      const now = Timestamp.now();
+      const year = now.toDate().getUTCFullYear();
+      const tenantCode = tenantId.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10) || 'TENANT';
+      const adjustmentNumber = 'JCP-ADJ-' + tenantCode + '-' + year + '-' + adjustmentSnapshot.id.slice(0, 12).toUpperCase();
+      const nextPaid = paid - amount;
+      const nextPledgeStatus = pledge.status === 'CANCELLED'
+        ? 'CANCELLED'
+        : nextPaid === 0
+          ? 'PLEDGED'
+          : nextPaid >= Number(pledge.pledgedAmountPaise ?? 0)
+            ? 'PAID'
+            : 'PARTIALLY_PAID';
+      transaction.update(paymentRef, {
+        pendingAdjustmentAmountPaise: pending - amount,
+        adjustedAmountPaise: adjusted + amount,
+        updatedAt: now,
+      });
+      transaction.update(pledgeRef, { paidAmountPaise: nextPaid, status: nextPledgeStatus, updatedAt: now });
+      transaction.update(adjustmentRef, {
+        status: 'APPROVED',
+        approvedBy: approverUserId,
+        approvedAt: now,
+        adjustmentNumber,
+        updatedAt: now,
+      });
+      const kind = adjustment.kind as 'REFUND' | 'REVERSAL';
+      transaction.create(notificationRef, {
+        id: notificationId,
+        tenantId,
+        userId: adjustment.donorUserId as string,
+        type: kind + '_APPROVED',
+        title: kind === 'REFUND' ? 'Donation refund approved' : 'Donation reversal approved',
+        body: 'An adjustment of ₹' + (amount / 100).toFixed(2) + ' has been approved. Reference ' + adjustmentNumber + '.',
+        entityType: 'DonationAdjustment',
+        entityId: adjustmentSnapshot.id,
+        metadata: { paymentId: adjustment.paymentId, kind, amountPaise: amount, adjustmentNumber },
+        readAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+      return {
+        adjustment: {
+          ...adjustment,
+          id: adjustmentSnapshot.id,
+          status: 'APPROVED',
+          approvedBy: approverUserId,
+          approvedAt: now,
+          adjustmentNumber,
+          updatedAt: now,
+        },
+        error: null,
+      };
+    });
+    if (result.error) throw new Error(result.error);
+    return this.toDonationAdjustment(result.adjustment.id as string, result.adjustment);
+  }
+
+  async rejectDonationAdjustment(tenantId: string, adjustmentId: string, approverUserId: string, reason: string) {
+    if (!reason.trim()) throw new Error('ADJUSTMENT_REJECTION_REASON_REQUIRED');
+    const db = this.getDb();
+    const adjustmentRef = db.collection('donationAdjustments').doc(adjustmentId);
+    const notificationId = randomUUID();
+    const notificationRef = db.collection('notifications').doc(notificationId);
+    const result = await db.runTransaction(async (transaction) => {
+      const adjustmentSnapshot = await transaction.get(adjustmentRef);
+      if (!adjustmentSnapshot.exists || adjustmentSnapshot.data()?.tenantId !== tenantId) return { error: 'ADJUSTMENT_NOT_FOUND' as const };
+      const adjustment = adjustmentSnapshot.data() ?? {};
+      if (adjustment.status !== 'PENDING_APPROVAL') return { error: 'ADJUSTMENT_NOT_PENDING' as const };
+      if (adjustment.createdBy === approverUserId) return { error: 'ADJUSTMENT_SELF_APPROVAL' as const };
+      const paymentRef = db.collection('donationPayments').doc(adjustment.paymentId as string);
+      const paymentSnapshot = await transaction.get(paymentRef);
+      if (!paymentSnapshot.exists || paymentSnapshot.data()?.tenantId !== tenantId) return { error: 'PAYMENT_NOT_FOUND' as const };
+      const payment = paymentSnapshot.data() ?? {};
+      const amount = Number(adjustment.amountPaise);
+      const pending = Number(payment.pendingAdjustmentAmountPaise ?? 0);
+      if (pending < amount) return { error: 'ADJUSTMENT_BALANCE_INVALID' as const };
+      const now = Timestamp.now();
+      const rejectionReason = reason.trim();
+      transaction.update(paymentRef, {
+        pendingAdjustmentAmountPaise: pending - amount,
+        adjustedAmountPaise: Number(payment.adjustedAmountPaise ?? 0),
+        updatedAt: now,
+      });
+      transaction.update(adjustmentRef, {
+        status: 'REJECTED',
+        approvedBy: approverUserId,
+        rejectionReason,
+        updatedAt: now,
+      });
+      const kind = adjustment.kind as 'REFUND' | 'REVERSAL';
+      transaction.create(notificationRef, {
+        id: notificationId,
+        tenantId,
+        userId: adjustment.donorUserId as string,
+        type: kind + '_REJECTED',
+        title: kind === 'REFUND' ? 'Donation refund not approved' : 'Donation reversal not approved',
+        body: 'Your requested adjustment of ₹' + (amount / 100).toFixed(2) + ' was not approved. Reason: ' + rejectionReason,
+        entityType: 'DonationAdjustment',
+        entityId: adjustmentSnapshot.id,
+        metadata: { paymentId: adjustment.paymentId, kind, amountPaise: amount, reason: rejectionReason },
+        readAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+      return {
+        adjustment: { ...adjustment, id: adjustmentSnapshot.id, status: 'REJECTED', approvedBy: approverUserId, rejectionReason, updatedAt: now },
+        error: null,
+      };
+    });
+    if (result.error) throw new Error(result.error);
+    return this.toDonationAdjustment(result.adjustment.id as string, result.adjustment);
+  }
+
+  async listDonationAdjustmentsForTenant(tenantId: string) {
+    const snapshot = await this.getDb().collection('donationAdjustments').where('tenantId', '==', tenantId).get();
+    return snapshot.docs
+      .map((doc) => this.toDonationAdjustment(doc.id, doc.data()))
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  private toDonationAdjustment(id: string, data: Record<string, unknown>) {
+    return {
+      id,
+      tenantId: data.tenantId as string,
+      paymentId: data.paymentId as string,
+      pledgeId: data.pledgeId as string,
+      donorUserId: data.donorUserId as string,
+      amountPaise: data.amountPaise as number,
+      currency: 'INR' as const,
+      kind: data.kind as 'REFUND' | 'REVERSAL',
+      reason: data.reason as string,
+      reference: (data.reference as string | null) ?? undefined,
+      evidenceReferences: (data.evidenceReferences as string[] | undefined) ?? [],
+      status: data.status as 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED',
+      createdBy: data.createdBy as string,
+      approvedBy: (data.approvedBy as string | null) ?? undefined,
+      rejectionReason: (data.rejectionReason as string | null) ?? undefined,
+      adjustmentNumber: (data.adjustmentNumber as string | null) ?? undefined,
+      approvedAt: data.approvedAt ? toDate(data.approvedAt) : undefined,
+      createdAt: toDate(data.createdAt),
+      updatedAt: toDate(data.updatedAt),
+    };
+  }
+
   async getDonationReconciliationReport(tenantId: string) {
-    const [payments, receipts, expenses] = await Promise.all([
-      this.listDonationPaymentsForTenant(tenantId), this.listDonationReceiptsForTenant(tenantId), this.listDonationExpensesForTenant(tenantId),
+    const [payments, receipts, expenses, adjustments] = await Promise.all([
+      this.listDonationPaymentsForTenant(tenantId), this.listDonationReceiptsForTenant(tenantId),
+      this.listDonationExpensesForTenant(tenantId), this.listDonationAdjustmentsForTenant(tenantId),
     ]);
     const verified = payments.filter((p) => p.status === 'VERIFIED');
     const approved = expenses.filter((e) => e.status === 'APPROVED');
     const pending = expenses.filter((e) => e.status === 'PENDING_APPROVAL');
     const rejected = expenses.filter((e) => e.status === 'REJECTED');
+    const approvedAdjustments = adjustments.filter((a) => a.status === 'APPROVED');
+    const pendingAdjustments = adjustments.filter((a) => a.status === 'PENDING_APPROVAL');
+    const rejectedAdjustments = adjustments.filter((a) => a.status === 'REJECTED');
     const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
     const receiptByPayment = new Map(receipts.map((receipt) => [receipt.paymentId, receipt]));
     const verifiedById = new Map(verified.map((payment) => [payment.id, payment]));
@@ -1371,7 +1623,13 @@ export class FirestoreService implements OnModuleInit {
       expenses: { approvedAmountPaise: approvedExpenseAmountPaise, approvedCount: approved.length,
         pendingAmountPaise: sum(pending.map((e) => e.amountPaise)), pendingCount: pending.length,
         rejectedAmountPaise: sum(rejected.map((e) => e.amountPaise)), rejectedCount: rejected.length },
+      adjustments: {
+        approvedAmountPaise: sum(approvedAdjustments.map((a) => a.amountPaise)), approvedCount: approvedAdjustments.length,
+        pendingAmountPaise: sum(pendingAdjustments.map((a) => a.amountPaise)), pendingCount: pendingAdjustments.length,
+        rejectedAmountPaise: sum(rejectedAdjustments.map((a) => a.amountPaise)), rejectedCount: rejectedAdjustments.length,
+      },
       netAfterApprovedExpensesPaise: verifiedAmountPaise - approvedExpenseAmountPaise,
+      netAfterApprovedExpensesAndAdjustmentsPaise: verifiedAmountPaise - approvedExpenseAmountPaise - sum(approvedAdjustments.map((a) => a.amountPaise)),
     };
   }
 
@@ -1402,16 +1660,21 @@ export class FirestoreService implements OnModuleInit {
   }
 
   async getDonationFinanceReport(tenantId: string) {
-    const [campaigns, pledges, payments] = await Promise.all([
+    const [campaigns, pledges, payments, adjustments] = await Promise.all([
       this.listGivingCampaigns(tenantId, true),
       this.listDonationPledgesForTenant(tenantId),
       this.listDonationPaymentsForTenant(tenantId),
+      this.listDonationAdjustmentsForTenant(tenantId),
     ]);
     const activePledges = pledges.filter((pledge) => pledge.status !== 'CANCELLED');
     const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
     const verifiedPayments = payments.filter((payment) => payment.status === 'VERIFIED');
     const pendingPayments = payments.filter((payment) => payment.status === 'PENDING_APPROVAL');
     const rejectedPayments = payments.filter((payment) => payment.status === 'REJECTED');
+    const approvedAdjustments = adjustments.filter((adjustment) => adjustment.status === 'APPROVED');
+    const pendingAdjustments = adjustments.filter((adjustment) => adjustment.status === 'PENDING_APPROVAL');
+    const rejectedAdjustments = adjustments.filter((adjustment) => adjustment.status === 'REJECTED');
+    const sumApprovedAdjustmentsPaise = sum(approvedAdjustments.map((adjustment) => adjustment.amountPaise));
     const campaignById = new Map(campaigns.map((campaign) => [campaign.id, campaign]));
     const byCampaign = campaigns.map((campaign) => {
       const campaignPledges = activePledges.filter((pledge) => pledge.campaignId === campaign.id);
@@ -1438,6 +1701,10 @@ export class FirestoreService implements OnModuleInit {
       totals: {
         pledgedAmountPaise: sum(activePledges.map((pledge) => pledge.pledgedAmountPaise)),
         receivedAmountPaise: sum(verifiedPayments.map((payment) => payment.amountPaise)),
+        adjustedAmountPaise: sumApprovedAdjustmentsPaise,
+        netReceivedAmountPaise: sum(verifiedPayments.map((payment) => payment.amountPaise)) - sumApprovedAdjustmentsPaise,
+        pendingAdjustmentAmountPaise: sum(pendingAdjustments.map((adjustment) => adjustment.amountPaise)),
+        rejectedAdjustmentAmountPaise: sum(rejectedAdjustments.map((adjustment) => adjustment.amountPaise)),
         outstandingAmountPaise: sum(activePledges.map((pledge) => Math.max(0, pledge.pledgedAmountPaise - pledge.paidAmountPaise))),
         pendingApprovalAmountPaise: sum(pendingPayments.map((payment) => payment.amountPaise)),
         rejectedAmountPaise: sum(rejectedPayments.map((payment) => payment.amountPaise)),

@@ -31,3 +31,13 @@ This summary is an operational giving report, not a double-entry ledger or audit
 - `GET /api/giving/reports/reconciliation` — finance.read; compares verified payments with issued receipts, lists missing/orphan/mismatched receipt IDs, and reports approved/pending/rejected expenses plus net verified donations after approved expenses.
 
 Only approved expenses reduce the operational net balance. This is a control/reconciliation summary, not a general ledger; it does not itself settle bank transactions or prove that cash/bank statements match.
+
+
+## Refunds and reversals
+
+- `POST /api/giving/payments/:paymentId/adjustments` — `finance.write`, requires an `Idempotency-Key`; `kind` is `REFUND` or `REVERSAL`, and amount is integer paise.
+- `GET /api/giving/adjustments` — `finance.read`, tenant-scoped.
+- `POST /api/giving/adjustments/:adjustmentId/approve` and `/reject` — `finance.approve`; a different finance approver must review the request, and rejection requires a reason.
+- Adjustments can only be requested against a verified payment. Pending and approved adjustment amounts reserve the remaining refundable/reversible balance, preventing over-adjustment under concurrent requests.
+- Approval creates a separate adjustment reference, reduces the pledge paid balance, and notifies the donor in the same Firestore transaction. The original payment and receipt remain unchanged as historical evidence.
+- Reconciliation reports approved, pending and rejected adjustments separately and provides net donations after approved expenses and adjustments. This records manual workflow and does not initiate or confirm an external bank/UPI refund settlement.

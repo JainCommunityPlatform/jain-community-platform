@@ -28,6 +28,7 @@ import { RecordPaymentDto } from './dto/record-payment.dto';
 import { RejectPaymentDto } from './dto/reject-payment.dto';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { RejectExpenseDto } from './dto/reject-expense.dto';
+import { CreateDonationAdjustmentDto } from './dto/create-donation-adjustment.dto';
 import { GivingService } from './giving.service';
 
 @Controller('giving')
@@ -206,6 +207,64 @@ export class GivingController {
     await this.audit.record({ action: 'DONATION_EXPENSE_REJECTED', entity: 'DonationExpense', entityId: expense.id,
       metadata: { reason: dto.reason, amountPaise: expense.amountPaise, status: expense.status } });
     return expense;
+  }
+
+  @Post('payments/:paymentId/adjustments')
+  @RequirePermission('finance.write')
+  async createAdjustment(
+    @Param('paymentId') paymentId: string,
+    @Body() dto: CreateDonationAdjustmentDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    const tenant = this.requireTenant();
+    const actor = await this.requireActor();
+    if (!idempotencyKey) throw new BadRequestException('Idempotency-Key header is required');
+    const adjustment = await this.giving.createAdjustment({
+      tenantId: tenant.id, paymentId, actorUserId: actor.id, ...dto, idempotencyKey,
+    });
+    await this.audit.record({
+      action: 'DONATION_ADJUSTMENT_REQUESTED',
+      entity: 'DonationAdjustment',
+      entityId: adjustment.id,
+      metadata: { paymentId, kind: adjustment.kind, amountPaise: adjustment.amountPaise, status: adjustment.status },
+    });
+    return adjustment;
+  }
+
+  @Get('adjustments')
+  @RequirePermission('finance.read')
+  async listTenantAdjustments() {
+    return this.giving.listTenantAdjustments(this.requireTenant().id);
+  }
+
+  @Post('adjustments/:adjustmentId/approve')
+  @RequirePermission('finance.approve')
+  async approveAdjustment(@Param('adjustmentId') adjustmentId: string) {
+    const tenant = this.requireTenant();
+    const actor = await this.requireActor();
+    const adjustment = await this.giving.approveAdjustment(tenant.id, adjustmentId, actor.id);
+    await this.audit.record({
+      action: 'DONATION_ADJUSTMENT_APPROVED',
+      entity: 'DonationAdjustment',
+      entityId: adjustment.id,
+      metadata: { paymentId: adjustment.paymentId, kind: adjustment.kind, amountPaise: adjustment.amountPaise, adjustmentNumber: adjustment.adjustmentNumber },
+    });
+    return adjustment;
+  }
+
+  @Post('adjustments/:adjustmentId/reject')
+  @RequirePermission('finance.approve')
+  async rejectAdjustment(@Param('adjustmentId') adjustmentId: string, @Body() dto: RejectExpenseDto) {
+    const tenant = this.requireTenant();
+    const actor = await this.requireActor();
+    const adjustment = await this.giving.rejectAdjustment(tenant.id, adjustmentId, actor.id, dto.reason);
+    await this.audit.record({
+      action: 'DONATION_ADJUSTMENT_REJECTED',
+      entity: 'DonationAdjustment',
+      entityId: adjustment.id,
+      metadata: { paymentId: adjustment.paymentId, kind: adjustment.kind, amountPaise: adjustment.amountPaise, reason: dto.reason },
+    });
+    return adjustment;
   }
 
   @Get('reports/reconciliation')

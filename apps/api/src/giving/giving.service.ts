@@ -159,6 +159,56 @@ export class GivingService {
     }
   }
 
+  async createAdjustment(input: {
+    tenantId: string; paymentId: string; actorUserId: string; amountPaise: number;
+    kind: 'REFUND' | 'REVERSAL'; reason: string; reference?: string; evidenceReferences?: string[]; idempotencyKey: string;
+  }) {
+    if (!input.idempotencyKey.trim() || input.idempotencyKey.length > 200) throw new BadRequestException('A valid Idempotency-Key header is required');
+    try {
+      return await this.firestore.createDonationAdjustment(input);
+    } catch (error) {
+      if (!(error instanceof Error)) throw error;
+      if (error.message === 'ADJUSTMENT_AMOUNT_INVALID' || error.message === 'ADJUSTMENT_REASON_REQUIRED') throw new BadRequestException('A positive amount and reason are required for an adjustment');
+      if (error.message === 'PAYMENT_NOT_FOUND') throw new NotFoundException('Verified payment not found for this tenant');
+      if (error.message === 'PAYMENT_NOT_VERIFIED') throw new ConflictException('Only verified payments can be refunded or reversed');
+      if (error.message === 'ADJUSTMENT_EXCEEDS_PAYMENT') throw new UnprocessableEntityException('Adjustment exceeds the payment amount remaining after pending and approved adjustments');
+      if (error.message === 'ADJUSTMENT_IDEMPOTENCY_CONFLICT') throw new ConflictException('Idempotency key was already used for different adjustment details');
+      throw error;
+    }
+  }
+
+  async approveAdjustment(tenantId: string, adjustmentId: string, approverUserId: string) {
+    try {
+      return await this.firestore.approveDonationAdjustment(tenantId, adjustmentId, approverUserId);
+    } catch (error) {
+      if (!(error instanceof Error)) throw error;
+      if (error.message === 'ADJUSTMENT_NOT_FOUND' || error.message === 'PAYMENT_NOT_FOUND' || error.message === 'ADJUSTMENT_PLEDGE_NOT_FOUND') throw new NotFoundException('Adjustment not found for this tenant');
+      if (error.message === 'ADJUSTMENT_SELF_APPROVAL') throw new ForbiddenException('The person who requested an adjustment cannot approve it');
+      if (error.message === 'ADJUSTMENT_NOT_PENDING') throw new ConflictException('Adjustment is no longer pending approval');
+      if (error.message === 'PAYMENT_NOT_VERIFIED') throw new ConflictException('Only verified payments can be adjusted');
+      if (error.message === 'ADJUSTMENT_BALANCE_INVALID' || error.message === 'ADJUSTMENT_PLEDGE_BALANCE_INVALID') throw new ConflictException('Adjustment balances are inconsistent; reconcile before proceeding');
+      throw error;
+    }
+  }
+
+  async rejectAdjustment(tenantId: string, adjustmentId: string, approverUserId: string, reason: string) {
+    try {
+      return await this.firestore.rejectDonationAdjustment(tenantId, adjustmentId, approverUserId, reason);
+    } catch (error) {
+      if (!(error instanceof Error)) throw error;
+      if (error.message === 'ADJUSTMENT_NOT_FOUND' || error.message === 'PAYMENT_NOT_FOUND') throw new NotFoundException('Adjustment not found for this tenant');
+      if (error.message === 'ADJUSTMENT_SELF_APPROVAL') throw new ForbiddenException('The person who requested an adjustment cannot reject it');
+      if (error.message === 'ADJUSTMENT_NOT_PENDING') throw new ConflictException('Adjustment is no longer pending review');
+      if (error.message === 'ADJUSTMENT_REJECTION_REASON_REQUIRED') throw new BadRequestException('A rejection reason is required');
+      if (error.message === 'ADJUSTMENT_BALANCE_INVALID') throw new ConflictException('Adjustment balances are inconsistent; reconcile before proceeding');
+      throw error;
+    }
+  }
+
+  listTenantAdjustments(tenantId: string) {
+    return this.firestore.listDonationAdjustmentsForTenant(tenantId);
+  }
+
   listTenantExpenses(tenantId: string) { return this.firestore.listDonationExpensesForTenant(tenantId); }
   getReconciliationReport(tenantId: string) { return this.firestore.getDonationReconciliationReport(tenantId); }
 
