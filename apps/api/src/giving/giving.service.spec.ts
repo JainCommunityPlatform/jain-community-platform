@@ -17,6 +17,7 @@ describe('GivingService', () => {
     listDonationReceiptsForDonor: jest.fn(),
     getDonationFinanceReport: jest.fn(),
     createDonationExpense: jest.fn(), approveDonationExpense: jest.fn(), rejectDonationExpense: jest.fn(), listDonationExpensesForTenant: jest.fn(), getDonationReconciliationReport: jest.fn(),
+    createDonationAdjustment: jest.fn(), listDonationAdjustmentsForTenant: jest.fn(), approveDonationAdjustment: jest.fn(), rejectDonationAdjustment: jest.fn(),
   };
   const service = () => new GivingService(firestore as never);
 

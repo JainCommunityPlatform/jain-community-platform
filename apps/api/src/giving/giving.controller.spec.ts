@@ -16,6 +16,7 @@ describe('GivingController', () => {
     listMyReceipts: jest.fn(),
     getFinanceReport: jest.fn(),
     createExpense: jest.fn(), listTenantExpenses: jest.fn(), approveExpense: jest.fn(), rejectExpense: jest.fn(), getReconciliationReport: jest.fn(),
+    createAdjustment: jest.fn(), listTenantAdjustments: jest.fn(), approveAdjustment: jest.fn(), rejectAdjustment: jest.fn(),
   };
   const tenantContext = { get: jest.fn().mockReturnValue({ id: 'tenant-a' }) };
   const auth = { get: jest.fn().mockReturnValue({ uid: 'auth-user' }) };
