@@ -404,6 +404,8 @@ describe('FirestoreService giving persistence', () => {
     const retry = await instance.createDonationPledge(input);
     expect(retry.id).toBe(first.id);
     expect(db.entries('donationPledges')).toHaveLength(1);
+    expect(db.entries('tenantDonors')).toHaveLength(1);
+    expect(first.donorId).toBeDefined();
     await expect(instance.createDonationPledge({ ...input, pledgedAmountPaise: 700000 }))
       .rejects.toThrow('IDEMPOTENCY_CONFLICT');
   });
