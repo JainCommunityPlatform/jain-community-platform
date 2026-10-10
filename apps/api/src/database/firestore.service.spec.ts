@@ -405,6 +405,9 @@ describe('FirestoreService giving persistence', () => {
     expect(retry.id).toBe(first.id);
     expect(db.entries('donationPledges')).toHaveLength(1);
     expect(db.entries('tenantDonors')).toHaveLength(1);
+    expect(await instance.listNotificationsForUser('tenant-a', user.id)).toMatchObject([
+      { type: 'PLEDGE_CREATED', userId: user.id, entityId: first.id },
+    ]);
     expect(first.donorId).toBeDefined();
     await expect(instance.createDonationPledge({ ...input, pledgedAmountPaise: 700000 }))
       .rejects.toThrow('IDEMPOTENCY_CONFLICT');
@@ -476,6 +479,12 @@ describe('FirestoreService donation payment workflow', () => {
     });
     expect(await instance.listDonationReceiptsForDonor('tenant-a', pledge.donorUserId)).toHaveLength(1);
     expect(await instance.listDonationReceiptsForDonor('tenant-b', pledge.donorUserId)).toHaveLength(0);
+    const notifications = await instance.listNotificationsForUser('tenant-a', pledge.donorUserId);
+    const verifiedNotification = notifications.find((item) => item.type === 'PAYMENT_VERIFIED');
+    expect(verifiedNotification).toMatchObject({ entityId: payment.id, metadata: { receiptNumber: verified.receiptNumber } });
+    const markedRead = await instance.markNotificationRead('tenant-a', pledge.donorUserId, verifiedNotification!.id);
+    expect(markedRead?.readAt).toBeInstanceOf(Date);
+    expect(await instance.markNotificationRead('tenant-b', pledge.donorUserId, verifiedNotification!.id)).toBeNull();
     const updatedPledge = (await instance.listDonationPledgesForTenant('tenant-a')).find(p => p.id === payment.pledgeId);
     expect(updatedPledge).toMatchObject({ paidAmountPaise: 25000, status: 'PARTIALLY_PAID' });
   });
@@ -547,6 +556,9 @@ describe('FirestoreService donation payment workflow', () => {
     const rejected = await instance.rejectDonationPayment('tenant-a', payment.id, 'approver', 'Evidence did not match');
     expect(rejected.status).toBe('REJECTED');
     expect(rejected.rejectionReason).toBe('Evidence did not match');
+    expect(await instance.listNotificationsForUser('tenant-a', pledge.donorUserId)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'PAYMENT_REJECTED', entityId: payment.id, body: expect.stringContaining('Evidence did not match') }),
+    ]));
     const current = (await instance.listDonationPledgesForTenant('tenant-a')).find(p => p.id === pledge.id);
     expect(current).toMatchObject({ paidAmountPaise: 0, status: 'PLEDGED' });
   });

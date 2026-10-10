@@ -77,6 +77,35 @@ class DonorReceipt {
       );
 }
 
+class DonorNotification {
+  const DonorNotification({
+    required this.id,
+    required this.type,
+    required this.title,
+    required this.body,
+    required this.createdAt,
+    required this.readAt,
+  });
+
+  final String id;
+  final String type;
+  final String title;
+  final String body;
+  final DateTime? createdAt;
+  final DateTime? readAt;
+
+  bool get isRead => readAt != null;
+
+  factory DonorNotification.fromJson(Map<String, dynamic> json) => DonorNotification(
+        id: json['id'] as String,
+        type: json['type'] as String? ?? 'UPDATE',
+        title: json['title'] as String? ?? 'Update',
+        body: json['body'] as String? ?? '',
+        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? ''),
+        readAt: DateTime.tryParse(json['readAt'] as String? ?? ''),
+      );
+}
+
 class GivingRepository {
   const GivingRepository(this.api);
 
@@ -96,6 +125,15 @@ class GivingRepository {
       (await api.getList('/api/giving/my-receipts'))
           .map((item) => DonorReceipt.fromJson(item as Map<String, dynamic>))
           .toList();
+
+  Future<List<DonorNotification>> listMyNotifications() async =>
+      (await api.getList('/api/notifications'))
+          .map((item) => DonorNotification.fromJson(item as Map<String, dynamic>))
+          .toList();
+
+  Future<void> markNotificationRead(String notificationId) async {
+    await api.post('/api/notifications/$notificationId/read');
+  }
 
   Future<DonorPledge> createPledge({
     required String campaignId,

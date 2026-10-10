@@ -58,4 +58,34 @@ void main() {
     await repository.listMyReceipts();
     expect(paths, ['/api/giving/my-pledges', '/api/giving/my-receipts']);
   });
+  test('loads donor notifications and marks them read through authenticated endpoints', () async {
+    final paths = <String>[];
+    final client = MockClient((request) async {
+      paths.add('${request.method} ${request.url.path}');
+      if (request.url.path == '/api/notifications') {
+        return http.Response(jsonEncode([
+          {
+            'id': 'notification-1',
+            'type': 'PAYMENT_VERIFIED',
+            'title': 'Donation payment verified',
+            'body': 'Receipt is ready.',
+            'createdAt': '2026-10-10T04:00:00.000Z',
+            'readAt': null,
+          }
+        ]), 200);
+      }
+      return http.Response(jsonEncode({'id': 'notification-1', 'readAt': '2026-10-10T04:10:00.000Z'}), 201);
+    });
+    final repository = GivingRepository(ApiClient(
+      baseUrl: Uri.parse('https://example.test/'),
+      tenantIdProvider: () => 'tenant-1',
+      client: client,
+    ));
+    final notifications = await repository.listMyNotifications();
+    expect(notifications.single.id, 'notification-1');
+    expect(notifications.single.isRead, isFalse);
+    await repository.markNotificationRead('notification-1');
+    expect(paths, ['GET /api/notifications', 'POST /api/notifications/notification-1/read']);
+  });
+
 }
