@@ -505,15 +505,22 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Theme & header'), findsOneWidget);
-    final scrollable = find.descendant(
+    // ListView lazily builds off-screen sections. Resolve the Scrollable
+    // that is an ancestor of this ListView (not the reverse relationship and
+    // not the app's first/nested scrollable) before scrolling to later cards.
+    // The Scrollable is built inside ListView, so it must be found
+    // among the ListView's descendants. Using ancestor() returns no match
+    // and makes scrollUntilVisible throw StateError: No element.
+    final editorScrollable = find.descendant(
       of: find.byType(ListView).first,
       matching: find.byType(Scrollable),
     ).first;
     await tester.scrollUntilVisible(
       find.text('Section controls'),
       250,
-      scrollable: scrollable,
+      scrollable: editorScrollable,
     );
+    await tester.pumpAndSettle();
     expect(find.text('Section controls'), findsOneWidget);
     expect(find.text('Temple directory title'), findsNothing);
 
@@ -521,16 +528,18 @@ void main() {
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('Temple directory title'),
-      250,
-      scrollable: scrollable,
+      200,
+      scrollable: editorScrollable,
     );
+    await tester.pumpAndSettle();
     expect(find.text('Temple directory title'), findsOneWidget);
 
     await tester.scrollUntilVisible(
       find.text('Temple team & roles'),
-      350,
-      scrollable: scrollable,
+      250,
+      scrollable: editorScrollable,
     );
+    await tester.pumpAndSettle();
     expect(find.text('Temple team & roles'), findsOneWidget);
     await tester.tap(find.text('Temple team & roles'));
     await tester.pumpAndSettle();
