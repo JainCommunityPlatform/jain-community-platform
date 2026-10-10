@@ -1001,13 +1001,6 @@ export class FirestoreService implements OnModuleInit {
         transaction.get(campaignRef),
         transaction.get(pledgeRef),
       ]);
-      if (
-        !campaignSnapshot.exists ||
-        campaignSnapshot.data()?.tenantId !== input.tenantId ||
-        campaignSnapshot.data()?.status !== 'ACTIVE'
-      ) {
-        throw new Error('CAMPAIGN_NOT_FOUND');
-      }
       if (pledgeSnapshot.exists) {
         const existing = pledgeSnapshot.data() ?? {};
         if (
@@ -1019,6 +1012,13 @@ export class FirestoreService implements OnModuleInit {
           throw new Error('IDEMPOTENCY_CONFLICT');
         }
         return this.toDonationPledge(pledgeSnapshot.id, existing);
+      }
+      if (
+        !campaignSnapshot.exists ||
+        campaignSnapshot.data()?.tenantId !== input.tenantId ||
+        campaignSnapshot.data()?.status !== 'ACTIVE'
+      ) {
+        throw new Error('CAMPAIGN_NOT_FOUND');
       }
       const now = Timestamp.now();
       const data = {
