@@ -95,9 +95,10 @@ export class TenantMembershipController {
     const existingMembership = await this.firestore.getMembership(userId, tenant.id);
     if (existingMembership) {
       this.assertNoFinancialRoleAssignment(
-        existingMembership.roles?.length
-          ? existingMembership.roles
-          : [existingMembership.role],
+        [...new Set([
+          existingMembership.role,
+          ...(existingMembership.roles ?? []),
+        ])],
       );
     }
     this.assertNoFinancialRoleAssignment(dto.roles);
@@ -131,7 +132,7 @@ export class TenantMembershipController {
     const membership = await this.firestore.getMembership(user.id, tenantId);
     if (membership) {
       this.assertNoFinancialRoleAssignment(
-        membership.roles?.length ? membership.roles : [membership.role],
+        [...new Set([membership.role, ...(membership.roles ?? [])])],
       );
     }
   }
