@@ -505,21 +505,37 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Theme & header'), findsOneWidget);
-    // ensureVisible walks the actual scrollable ancestors. This avoids
-    // binding the test to an assumed Scrollable order when navigation and
-    // expansion tiles add nested scrollables to the widget tree.
-    await tester.ensureVisible(find.text('Section controls'));
+    // ListView lazily builds off-screen sections. Resolve the Scrollable
+    // that is an ancestor of this ListView (not the reverse relationship and
+    // not the app's first/nested scrollable) before scrolling to later cards.
+    final editorScrollable = find.ancestor(
+      of: find.byType(ListView).first,
+      matching: find.byType(Scrollable),
+    ).first;
+    await tester.scrollUntilVisible(
+      find.text('Section controls'),
+      250,
+      scrollable: editorScrollable,
+    );
     await tester.pumpAndSettle();
     expect(find.text('Section controls'), findsOneWidget);
     expect(find.text('Temple directory title'), findsNothing);
 
     await tester.tap(find.text('Section controls'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Temple directory title'));
+    await tester.scrollUntilVisible(
+      find.text('Temple directory title'),
+      200,
+      scrollable: editorScrollable,
+    );
     await tester.pumpAndSettle();
     expect(find.text('Temple directory title'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Temple team & roles'));
+    await tester.scrollUntilVisible(
+      find.text('Temple team & roles'),
+      250,
+      scrollable: editorScrollable,
+    );
     await tester.pumpAndSettle();
     expect(find.text('Temple team & roles'), findsOneWidget);
     await tester.tap(find.text('Temple team & roles'));
