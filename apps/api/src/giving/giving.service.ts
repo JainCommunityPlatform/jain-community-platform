@@ -3,16 +3,27 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Optional,
   UnprocessableEntityException,
   NotFoundException,
 } from '@nestjs/common';
 
 import { FirestoreService } from '../database/firestore.service';
+import { NotificationEventDispatcher } from '../notifications/notification-event-dispatcher.service';
 import { GivingCampaignStatus } from './giving.types';
 
 @Injectable()
 export class GivingService {
-  constructor(private readonly firestore: FirestoreService) {}
+  constructor(
+    private readonly firestore: FirestoreService,
+    @Optional() private readonly notificationDispatcher?: NotificationEventDispatcher,
+  ) {}
+
+  private dispatchNotification(tenantId: string, userId: string, entityType: string, entityId: string) {
+    if (!this.notificationDispatcher) return;
+    void this.notificationDispatcher.dispatchForEntity({ tenantId, userId, entityType, entityId })
+      .catch(() => undefined);
+  }
 
   createCampaign(input: {
     tenantId: string;
@@ -53,7 +64,9 @@ export class GivingService {
       throw new BadRequestException('A valid Idempotency-Key header is required');
     }
     try {
-      return await this.firestore.createDonationPledge(input);
+      const pledge = await this.firestore.createDonationPledge(input);
+      this.dispatchNotification(input.tenantId, input.donorUserId, 'DonationPledge', pledge.id);
+      return pledge;
     } catch (error) {
       if (error instanceof Error && error.message === 'CAMPAIGN_NOT_FOUND') {
         throw new NotFoundException('Active campaign not found for this tenant');
@@ -96,7 +109,9 @@ export class GivingService {
 
   async approvePayment(tenantId: string, paymentId: string, approverUserId: string) {
     try {
-      return await this.firestore.approveDonationPayment(tenantId, paymentId, approverUserId);
+      const payment = await this.firestore.approveDonationPayment(tenantId, paymentId, approverUserId);
+      this.dispatchNotification(tenantId, payment.donorUserId, 'DonationReceipt', paymentId);
+      return payment;
     } catch (error) {
       if (!(error instanceof Error)) throw error;
       if (error.message === 'PAYMENT_NOT_FOUND' || error.message === 'PLEDGE_NOT_FOUND') throw new NotFoundException('Payment not found for this tenant');
@@ -110,7 +125,9 @@ export class GivingService {
 
   async rejectPayment(tenantId: string, paymentId: string, approverUserId: string, reason: string) {
     try {
-      return await this.firestore.rejectDonationPayment(tenantId, paymentId, approverUserId, reason);
+      const payment = await this.firestore.rejectDonationPayment(tenantId, paymentId, approverUserId, reason);
+      this.dispatchNotification(tenantId, payment.donorUserId, 'DonationPayment', paymentId);
+      return payment;
     } catch (error) {
       if (!(error instanceof Error)) throw error;
       if (error.message === 'PAYMENT_NOT_FOUND') throw new NotFoundException('Payment not found for this tenant');
@@ -179,7 +196,9 @@ export class GivingService {
 
   async approveAdjustment(tenantId: string, adjustmentId: string, approverUserId: string) {
     try {
-      return await this.firestore.approveDonationAdjustment(tenantId, adjustmentId, approverUserId);
+      const adjustment = await this.firestore.approveDonationAdjustment(tenantId, adjustmentId, approverUserId);
+      this.dispatchNotification(tenantId, adjustment.donorUserId, 'DonationAdjustment', adjustmentId);
+      return adjustment;
     } catch (error) {
       if (!(error instanceof Error)) throw error;
       if (error.message === 'ADJUSTMENT_NOT_FOUND' || error.message === 'PAYMENT_NOT_FOUND' || error.message === 'ADJUSTMENT_PLEDGE_NOT_FOUND') throw new NotFoundException('Adjustment not found for this tenant');
@@ -193,7 +212,9 @@ export class GivingService {
 
   async rejectAdjustment(tenantId: string, adjustmentId: string, approverUserId: string, reason: string) {
     try {
-      return await this.firestore.rejectDonationAdjustment(tenantId, adjustmentId, approverUserId, reason);
+      const adjustment = await this.firestore.rejectDonationAdjustment(tenantId, adjustmentId, approverUserId, reason);
+      this.dispatchNotification(tenantId, adjustment.donorUserId, 'DonationAdjustment', adjustmentId);
+      return adjustment;
     } catch (error) {
       if (!(error instanceof Error)) throw error;
       if (error.message === 'ADJUSTMENT_NOT_FOUND' || error.message === 'PAYMENT_NOT_FOUND') throw new NotFoundException('Adjustment not found for this tenant');
