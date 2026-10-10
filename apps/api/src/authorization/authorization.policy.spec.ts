@@ -1,7 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 
 import { AuthorizationPolicy } from './authorization.policy';
-import { AuthorizationContext } from './authorization.types';
+import { AuthorizationContext, Permission } from './authorization.types';
 
 describe('AuthorizationPolicy', () => {
   const policy = new AuthorizationPolicy();
@@ -257,7 +257,7 @@ describe('AuthorizationPolicy', () => {
     });
 
     for (const permission of allowed) {
-      expect(policy.hasPermission(roleContext, permission as never))
+      expect(policy.hasPermission(roleContext, permission as Permission))
         .toBe(true);
     }
     for (const permission of denied) {
