@@ -52,7 +52,7 @@ export class NotificationsController {
     const tenant = this.tenantContext.get();
     if (!tenant) throw new BadRequestException('Tenant context is required');
     const actor = await this.requireActor();
-    return this.notifications.updatePreferences({ tenantId: tenant.id, userId: actor.id, ...input });
+    return this.notifications.updatePreferences({ ...input, tenantId: tenant.id, userId: actor.id });
   }
 
   @Post(':notificationId/read')
