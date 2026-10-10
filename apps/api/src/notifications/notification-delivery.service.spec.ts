@@ -100,6 +100,16 @@ describe('NotificationDeliveryService', () => {
     expect(result.errorMessage).toContain('Resend HTTP 503');
   });
 
+  it('handles non-Error provider rejections without losing delivery failure status', async () => {
+    process.env.RESEND_API_KEY = 'test-key';
+    process.env.NOTIFICATION_EMAIL_FROM = 'JCP <updates@example.org>';
+    jest.spyOn(global, 'fetch').mockRejectedValue('network unavailable');
+    const result = await service().deliver(input);
+    expect(result.status).toBe('FAILED');
+    expect(result.errorCode).toBe('PROVIDER_DELIVERY_FAILED');
+    expect(result.errorMessage).toBe('Unknown provider error');
+  });
+
   it('sends WhatsApp messages using the configured Cloud API phone number', async () => {
     process.env.WHATSAPP_ACCESS_TOKEN = 'test-token';
     process.env.WHATSAPP_PHONE_NUMBER_ID = 'phone-id';
