@@ -1773,6 +1773,62 @@ export class FirestoreService implements OnModuleInit {
     };
   }
 
+  async recordNotificationDelivery(input: {
+    id: string;
+    tenantId: string;
+    notificationId: string;
+    userId: string;
+    channel: 'EMAIL' | 'WHATSAPP' | 'PUSH';
+    status: 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED' | 'SKIPPED';
+    providerMessageId?: string;
+    errorCode?: string;
+    errorMessage?: string;
+  }) {
+    const ref = this.getDb().collection('notificationDeliveries').doc(input.id);
+    return this.getDb().runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(ref);
+      const previous = snapshot.data() ?? {};
+      const now = Timestamp.now();
+      const isAttempt = input.status === 'SENT' || input.status === 'FAILED';
+      const data = {
+        ...input,
+        attempts: Number(previous.attempts ?? 0) + (isAttempt ? 1 : 0),
+        createdAt: previous.createdAt ?? now,
+        updatedAt: now,
+      };
+      transaction.set(ref, data, { merge: true });
+      return {
+        ...data,
+        createdAt: toDate(data.createdAt),
+        updatedAt: toDate(data.updatedAt),
+      };
+    });
+  }
+
+  async listNotificationDeliveries(tenantId: string, notificationId: string) {
+    const snapshot = await this.getDb().collection('notificationDeliveries')
+      .where('tenantId', '==', tenantId)
+      .where('notificationId', '==', notificationId)
+      .get();
+    return snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        tenantId: data.tenantId as string,
+        notificationId: data.notificationId as string,
+        userId: data.userId as string,
+        channel: data.channel as 'EMAIL' | 'WHATSAPP' | 'PUSH',
+        status: data.status as 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED' | 'SKIPPED',
+        attempts: Number(data.attempts ?? 0),
+        providerMessageId: data.providerMessageId as string | undefined,
+        errorCode: data.errorCode as string | undefined,
+        errorMessage: data.errorMessage as string | undefined,
+        createdAt: toDate(data.createdAt),
+        updatedAt: toDate(data.updatedAt),
+      };
+    }).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  }
+
   async listNotificationsForUser(tenantId: string, userId: string, limit = 50) {
     const safeLimit = Math.max(1, Math.min(100, Math.floor(limit)));
     const snapshot = await this.getDb().collection('notifications')
