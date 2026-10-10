@@ -43,6 +43,20 @@ describe('GivingService', () => {
     await expect(service().getReconciliationReport('tenant-a')).resolves.toMatchObject({ tenantId: 'tenant-a' });
   });
 
+  it('maps adjustment validation, balance, and maker-checker failures', async () => {
+    firestore.createDonationAdjustment.mockRejectedValue(new Error('ADJUSTMENT_EXCEEDS_PAYMENT'));
+    await expect(service().createAdjustment({
+      tenantId: 'tenant-a', paymentId: 'payment-a', actorUserId: 'maker', amountPaise: 1000,
+      kind: 'REFUND', reason: 'Duplicate payment', idempotencyKey: 'adjust-1',
+    })).rejects.toBeInstanceOf(UnprocessableEntityException);
+    firestore.approveDonationAdjustment.mockRejectedValue(new Error('ADJUSTMENT_SELF_APPROVAL'));
+    await expect(service().approveAdjustment('tenant-a', 'adjustment-a', 'maker')).rejects.toBeInstanceOf(ForbiddenException);
+    firestore.rejectDonationAdjustment.mockRejectedValue(new Error('ADJUSTMENT_REJECTION_REASON_REQUIRED'));
+    await expect(service().rejectAdjustment('tenant-a', 'adjustment-a', 'reviewer', ' ')).rejects.toThrow('A rejection reason is required');
+    firestore.listDonationAdjustmentsForTenant.mockResolvedValue([]);
+    await expect(service().listTenantAdjustments('tenant-a')).resolves.toEqual([]);
+  });
+
   it('requires an idempotency key for pledge creation', async () => {
     await expect(service().createPledge({
       tenantId: 'tenant-a', donorUserId: 'donor-a', campaignId: 'campaign-a',

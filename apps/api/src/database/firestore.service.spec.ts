@@ -563,6 +563,63 @@ describe('FirestoreService donation payment workflow', () => {
     expect(current).toMatchObject({ paidAmountPaise: 0, status: 'PLEDGED' });
   });
 
+  it('approves a refund without rewriting the original payment or receipt and prevents over-adjustment', async () => {
+    const { instance, db, pledge } = await setup();
+    const payment = await instance.recordDonationPayment({
+      tenantId: 'tenant-a', pledgeId: pledge.id, actorUserId: 'cashier',
+      amountPaise: 50000, method: 'UPI', idempotencyKey: 'adjustment-payment',
+    });
+    const verified = await instance.approveDonationPayment('tenant-a', payment.id, 'finance-approver');
+    const input = {
+      tenantId: 'tenant-a', paymentId: payment.id, actorUserId: 'adjustment-maker',
+      amountPaise: 20000, kind: 'REFUND' as const, reason: 'Duplicate transfer',
+      reference: 'BANK-REFUND-1', evidenceReferences: ['refund-proof-1'], idempotencyKey: 'refund-key',
+    };
+    const adjustment = await instance.createDonationAdjustment(input);
+    expect((await instance.createDonationAdjustment(input)).id).toBe(adjustment.id);
+    expect(adjustment).toMatchObject({ status: 'PENDING_APPROVAL', amountPaise: 20000, kind: 'REFUND' });
+    expect(db.get('donationPayments', payment.id)).toMatchObject({ pendingAdjustmentAmountPaise: 20000 });
+    await expect(instance.createDonationAdjustment({ ...input, amountPaise: 30001, idempotencyKey: 'too-large' }))
+      .rejects.toThrow('ADJUSTMENT_EXCEEDS_PAYMENT');
+    await expect(instance.approveDonationAdjustment('tenant-a', adjustment.id, 'adjustment-maker'))
+      .rejects.toThrow('ADJUSTMENT_SELF_APPROVAL');
+    const approved = await instance.approveDonationAdjustment('tenant-a', adjustment.id, 'finance-reviewer');
+    expect(approved).toMatchObject({ status: 'APPROVED', adjustmentNumber: expect.stringMatching(/^JCP-ADJ-/) });
+    expect(db.get('donationPayments', payment.id)).toMatchObject({ status: 'VERIFIED', adjustedAmountPaise: 20000, pendingAdjustmentAmountPaise: 0 });
+    expect((await instance.listDonationReceiptsForTenant('tenant-a'))[0].receiptNumber).toBe(verified.receiptNumber);
+    expect((await instance.listDonationPledgesForTenant('tenant-a')).find((item) => item.id === pledge.id))
+      .toMatchObject({ paidAmountPaise: 30000, status: 'PARTIALLY_PAID' });
+    expect(await instance.listNotificationsForUser('tenant-a', pledge.donorUserId)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'REFUND_APPROVED', entityId: adjustment.id }),
+    ]));
+    const reconciliation = await instance.getDonationReconciliationReport('tenant-a');
+    expect(reconciliation.adjustments).toMatchObject({ approvedAmountPaise: 20000, approvedCount: 1, pendingCount: 0 });
+    expect(reconciliation.netAfterApprovedExpensesAndAdjustmentsPaise).toBe(30000);
+    const finance = await instance.getDonationFinanceReport('tenant-a');
+    expect(finance.totals).toMatchObject({ receivedAmountPaise: 50000, adjustedAmountPaise: 20000, netReceivedAmountPaise: 30000 });
+  });
+
+  it('releases reserved adjustment balance and notifies donor when an adjustment is rejected', async () => {
+    const { instance, db, pledge } = await setup();
+    const payment = await instance.recordDonationPayment({
+      tenantId: 'tenant-a', pledgeId: pledge.id, actorUserId: 'cashier',
+      amountPaise: 40000, method: 'CASH', idempotencyKey: 'rejected-adjustment-payment',
+    });
+    await instance.approveDonationPayment('tenant-a', payment.id, 'finance-approver');
+    const adjustment = await instance.createDonationAdjustment({
+      tenantId: 'tenant-a', paymentId: payment.id, actorUserId: 'adjustment-maker',
+      amountPaise: 10000, kind: 'REVERSAL', reason: 'Wrong allocation', idempotencyKey: 'reversal-key',
+    });
+    await expect(instance.rejectDonationAdjustment('tenant-a', adjustment.id, 'adjustment-maker', 'Rejected by maker'))
+      .rejects.toThrow('ADJUSTMENT_SELF_APPROVAL');
+    const rejected = await instance.rejectDonationAdjustment('tenant-a', adjustment.id, 'finance-reviewer', 'Evidence did not support the request');
+    expect(rejected).toMatchObject({ status: 'REJECTED', rejectionReason: 'Evidence did not support the request' });
+    expect(db.get('donationPayments', payment.id)).toMatchObject({ pendingAdjustmentAmountPaise: 0, adjustedAmountPaise: 0 });
+    expect(await instance.listNotificationsForUser('tenant-a', pledge.donorUserId)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'REVERSAL_REJECTED', entityId: adjustment.id }),
+    ]));
+  });
+
   it('is idempotent and tenant-scoped when recording payment', async () => {
     const { instance, pledge } = await setup();
     const input = {

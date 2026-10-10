@@ -69,6 +69,33 @@ describe('GivingController', () => {
     expect(giving.listMyReceipts).toHaveBeenCalledWith('tenant-a', 'user-a');
   });
 
+  it('records and audits an adjustment with the authenticated actor and tenant', async () => {
+    giving.createAdjustment.mockResolvedValue({ id: 'adjustment-1', paymentId: 'payment-1', kind: 'REFUND', amountPaise: 5000, status: 'PENDING_APPROVAL' });
+    await expect(controller().createAdjustment('payment-1', {
+      kind: 'REFUND', amountPaise: 5000, reason: 'Duplicate payment',
+    }, 'adjustment-key')).resolves.toMatchObject({ id: 'adjustment-1' });
+    expect(giving.createAdjustment).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-a', paymentId: 'payment-1', actorUserId: 'user-a', idempotencyKey: 'adjustment-key',
+    }));
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'DONATION_ADJUSTMENT_REQUESTED', entityId: 'adjustment-1',
+    }));
+  });
+
+  it('uses the tenant-scoped finance adjustment list and audits review decisions', async () => {
+    giving.listTenantAdjustments.mockResolvedValue([]);
+    giving.approveAdjustment.mockResolvedValue({ id: 'adjustment-1', paymentId: 'payment-1', kind: 'REVERSAL', amountPaise: 5000, status: 'APPROVED' });
+    giving.rejectAdjustment.mockResolvedValue({ id: 'adjustment-2', paymentId: 'payment-1', kind: 'REFUND', amountPaise: 2000, status: 'REJECTED' });
+    await controller().listTenantAdjustments();
+    await controller().approveAdjustment('adjustment-1');
+    await controller().rejectAdjustment('adjustment-2', { reason: 'Evidence incomplete' });
+    expect(giving.listTenantAdjustments).toHaveBeenCalledWith('tenant-a');
+    expect(giving.approveAdjustment).toHaveBeenCalledWith('tenant-a', 'adjustment-1', 'user-a');
+    expect(giving.rejectAdjustment).toHaveBeenCalledWith('tenant-a', 'adjustment-2', 'user-a', 'Evidence incomplete');
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'DONATION_ADJUSTMENT_APPROVED', entityId: 'adjustment-1' }));
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'DONATION_ADJUSTMENT_REJECTED', entityId: 'adjustment-2' }));
+  });
+
   it('uses the resolved tenant for finance receipts and reports', async () => {
     giving.listTenantReceipts.mockResolvedValue([]);
     giving.getFinanceReport.mockResolvedValue({ tenantId: 'tenant-a', totals: {} });
