@@ -50,6 +50,8 @@ describe('TenantMembershipController', () => {
     jest.clearAllMocks();
     tenant.get.mockReturnValue({ id: 'tenant-a' });
     context.get.mockReturnValue({ userId: 'actor-a', tenantId: 'tenant-a' });
+    firestore.findUserByEmail.mockResolvedValue(null);
+    firestore.getMembership.mockResolvedValue(null);
   });
 
   it('lists team members without exposing phone details', async () => {
