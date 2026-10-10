@@ -12,7 +12,7 @@ class BadeBabaHomePage extends StatelessWidget {
     final colors = theme.colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Bade Baba Kharadi'),
+        title: const Text('MyJinalay'),
         actions: [
           TextButton.icon(
             onPressed: () => context.go(AppRoutes.login),
@@ -83,17 +83,17 @@ class _HeroCard extends StatelessWidget {
             Icon(Icons.temple_hindu, size: 52),
             SizedBox(height: 16),
             Text(
-              'Shri Adinath Jinalay',
+              'Your Jain Temple Community',
               style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
             ),
             SizedBox(height: 6),
             Text(
-              'Bade Baba Kharadi, Pune',
+              'Discover temples and community activities',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             SizedBox(height: 12),
             Text(
-              'A new JCP-powered temple experience for events, seva, registrations and community updates.',
+              'Explore temple information, events, seva, registrations and community updates in one place.',
               style: TextStyle(height: 1.45),
             ),
           ],
