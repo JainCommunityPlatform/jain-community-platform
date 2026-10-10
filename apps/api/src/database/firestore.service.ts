@@ -1829,6 +1829,48 @@ export class FirestoreService implements OnModuleInit {
     }).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   }
 
+  async getNotificationPreferences(tenantId: string, userId: string) {
+    const id = createHash('sha256').update(tenantId + ':' + userId).digest('hex');
+    const snapshot = await this.getDb().collection('notificationPreferences').doc(id).get();
+    const data = snapshot.data() ?? {};
+    return {
+      tenantId,
+      userId,
+      email: data.email === true,
+      whatsapp: data.whatsapp === true,
+      push: data.push === true,
+      updatedAt: data.updatedAt ? toDate(data.updatedAt) : null,
+    };
+  }
+
+  async updateNotificationPreferences(input: {
+    tenantId: string;
+    userId: string;
+    email: boolean;
+    whatsapp: boolean;
+    push: boolean;
+  }) {
+    const id = createHash('sha256').update(input.tenantId + ':' + input.userId).digest('hex');
+    const ref = this.getDb().collection('notificationPreferences').doc(id);
+    const now = Timestamp.now();
+    await ref.set({
+      tenantId: input.tenantId,
+      userId: input.userId,
+      email: input.email,
+      whatsapp: input.whatsapp,
+      push: input.push,
+      updatedAt: now,
+    }, { merge: true });
+    return {
+      tenantId: input.tenantId,
+      userId: input.userId,
+      email: input.email,
+      whatsapp: input.whatsapp,
+      push: input.push,
+      updatedAt: now.toDate(),
+    };
+  }
+
   async listNotificationsForUser(tenantId: string, userId: string, limit = 50) {
     const safeLimit = Math.max(1, Math.min(100, Math.floor(limit)));
     const snapshot = await this.getDb().collection('notifications')

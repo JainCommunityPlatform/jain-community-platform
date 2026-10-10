@@ -23,3 +23,13 @@ A deterministic tenant + notification + channel key avoids duplicate records. Su
 ## Activation boundary
 
 This change provides the delivery adapter and tracking foundation. Channels remain operationally inactive until the relevant provider is configured, the recipient destination is verified, consent is recorded by the caller, and end-to-end delivery is validated. A background worker, provider webhook reconciliation, and user-facing preference management remain follow-up work; do not claim automatic campaign-wide delivery until those are wired.
+
+
+## User-managed channel preferences
+
+Authenticated members can read and replace their own tenant-scoped channel choices:
+
+- `GET /api/notifications/preferences`
+- `PUT /api/notifications/preferences` with boolean `email`, `whatsapp`, and `push` fields.
+
+New or missing preferences default to opt-out for every external channel. Updating these choices records the member's channel selection, but delivery still requires a verified destination and the dispatch caller to pass explicit consent. Preferences are isolated by tenant and authenticated user; clients cannot supply another user or tenant identifier.

@@ -5,6 +5,20 @@ import { FirestoreService } from '../database/firestore.service';
 export class NotificationsService {
   constructor(private readonly firestore: FirestoreService) {}
 
+  getPreferences(tenantId: string, userId: string) {
+    return this.firestore.getNotificationPreferences(tenantId, userId);
+  }
+
+  updatePreferences(input: {
+    tenantId: string;
+    userId: string;
+    email: boolean;
+    whatsapp: boolean;
+    push: boolean;
+  }) {
+    return this.firestore.updateNotificationPreferences(input);
+  }
+
   listForUser(tenantId: string, userId: string) {
     return this.firestore.listNotificationsForUser(tenantId, userId);
   }

@@ -5,10 +5,25 @@ describe('NotificationsService', () => {
   const firestore = {
     listNotificationsForUser: jest.fn(),
     markNotificationRead: jest.fn(),
+    getNotificationPreferences: jest.fn(),
+    updateNotificationPreferences: jest.fn(),
   };
   const service = () => new NotificationsService(firestore as never);
 
   beforeEach(() => jest.clearAllMocks());
+
+  it('returns channel preferences defaulted to opt-out', async () => {
+    firestore.getNotificationPreferences.mockResolvedValue({ tenantId: 'tenant-a', userId: 'user-a', email: false, whatsapp: false, push: false });
+    await expect(service().getPreferences('tenant-a', 'user-a')).resolves.toMatchObject({ email: false, whatsapp: false, push: false });
+    expect(firestore.getNotificationPreferences).toHaveBeenCalledWith('tenant-a', 'user-a');
+  });
+
+  it('updates preferences only for the specified tenant and user', async () => {
+    const input = { tenantId: 'tenant-a', userId: 'user-a', email: true, whatsapp: false, push: true };
+    firestore.updateNotificationPreferences.mockResolvedValue(input);
+    await expect(service().updatePreferences(input)).resolves.toMatchObject(input);
+    expect(firestore.updateNotificationPreferences).toHaveBeenCalledWith(input);
+  });
 
   it('lists only notifications for the resolved tenant and user', async () => {
     firestore.listNotificationsForUser.mockResolvedValue([{ id: 'n-1', tenantId: 'tenant-a', userId: 'user-a' }]);
