@@ -5,6 +5,8 @@ describe('NotificationEventDispatcher', () => {
     getUser: jest.fn(),
     getNotificationPreferences: jest.fn(),
     listNotificationsForUser: jest.fn(),
+    listFailedNotificationDeliveries: jest.fn(),
+    getNotificationForUser: jest.fn(),
   };
   const delivery = { deliver: jest.fn().mockResolvedValue({ status: 'SENT' }) };
   const dispatcher = () => new NotificationEventDispatcher(firestore as never, delivery as never);
@@ -29,6 +31,8 @@ describe('NotificationEventDispatcher', () => {
     });
     firestore.getNotificationPreferences.mockResolvedValue({ email: false, whatsapp: false, push: false });
     firestore.listNotificationsForUser.mockResolvedValue([notification]);
+    firestore.listFailedNotificationDeliveries.mockResolvedValue([]);
+    firestore.getNotificationForUser.mockResolvedValue(notification);
     delivery.deliver.mockResolvedValue({ status: 'SENT' });
   });
 
@@ -79,4 +83,39 @@ describe('NotificationEventDispatcher', () => {
       tenantId: 'tenant-1', userId: 'user-1', entityType: 'DonationPledge', entityId: 'pledge-1',
     })).resolves.toBeUndefined();
   });
+
+  it('retries an old failed delivery only when the member still opted in', async () => {
+    firestore.listFailedNotificationDeliveries.mockResolvedValue([{
+      id: 'delivery-1', tenantId: 'tenant-1', notificationId: 'notification-1',
+      userId: 'user-1', channel: 'EMAIL', attempts: 1,
+      updatedAt: new Date(Date.now() - 120_000),
+    }]);
+    firestore.getNotificationPreferences.mockResolvedValue({ email: true, whatsapp: false, push: false });
+
+    await expect(dispatcher().retryFailedDeliveries()).resolves.toEqual({ examined: 1, retried: 1 });
+    expect(firestore.getNotificationForUser).toHaveBeenCalledWith('tenant-1', 'user-1', 'notification-1');
+    expect(delivery.deliver).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-1', userId: 'user-1', notificationId: 'notification-1',
+      channel: 'EMAIL', recipient: 'donor@example.com', recipientVerified: true, consentConfirmed: true,
+    }));
+  });
+
+  it('does not retry too early, beyond the attempt limit, or after consent is withdrawn', async () => {
+    firestore.listFailedNotificationDeliveries.mockResolvedValue([
+      { id: 'fresh', tenantId: 'tenant-1', notificationId: 'notification-1', userId: 'user-1', channel: 'EMAIL', attempts: 1, updatedAt: new Date() },
+      { id: 'exhausted', tenantId: 'tenant-1', notificationId: 'notification-1', userId: 'user-1', channel: 'EMAIL', attempts: 5, updatedAt: new Date(0) },
+      { id: 'revoked', tenantId: 'tenant-1', notificationId: 'notification-1', userId: 'user-1', channel: 'EMAIL', attempts: 1, updatedAt: new Date(Date.now() - 120_000) },
+    ]);
+    firestore.getNotificationPreferences.mockResolvedValue({ email: false, whatsapp: false, push: false });
+
+    await expect(dispatcher().retryFailedDeliveries()).resolves.toEqual({ examined: 3, retried: 0 });
+    expect(delivery.deliver).not.toHaveBeenCalled();
+    expect(firestore.getNotificationForUser).not.toHaveBeenCalled();
+  });
+
+  it('handles a retry query outage without affecting callers', async () => {
+    firestore.listFailedNotificationDeliveries.mockRejectedValue(new Error('Firestore unavailable'));
+    await expect(dispatcher().retryFailedDeliveries()).resolves.toEqual({ examined: 0, retried: 0 });
+  });
+
 });
