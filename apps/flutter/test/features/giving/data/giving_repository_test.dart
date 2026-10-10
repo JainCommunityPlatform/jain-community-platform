@@ -61,7 +61,7 @@ void main() {
   test('loads donor notifications and marks them read through authenticated endpoints', () async {
     final paths = <String>[];
     final client = MockClient((request) async {
-      paths.add(request.method + ' ' + request.url.path);
+      paths.add('${request.method} ${request.url.path}');
       if (request.url.path == '/api/notifications') {
         return http.Response(jsonEncode([
           {

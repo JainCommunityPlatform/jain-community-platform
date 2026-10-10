@@ -304,7 +304,11 @@ class _DonorGivingPageState extends State<DonorGivingPage> {
                 child: Icon(notification.isRead ? Icons.notifications_none : Icons.notifications_active_outlined),
               ),
               title: Text(notification.title, style: TextStyle(fontWeight: notification.isRead ? FontWeight.normal : FontWeight.w700)),
-              subtitle: Text(notification.body + (notification.createdAt == null ? '' : '\n' + MaterialLocalizations.of(context).formatMediumDate(notification.createdAt!.toLocal()))),
+              subtitle: Text(
+                notification.createdAt == null
+                    ? notification.body
+                    : '${notification.body}\n${MaterialLocalizations.of(context).formatMediumDate(notification.createdAt!.toLocal())}',
+              ),
               isThreeLine: true,
               trailing: notification.isRead
                   ? const Icon(Icons.check_circle_outline)
