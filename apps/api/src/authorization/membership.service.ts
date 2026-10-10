@@ -70,12 +70,12 @@ export class MembershipService {
     const existing = await this.firestore.getMembership(userId, tenantId);
     if (existing) {
       if (
-        existing.roles.includes('TENANT_ADMIN') &&
+        (existing.roles.includes('TENANT_ADMIN') || existing.role === 'TENANT_ADMIN') &&
         !roles.includes('TENANT_ADMIN')
       ) {
         const tenantMemberships = await this.firestore.listMemberships(tenantId);
         const adminCount = tenantMemberships.filter((membership) =>
-          membership.roles.includes('TENANT_ADMIN'),
+          membership.roles.includes('TENANT_ADMIN') || membership.role === 'TENANT_ADMIN',
         ).length;
         if (adminCount <= 1) {
           throw new BadRequestException(
@@ -117,11 +117,9 @@ export class MembershipService {
     }
 
     const existing = await this.firestore.getMembership(user.id, tenantId);
-    const existingRoles = existing?.roles?.length
-      ? existing.roles
-      : existing
-        ? [existing.role]
-        : [];
+    const existingRoles = existing
+      ? [...new Set([existing.role, ...(existing.roles ?? [])])]
+      : [];
     if (existingRoles.includes('TENANT_ADMIN') || existing?.role === 'TENANT_ADMIN') {
       throw new ForbiddenException(
         'Tenant administrators cannot be assigned financial roles',
@@ -136,9 +134,7 @@ export class MembershipService {
     }
     const existing = await this.firestore.getMembership(userId, tenantId);
     if (!existing) throw new NotFoundException('Tenant membership not found');
-    const currentRoles = existing.roles?.length
-      ? existing.roles
-      : [existing.role];
+    const currentRoles = [...new Set([existing.role, ...(existing.roles ?? [])])];
     if (!currentRoles.includes(role)) {
       throw new NotFoundException('The requested financial role is not assigned');
     }
@@ -166,7 +162,7 @@ export class MembershipService {
 
     const roles = [
       ...new Set(
-        (membership.roles?.length ? membership.roles : [membership.role]).filter(
+        [membership.role, ...(membership.roles ?? [])].filter(
           (role): role is MembershipRole =>
             MEMBERSHIP_ROLES.has(role as MembershipRole),
         ),
