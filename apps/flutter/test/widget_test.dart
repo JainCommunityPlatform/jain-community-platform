@@ -505,10 +505,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Theme & header'), findsOneWidget);
-    final scrollable = find.descendant(
-      of: find.byType(ListView).first,
-      matching: find.byType(Scrollable),
-    ).first;
+    // Scrollable is an ancestor of ListView, not its descendant. Use the
+    // editor's outer scrollable so this test actually brings later sections
+    // into the visible viewport before tapping them.
+    final scrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(
       find.text('Section controls'),
       250,
