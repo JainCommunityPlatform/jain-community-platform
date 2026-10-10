@@ -39,10 +39,10 @@ describe('NotificationsController', () => {
   });
 
   it('updates only the authenticated user preferences in the current tenant', async () => {
-    const input = { email: true, whatsapp: false, push: true };
-    notifications.updatePreferences.mockResolvedValue({ tenantId: 'tenant-a', userId: 'user-a', ...input });
-    await expect(controller().updateMyPreferences(input)).resolves.toMatchObject(input);
-    expect(notifications.updatePreferences).toHaveBeenCalledWith({ tenantId: 'tenant-a', userId: 'user-a', ...input });
+    const input = { email: true, whatsapp: false, push: true, tenantId: 'tenant-attacker', userId: 'user-attacker' };
+    notifications.updatePreferences.mockResolvedValue({ tenantId: 'tenant-a', userId: 'user-a', email: true, whatsapp: false, push: true });
+    await expect(controller().updateMyPreferences(input as never)).resolves.toMatchObject({ email: true, whatsapp: false, push: true });
+    expect(notifications.updatePreferences).toHaveBeenCalledWith({ email: true, whatsapp: false, push: true, tenantId: 'tenant-a', userId: 'user-a' });
   });
 
   it('marks only the authenticated user notification as read', async () => {
