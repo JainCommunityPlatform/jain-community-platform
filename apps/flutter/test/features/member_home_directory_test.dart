@@ -44,7 +44,7 @@ void main() {
     await tester.tap(find.text('Temples'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Live Directory Jinalay'), findsNWidgets(2));
+    expect(find.text('Live Directory Jinalay'), findsOneWidget);
     expect(find.text('Shri Parshvanath Jinalay'), findsNothing);
     expect(find.text('Shri Mahavir Swami Jinalay'), findsNothing);
   });
