@@ -1,7 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 
 import { AuthorizationPolicy } from './authorization.policy';
-import { AuthorizationContext, Permission } from './authorization.types';
+import { AuthorizationContext, MembershipRole, Permission } from './authorization.types';
 
 describe('AuthorizationPolicy', () => {
   const policy = new AuthorizationPolicy();
@@ -253,7 +253,7 @@ describe('AuthorizationPolicy', () => {
     const roleContext = context('user-a', 'tenant-a', {
       userId: 'user-a',
       tenantId: 'tenant-a',
-      role,
+      role: role as MembershipRole,
     });
 
     for (const permission of allowed) {
