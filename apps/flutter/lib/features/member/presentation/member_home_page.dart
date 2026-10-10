@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
+
+import '../../../core/api/api_client.dart';
+import '../../giving/presentation/donor_giving_page.dart';
 import '../../profile/data/profile_repository.dart';
 import '../../profile/presentation/profile_page.dart';
 
 class MemberHomePage extends StatefulWidget {
-  const MemberHomePage({this.profileRepository, this.initialIndex = 0, super.key});
+  const MemberHomePage({
+    this.profileRepository,
+    this.api,
+    this.initialIndex = 0,
+    super.key,
+  });
   final ProfileRepository? profileRepository;
+  final ApiClient? api;
   final int initialIndex;
 
   @override
@@ -26,7 +35,7 @@ class _MemberHomePageState extends State<MemberHomePage> {
       const _HomeTab(),
       const _TemplesTab(),
       const _EventsTab(),
-      const _DonationsTab(),
+      widget.api == null ? const _DonationsTab() : DonorGivingPage(api: widget.api!),
       widget.profileRepository == null ? const _ProfileTab() : ProfilePage(repository: widget.profileRepository!),
     ];
 

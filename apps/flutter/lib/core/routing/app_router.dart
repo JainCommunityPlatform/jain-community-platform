@@ -65,6 +65,7 @@ class AppRouter {
           path: AppRoutes.member,
           builder: (context, state) => _withBackGuard(context, MemberHomePage(
             profileRepository: _profileRepository,
+            api: _api,
             initialIndex: int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0,
           )),
         ),
