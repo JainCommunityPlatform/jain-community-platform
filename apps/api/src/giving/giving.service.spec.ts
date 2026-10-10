@@ -16,6 +16,7 @@ describe('GivingService', () => {
     listDonationReceiptsForTenant: jest.fn(),
     listDonationReceiptsForDonor: jest.fn(),
     getDonationFinanceReport: jest.fn(),
+    createDonationExpense: jest.fn(), approveDonationExpense: jest.fn(), rejectDonationExpense: jest.fn(), listDonationExpensesForTenant: jest.fn(), getDonationReconciliationReport: jest.fn(),
   };
   const service = () => new GivingService(firestore as never);
 
@@ -30,6 +31,16 @@ describe('GivingService', () => {
     await expect(service().getFinanceReport('tenant-a')).resolves.toMatchObject({ totals: { receivedAmountPaise: 5000 } });
     expect(firestore.listDonationReceiptsForDonor).toHaveBeenCalledWith('tenant-a', 'donor-a');
     expect(firestore.getDonationFinanceReport).toHaveBeenCalledWith('tenant-a');
+  });
+
+  it('maps expense idempotency conflicts and maker-checker failures', async () => {
+    firestore.createDonationExpense.mockRejectedValue(new Error('EXPENSE_IDEMPOTENCY_CONFLICT'));
+    await expect(service().createExpense({ tenantId: 'tenant-a', actorUserId: 'maker', category: 'Repairs',
+      description: 'Repair', amountPaise: 1000, idempotencyKey: 'same-key' })).rejects.toBeInstanceOf(ConflictException);
+    firestore.approveDonationExpense.mockRejectedValue(new Error('EXPENSE_SELF_APPROVAL'));
+    await expect(service().approveExpense('tenant-a', 'expense-a', 'maker')).rejects.toBeInstanceOf(ForbiddenException);
+    firestore.getDonationReconciliationReport.mockResolvedValue({ tenantId: 'tenant-a' });
+    await expect(service().getReconciliationReport('tenant-a')).resolves.toMatchObject({ tenantId: 'tenant-a' });
   });
 
   it('requires an idempotency key for pledge creation', async () => {

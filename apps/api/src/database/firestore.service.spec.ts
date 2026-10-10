@@ -480,6 +480,46 @@ describe('FirestoreService donation payment workflow', () => {
     expect(updatedPledge).toMatchObject({ paidAmountPaise: 25000, status: 'PARTIALLY_PAID' });
   });
 
+  it('records expenses with idempotency, tenant scope, and maker-checker approval', async () => {
+    const { instance } = await setup();
+    const input = { tenantId: 'tenant-a', actorUserId: 'expense-maker', category: 'Maintenance', description: 'Repair temple lighting',
+      amountPaise: 15000, evidenceReferences: ['gs://evidence/invoice.pdf'], idempotencyKey: 'expense-key' };
+    const expense = await instance.createDonationExpense(input);
+    expect(expense.status).toBe('PENDING_APPROVAL');
+    expect((await instance.createDonationExpense(input)).id).toBe(expense.id);
+    await expect(instance.createDonationExpense({ ...input, amountPaise: 16000 })).rejects.toThrow('EXPENSE_IDEMPOTENCY_CONFLICT');
+    await expect(instance.approveDonationExpense('tenant-a', expense.id, 'expense-maker')).rejects.toThrow('EXPENSE_SELF_APPROVAL');
+    await expect(instance.approveDonationExpense('tenant-b', expense.id, 'reviewer')).rejects.toThrow('EXPENSE_NOT_FOUND');
+    expect(await instance.approveDonationExpense('tenant-a', expense.id, 'reviewer')).toMatchObject({ status: 'APPROVED', amountPaise: 15000 });
+    expect(await instance.listDonationExpensesForTenant('tenant-b')).toHaveLength(0);
+  });
+
+  it('requires a reason to reject expenses and excludes rejected expenses from net outflow', async () => {
+    const { instance } = await setup();
+    const expense = await instance.createDonationExpense({ tenantId: 'tenant-a', actorUserId: 'maker', category: 'Supplies',
+      description: 'Cleaning supplies', amountPaise: 2500, idempotencyKey: 'reject-expense' });
+    await expect(instance.rejectDonationExpense('tenant-a', expense.id, 'reviewer', ' ')).rejects.toThrow('EXPENSE_REJECTION_REASON_REQUIRED');
+    await instance.rejectDonationExpense('tenant-a', expense.id, 'reviewer', 'Missing invoice');
+    const report = await instance.getDonationReconciliationReport('tenant-a');
+    expect(report.expenses).toMatchObject({ approvedAmountPaise: 0, rejectedAmountPaise: 2500, rejectedCount: 1 });
+    expect(report.netAfterApprovedExpensesPaise).toBe(0);
+  });
+
+  it('reconciles verified payments, receipts and approved expenses', async () => {
+    const { instance, pledge } = await setup();
+    const payment = await instance.recordDonationPayment({ tenantId: 'tenant-a', pledgeId: pledge.id, actorUserId: 'cashier',
+      amountPaise: 20000, method: 'UPI', idempotencyKey: 'reconcile-payment' });
+    await instance.approveDonationPayment('tenant-a', payment.id, 'finance-reviewer');
+    const expense = await instance.createDonationExpense({ tenantId: 'tenant-a', actorUserId: 'expense-maker', category: 'Repair',
+      description: 'Door repair', amountPaise: 7000, idempotencyKey: 'reconcile-expense' });
+    await instance.approveDonationExpense('tenant-a', expense.id, 'expense-reviewer');
+    const report = await instance.getDonationReconciliationReport('tenant-a');
+    expect(report.donations).toMatchObject({ verifiedAmountPaise: 20000, verifiedPaymentCount: 1 });
+    expect(report.receipts).toMatchObject({ issuedAmountPaise: 20000, issuedReceiptCount: 1, isBalanced: true });
+    expect(report.expenses).toMatchObject({ approvedAmountPaise: 7000, approvedCount: 1 });
+    expect(report.netAfterApprovedExpensesPaise).toBe(13000);
+  });
+
   it('builds a tenant-scoped summary from verified and pending payments only', async () => {
     const { instance, pledge } = await setup();
     await instance.recordDonationPayment({

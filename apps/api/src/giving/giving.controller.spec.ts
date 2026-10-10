@@ -15,6 +15,7 @@ describe('GivingController', () => {
     listTenantReceipts: jest.fn(),
     listMyReceipts: jest.fn(),
     getFinanceReport: jest.fn(),
+    createExpense: jest.fn(), listTenantExpenses: jest.fn(), approveExpense: jest.fn(), rejectExpense: jest.fn(), getReconciliationReport: jest.fn(),
   };
   const tenantContext = { get: jest.fn().mockReturnValue({ id: 'tenant-a' }) };
   const auth = { get: jest.fn().mockReturnValue({ uid: 'auth-user' }) };
@@ -43,6 +44,23 @@ describe('GivingController', () => {
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({
       action: 'DONATION_PLEDGE_CREATED', entityId: 'pledge-1',
     }));
+  });
+
+  it('creates and audits expenses using authenticated actor and resolved tenant', async () => {
+    giving.createExpense.mockResolvedValue({ id: 'expense-1', tenantId: 'tenant-a', amountPaise: 5000, status: 'PENDING_APPROVAL' });
+    await expect(controller().createExpense({ category: 'Maintenance', description: 'Repair', amountPaise: 5000 }, 'expense-key')).resolves.toMatchObject({ id: 'expense-1' });
+    expect(giving.createExpense).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 'tenant-a', actorUserId: 'user-a', idempotencyKey: 'expense-key' }));
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'DONATION_EXPENSE_RECORDED', entityId: 'expense-1' }));
+  });
+
+  it('scopes expense approval and reconciliation to the resolved tenant', async () => {
+    giving.approveExpense.mockResolvedValue({ id: 'expense-1', amountPaise: 5000, status: 'APPROVED' });
+    giving.getReconciliationReport.mockResolvedValue({ tenantId: 'tenant-a', receipts: { isBalanced: true } });
+    await controller().approveExpense('expense-1');
+    await controller().reconciliationReport();
+    expect(giving.approveExpense).toHaveBeenCalledWith('tenant-a', 'expense-1', 'user-a');
+    expect(giving.getReconciliationReport).toHaveBeenCalledWith('tenant-a');
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'DONATION_EXPENSE_APPROVED', entityId: 'expense-1' }));
   });
 
   it('restricts donor receipts to the authenticated identity and tenant', async () => {
