@@ -14,7 +14,7 @@ import { NotificationEventDispatcher } from './notification-event-dispatcher.ser
 @Module({
   imports: [AuthModule, AuthorizationModule, DatabaseModule, IdentityModule, TenantContextModule],
   controllers: [NotificationsController],
-  providers: [NotificationsService, NotificationDeliveryService, NotificationEventDispatcher],
+  providers: [NotificationsService, NotificationDeliveryService, NotificationEventDispatcher, NotificationRetryWorker],
   exports: [NotificationDeliveryService, NotificationEventDispatcher],
 })
 export class NotificationsModule {}
