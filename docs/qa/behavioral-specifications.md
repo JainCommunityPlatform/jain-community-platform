@@ -700,3 +700,37 @@ And the workspace reloads and displays the approved status with a decision confi
 
 Executable regression: `apps/flutter/test/features/giving/presentation/giving_workflow_test.dart` — “approves a pending expense, refreshes state and reports the decision”.
 
+## Reporting and reconciliation edge cases — executable Firestore coverage
+
+### Scenario: Reconciliation identifies missing, orphaned and amount-mismatched receipts
+
+Given verified payments have issued receipts
+When a receipt is missing, a receipt refers to a payment that is no longer verified, or a receipt amount differs from its verified payment
+Then the reconciliation report lists the corresponding payment IDs in the correct discrepancy category
+And the report is marked unbalanced
+And the report exposes the net receipt-to-payment amount difference
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “flags missing, orphaned and amount-mismatched receipts in persisted reconciliation”. The test deliberately corrupts emulator data to exercise integrity detection; it does not modify production data.
+
+### Scenario: Finance and reconciliation reports distinguish verified, pending, rejected and approved states
+
+Given a tenant has verified, pending and rejected payments, approved/pending/rejected refund adjustments, and approved/pending/rejected expenses
+When the finance and reconciliation reports are generated
+Then received totals include verified payments only
+And net received subtracts approved adjustments only
+And pending and rejected amounts are reported separately rather than counted as received or approved
+And campaign and payment-method totals agree with the verified payment records
+And reconciliation net totals subtract approved expenses and approved adjustments only
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “keeps finance and reconciliation totals aligned across verified, pending and rejected states”.
+
+### Scenario: Finance reports are tenant-isolated and safe for empty tenants
+
+Given tenant A has financial records and tenant B has none
+When finance and reconciliation reports are generated for tenant B
+Then tenant A's campaign, pledge, payment, expense, adjustment and receipt values do not appear in tenant B's results
+And all tenant B totals are zero
+And the empty tenant's receipt reconciliation is balanced with no discrepancies
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “keeps finance and reconciliation totals aligned across verified, pending and rejected states” and “returns zero-valued finance reports and a balanced reconciliation for an empty tenant”.
+
