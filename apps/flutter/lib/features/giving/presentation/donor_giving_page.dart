@@ -60,46 +60,10 @@ class _DonorGivingPageState extends State<DonorGivingPage> {
   }
 
   Future<void> _makePledge(GivingCampaign campaign) async {
-    final amountController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
     final amount = await showDialog<double>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Pledge to ${campaign.name}'),
-        content: Form(
-          key: formKey,
-          child: TextFormField(
-            controller: amountController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              labelText: 'Pledge amount (₹)',
-              prefixText: '₹ ',
-              helperText: 'You can make a partial payment later through the temple finance team.',
-            ),
-            validator: (value) {
-              final parsed = double.tryParse((value ?? '').trim());
-              if (parsed == null || !parsed.isFinite || parsed <= 0 || parsed > 1000000000) {
-                return 'Enter a valid amount greater than zero';
-              }
-              if ((parsed * 100).round() <= 0) return 'Amount is too small';
-              return null;
-            },
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () {
-              if (formKey.currentState?.validate() ?? false) {
-                Navigator.pop(dialogContext, double.parse(amountController.text.trim()));
-              }
-            },
-            child: const Text('Confirm pledge'),
-          ),
-        ],
-      ),
+      builder: (_) => _PledgeAmountDialog(campaignName: campaign.name),
     );
-    amountController.dispose();
     if (amount == null || !mounted) return;
 
     setState(() => _submitting = true);
@@ -361,3 +325,59 @@ class _ErrorState extends StatelessWidget {
         ),
       );
 }
+class _PledgeAmountDialog extends StatefulWidget {
+  const _PledgeAmountDialog({required this.campaignName});
+
+  final String campaignName;
+
+  @override
+  State<_PledgeAmountDialog> createState() => _PledgeAmountDialogState();
+}
+
+class _PledgeAmountDialogState extends State<_PledgeAmountDialog> {
+  final TextEditingController _amountController = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: Text('Pledge to ${widget.campaignName}'),
+        content: Form(
+          key: _formKey,
+          child: TextFormField(
+            controller: _amountController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Pledge amount (₹)',
+              prefixText: '₹ ',
+              helperText: 'You can make a partial payment later through the temple finance team.',
+            ),
+            validator: (value) {
+              final parsed = double.tryParse((value ?? '').trim());
+              if (parsed == null || !parsed.isFinite || parsed <= 0 || parsed > 1000000000) {
+                return 'Enter a valid amount greater than zero';
+              }
+              if ((parsed * 100).round() <= 0) return 'Amount is too small';
+              return null;
+            },
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              if (_formKey.currentState?.validate() ?? false) {
+                Navigator.pop(context, double.parse(_amountController.text.trim()));
+              }
+            },
+            child: const Text('Confirm pledge'),
+          ),
+        ],
+      );
+}
+
