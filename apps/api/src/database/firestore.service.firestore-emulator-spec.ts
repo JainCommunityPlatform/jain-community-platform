@@ -713,4 +713,84 @@ describe('FirestoreService against the Firestore emulator', () => {
     expect(adjustments.find((item) => item.id === acceptedRequest.id)?.status).toBe('APPROVED');
   });
 
+  it('rejects refund requests against unverified payments without reserving adjustment balance', async () => {
+    const suffix = `emulator-unverified-refund-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const isolatedTenantId = `${tenantId}-${suffix}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const campaign = await service.createGivingCampaign({
+      tenantId: isolatedTenantId, actorUserId: `campaign-admin-${suffix}`, name: 'Unverified refund campaign',
+    });
+    await service.updateGivingCampaignStatus(isolatedTenantId, campaign.id, 'ACTIVE');
+    const pledge = await service.createDonationPledge({
+      tenantId: isolatedTenantId, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 50000, idempotencyKey: `pledge-${suffix}`,
+    });
+    const payment = await service.recordDonationPayment({
+      tenantId: isolatedTenantId, pledgeId: pledge.id, actorUserId: `cashier-${suffix}`,
+      amountPaise: 30000, method: 'UPI', idempotencyKey: `payment-${suffix}`,
+    });
+
+    await expect(service.createDonationAdjustment({
+      tenantId: isolatedTenantId, paymentId: payment.id, actorUserId: `refund-requester-${suffix}`,
+      amountPaise: 10000, kind: 'REFUND', reason: 'Duplicate payment',
+      idempotencyKey: `refund-${suffix}`,
+    })).rejects.toThrow('PAYMENT_NOT_VERIFIED');
+
+    const persisted = (await service.listDonationPaymentsForTenant(isolatedTenantId))
+      .find((item) => item.id === payment.id);
+    expect(persisted).toMatchObject({
+      status: 'PENDING_APPROVAL', adjustedAmountPaise: 0, pendingAdjustmentAmountPaise: 0,
+    });
+    expect(await service.listDonationAdjustmentsForTenant(isolatedTenantId)).toHaveLength(0);
+    expect((await service.listDonationPledgesForTenant(isolatedTenantId)).find((item) => item.id === pledge.id))
+      .toMatchObject({ paidAmountPaise: 0, status: 'PLEDGED' });
+    expect(await service.listDonationReceiptsForTenant(isolatedTenantId)).toHaveLength(0);
+  });
+
+  it('reconciles persisted donation, receipt, approved expense and approved refund totals', async () => {
+    const suffix = `emulator-reconciliation-e2e-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const isolatedTenantId = `${tenantId}-${suffix}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const campaign = await service.createGivingCampaign({
+      tenantId: isolatedTenantId, actorUserId: `campaign-admin-${suffix}`, name: 'Reconciliation emulator campaign',
+    });
+    await service.updateGivingCampaignStatus(isolatedTenantId, campaign.id, 'ACTIVE');
+    const pledge = await service.createDonationPledge({
+      tenantId: isolatedTenantId, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 100000, idempotencyKey: `pledge-${suffix}`,
+    });
+    const payment = await service.recordDonationPayment({
+      tenantId: isolatedTenantId, pledgeId: pledge.id, actorUserId: `cashier-${suffix}`,
+      amountPaise: 100000, method: 'UPI', idempotencyKey: `payment-${suffix}`,
+    });
+    await service.approveDonationPayment(isolatedTenantId, payment.id, `payment-approver-${suffix}`);
+
+    const expense = await service.createDonationExpense({
+      tenantId: isolatedTenantId, actorUserId: `expense-maker-${suffix}`,
+      category: 'Temple maintenance', description: 'Approved maintenance expense',
+      amountPaise: 15000, idempotencyKey: `expense-${suffix}`,
+    });
+    await service.approveDonationExpense(isolatedTenantId, expense.id, `expense-approver-${suffix}`);
+
+    const adjustment = await service.createDonationAdjustment({
+      tenantId: isolatedTenantId, paymentId: payment.id, actorUserId: `refund-maker-${suffix}`,
+      amountPaise: 20000, kind: 'REFUND', reason: 'Partial refund approved',
+      idempotencyKey: `refund-${suffix}`,
+    });
+    await service.approveDonationAdjustment(isolatedTenantId, adjustment.id, `refund-approver-${suffix}`);
+
+    const report = await service.getDonationReconciliationReport(isolatedTenantId);
+    expect(report.donations).toMatchObject({ verifiedAmountPaise: 100000, verifiedPaymentCount: 1 });
+    expect(report.receipts).toMatchObject({
+      issuedAmountPaise: 100000, issuedReceiptCount: 1, amountDifferencePaise: 0,
+      missingReceiptPaymentIds: [], orphanReceiptPaymentIds: [], amountMismatchPaymentIds: [], isBalanced: true,
+    });
+    expect(report.expenses).toMatchObject({ approvedAmountPaise: 15000, approvedCount: 1, pendingCount: 0, rejectedCount: 0 });
+    expect(report.adjustments).toMatchObject({ approvedAmountPaise: 20000, approvedCount: 1, pendingCount: 0, rejectedCount: 0 });
+    expect(report.netAfterApprovedExpensesPaise).toBe(85000);
+    expect(report.netAfterApprovedExpensesAndAdjustmentsPaise).toBe(65000);
+    expect((await service.listDonationPledgesForTenant(isolatedTenantId)).find((item) => item.id === pledge.id))
+      .toMatchObject({ paidAmountPaise: 80000, status: 'PARTIALLY_PAID' });
+  });
+
 });
