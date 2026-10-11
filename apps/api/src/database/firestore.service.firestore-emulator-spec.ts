@@ -1343,8 +1343,8 @@ describe('FirestoreService against the Firestore emulator', () => {
     expect(new Set(adjustments.map((item) => item.id)).size).toBe(1);
     expect((await service.listDonationAdjustmentsForTenant(isolatedTenantId))).toHaveLength(1);
 
-    expect(pledge).toMatchObject({ pledgedAmountPaise: 100000, paidAmountPaise: 0, status: 'PLEDGED' });
-    expect(payment).toMatchObject({ amountPaise: 40000, status: 'PENDING_APPROVAL' });
+    expect((await service.listDonationPledgesForTenant(isolatedTenantId))[0]).toMatchObject({ pledgedAmountPaise: 100000, paidAmountPaise: 40000 });
+    expect((await service.listDonationPaymentsForTenant(isolatedTenantId))[0]).toMatchObject({ amountPaise: 40000, status: 'VERIFIED' });
     expect(expenses[0]).toMatchObject({ amountPaise: 12500, status: 'PENDING_APPROVAL' });
     expect(adjustments[0]).toMatchObject({ amountPaise: 5000, status: 'PENDING_APPROVAL' });
   });
