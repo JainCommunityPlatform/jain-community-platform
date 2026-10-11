@@ -246,7 +246,10 @@ void main() {
       expect(find.text('₹350.00'), findsOneWidget);
       expect(find.text('Pending payments'), findsOneWidget);
 
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Reconciliation'));
+      final reconciliationChip = find.widgetWithText(ChoiceChip, 'Reconciliation');
+      await tester.ensureVisible(reconciliationChip);
+      await tester.pumpAndSettle();
+      await tester.tap(reconciliationChip);
       await tester.pumpAndSettle();
       expect(find.text('Verified payments'), findsOneWidget);
       expect(find.text('Approved expenses'), findsOneWidget);
@@ -281,7 +284,10 @@ void main() {
 
       await tester.pumpWidget(MaterialApp(home: FinanceConsolePage(api: apiFor(client))));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Expenses'));
+      final expensesChip = find.widgetWithText(ChoiceChip, 'Expenses');
+      await tester.ensureVisible(expensesChip);
+      await tester.pumpAndSettle();
+      await tester.tap(expensesChip);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Record'));
       await tester.pumpAndSettle();
