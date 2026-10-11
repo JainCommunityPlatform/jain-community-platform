@@ -536,3 +536,55 @@ And net after expenses and adjustments is 65000 paise
 And the pledge balance is 80000 paise
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “reconciles persisted donation, receipt, approved expense and approved refund totals”. This validates the service against Firestore emulator persistence, not production/staging data.
+
+## Finance authorization and adjustment lifecycle coverage — 11 October 2026
+
+### Scenario: Expense records are isolated by tenant during approval and rejection
+
+Given an expense is pending approval in tenant A
+When a reviewer from tenant B attempts to approve or reject the expense
+Then both operations return the same not-found result used for inaccessible tenant resources
+And tenant B's expense list does not disclose the record
+And tenant A's expense remains pending with its original amount
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “prevents cross-tenant expense approval and rejection without disclosing the expense”. This verifies service-level tenant isolation against emulator persistence; API authorization is tested separately.
+
+### Scenario: Refund creation and review cannot cross tenant boundaries
+
+Given a verified payment belongs to tenant A
+When tenant B attempts to create an adjustment against that payment
+Then the request is rejected as payment not found and no adjustment is created
+Given tenant A has a pending adjustment
+When tenant B attempts to approve or reject it
+Then both operations are rejected as adjustment not found
+And tenant A's pending reservation, payment balance, pledge balance and adjustment state remain unchanged
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “prevents cross-tenant refund creation and review without changing either tenant balance”. This verifies service-level tenant isolation against emulator persistence, not production/staging behaviour.
+
+### Scenario: Concurrent reviewers cannot approve the same refund twice
+
+Given a verified payment has a pending refund adjustment
+When two independent reviewers approve it concurrently
+Then exactly one approval succeeds and the other is rejected because the adjustment is no longer pending
+And the payment's adjusted amount and pledge balance change exactly once
+And the pending reservation is released
+And exactly one approval notification is persisted
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “allows only one concurrent approval of a refund and creates one approval notification”.
+
+### Scenario: Concurrent approval and rejection produce one terminal decision
+
+Given a verified payment has a pending refund adjustment
+When one reviewer approves it while another reviewer rejects it
+Then exactly one operation succeeds
+And the adjustment ends in either APPROVED or REJECTED, never both
+And the pending reservation is released exactly once
+And the pledge and payment balances match the winning decision
+And exactly one decision notification is persisted
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “serializes concurrent approval and rejection so a refund has exactly one terminal outcome”.
+
+### Existing role-permission regression
+
+The executable policy suite in `apps/api/src/authorization/authorization.policy.spec.ts` verifies positive and negative permissions for Tenant Admin, Tenant Finance, Finance Viewer, Finance Operator, Finance Approver, legacy combined roles, platform administrators, and mismatched tenant membership. These are policy-level tests; route-level HTTP authorization coverage remains a separate check.
+
