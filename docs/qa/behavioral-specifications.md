@@ -105,6 +105,17 @@ And the notification failure does not turn a committed financial operation into 
 
 Executable regression: `apps/api/src/giving/giving.service.spec.ts` — “keeps an approved payment successful when post-approval notification dispatch fails”. This unit test uses a mocked persistence boundary; it proves service-level failure isolation only, not Firestore transaction atomicity or real receipt persistence.
 
+### Scenario: Replaying payment approval does not issue a second receipt
+
+Given a payment has been verified by an authorized finance approver
+And its receipt and pledge balance update have been persisted
+When another approval request is submitted for the same payment
+Then the API rejects the replay because the payment is no longer pending
+And the original receipt remains the only receipt for that payment
+And the pledge paid amount and receipt sequence are not incremented again
+
+Executable regression: `apps/api/src/database/firestore.service.spec.ts` — “does not issue a second receipt or double-count a replayed payment approval”. The current test uses a fake Firestore adapter; true transaction concurrency and live Firestore atomicity remain unverified.
+
 ## Feature: Expenses and reconciliation
 
 - A finance operator submits an expense with an integer-paise amount and evidence reference.
