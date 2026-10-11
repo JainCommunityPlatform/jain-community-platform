@@ -190,4 +190,106 @@ describe('FirestoreService against the Firestore emulator', () => {
     expect(receipts.every((receipt) => /^JCP-/.test(receipt.receiptNumber))).toBe(true);
   });
 
+  it('rejects payment idempotency-key reuse when the original note differs and preserves the original pending payment', async () => {
+    const suffix = `emulator-idempotency-conflict-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const isolatedTenantId = `${tenantId}-${suffix}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const campaign = await service.createGivingCampaign({
+      tenantId: isolatedTenantId, actorUserId: `campaign-admin-${suffix}`, name: 'Emulator idempotency campaign',
+    });
+    await service.updateGivingCampaignStatus(isolatedTenantId, campaign.id, 'ACTIVE');
+    const pledge = await service.createDonationPledge({
+      tenantId: isolatedTenantId, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 50000, idempotencyKey: `pledge-${suffix}`,
+    });
+    const input = {
+      tenantId: isolatedTenantId, pledgeId: pledge.id, actorUserId: `cashier-${suffix}`,
+      amountPaise: 25000, method: 'UPI' as const, reference: 'UPI-REF-1',
+      note: 'Original counter note', idempotencyKey: `payment-${suffix}`,
+    };
+    const first = await service.recordDonationPayment(input);
+    await expect(service.recordDonationPayment({ ...input, note: 'Changed note on replay' }))
+      .rejects.toThrow('PAYMENT_IDEMPOTENCY_CONFLICT');
+
+    const payments = await service.listDonationPaymentsForTenant(isolatedTenantId);
+    expect(payments).toHaveLength(1);
+    expect(payments[0]).toMatchObject({
+      id: first.id, amountPaise: 25000, method: 'UPI',
+      note: 'Original counter note', status: 'PENDING_APPROVAL',
+    });
+    expect((await service.listDonationReceiptsForTenant(isolatedTenantId))).toHaveLength(0);
+    expect((await service.listDonationPledgesForTenant(isolatedTenantId)).find((item) => item.id === pledge.id))
+      .toMatchObject({ paidAmountPaise: 0, status: 'PLEDGED' });
+  });
+
+  it('denies persisted self-approval without consuming a receipt number or changing the pledge', async () => {
+    const suffix = `emulator-self-approval-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const isolatedTenantId = `${tenantId}-${suffix}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const campaign = await service.createGivingCampaign({
+      tenantId: isolatedTenantId, actorUserId: `campaign-admin-${suffix}`, name: 'Emulator self-approval campaign',
+    });
+    await service.updateGivingCampaignStatus(isolatedTenantId, campaign.id, 'ACTIVE');
+    const pledge = await service.createDonationPledge({
+      tenantId: isolatedTenantId, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 50000, idempotencyKey: `pledge-${suffix}`,
+    });
+    const payment = await service.recordDonationPayment({
+      tenantId: isolatedTenantId, pledgeId: pledge.id, actorUserId: `maker-${suffix}`,
+      amountPaise: 50000, method: 'CASH', idempotencyKey: `payment-${suffix}`,
+    });
+
+    await expect(service.approveDonationPayment(isolatedTenantId, payment.id, `maker-${suffix}`))
+      .rejects.toThrow('PAYMENT_SELF_APPROVAL');
+    const pending = (await service.listDonationPaymentsForTenant(isolatedTenantId))
+      .find((item) => item.id === payment.id);
+    expect(pending).toMatchObject({ status: 'PENDING_APPROVAL', receiptNumber: undefined });
+    expect(await service.listDonationReceiptsForTenant(isolatedTenantId)).toHaveLength(0);
+    expect((await service.listDonationPledgesForTenant(isolatedTenantId)).find((item) => item.id === pledge.id))
+      .toMatchObject({ paidAmountPaise: 0, status: 'PLEDGED' });
+
+    const approved = await service.approveDonationPayment(isolatedTenantId, payment.id, `independent-approver-${suffix}`);
+    expect(approved.status).toBe('VERIFIED');
+    expect(approved.receiptNumber).toMatch(/-000001$/);
+    expect(await service.listDonationReceiptsForTenant(isolatedTenantId)).toHaveLength(1);
+  });
+
+  it('keeps pledge, payment and receipt queries isolated between tenants in persisted Firestore data', async () => {
+    const suffix = `emulator-tenant-isolation-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tenantA = `${tenantId}-a-${suffix}`;
+    const tenantB = `${tenantId}-b-${suffix}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const createApprovedPayment = async (targetTenant: string, label: string) => {
+      const campaign = await service.createGivingCampaign({
+        tenantId: targetTenant, actorUserId: `campaign-admin-${label}`, name: `Campaign ${label}`,
+      });
+      await service.updateGivingCampaignStatus(targetTenant, campaign.id, 'ACTIVE');
+      const pledge = await service.createDonationPledge({
+        tenantId: targetTenant, donorUserId: donor.id, campaignId: campaign.id,
+        pledgedAmountPaise: 30000, idempotencyKey: `pledge-${label}`,
+      });
+      const payment = await service.recordDonationPayment({
+        tenantId: targetTenant, pledgeId: pledge.id, actorUserId: `cashier-${label}`,
+        amountPaise: 30000, method: 'UPI', idempotencyKey: `payment-${label}`,
+      });
+      await service.approveDonationPayment(targetTenant, payment.id, `approver-${label}`);
+      return { pledge, payment };
+    };
+    const a = await createApprovedPayment(tenantA, `a-${suffix}`);
+    const b = await createApprovedPayment(tenantB, `b-${suffix}`);
+
+    expect((await service.listDonationPledgesForTenant(tenantA)).map((item) => item.id))
+      .toEqual([a.pledge.id]);
+    expect((await service.listDonationPaymentsForTenant(tenantA)).map((item) => item.id))
+      .toEqual([a.payment.id]);
+    expect((await service.listDonationReceiptsForTenant(tenantA)).map((item) => item.paymentId))
+      .toEqual([a.payment.id]);
+    expect((await service.listDonationPledgesForTenant(tenantB)).map((item) => item.id))
+      .toEqual([b.pledge.id]);
+    expect((await service.listDonationPaymentsForTenant(tenantB)).map((item) => item.id))
+      .toEqual([b.payment.id]);
+    expect((await service.listDonationReceiptsForTenant(tenantB)).map((item) => item.paymentId))
+      .toEqual([b.payment.id]);
+  });
+
 });

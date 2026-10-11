@@ -1136,7 +1136,8 @@ export class FirestoreService implements OnModuleInit {
           existing.recordedBy !== input.actorUserId ||
           existing.amountPaise !== input.amountPaise ||
           existing.method !== input.method ||
-          (existing.reference ?? undefined) !== (input.reference?.trim() || undefined)
+          (existing.reference ?? undefined) !== (input.reference?.trim() || undefined) ||
+          (existing.note ?? undefined) !== (input.note?.trim() || undefined)
         ) {
           throw new Error('PAYMENT_IDEMPOTENCY_CONFLICT');
         }
