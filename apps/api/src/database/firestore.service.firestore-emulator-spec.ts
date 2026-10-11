@@ -374,4 +374,101 @@ describe('FirestoreService against the Firestore emulator', () => {
       .toMatchObject({ paidAmountPaise: 0, status: 'PLEDGED' });
   });
 
+  it('rejects invalid payment amounts without persisting payments or receipts', async () => {
+    const suffix = `emulator-invalid-payment-amount-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const isolatedTenantId = `${tenantId}-${suffix}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const campaign = await service.createGivingCampaign({
+      tenantId: isolatedTenantId, actorUserId: `campaign-admin-${suffix}`, name: 'Invalid amount campaign',
+    });
+    await service.updateGivingCampaignStatus(isolatedTenantId, campaign.id, 'ACTIVE');
+    const pledge = await service.createDonationPledge({
+      tenantId: isolatedTenantId, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 50000, idempotencyKey: `pledge-${suffix}`,
+    });
+
+    for (const [index, amountPaise] of [0, -1, 1.5].entries()) {
+      await expect(service.recordDonationPayment({
+        tenantId: isolatedTenantId, pledgeId: pledge.id, actorUserId: `cashier-${suffix}`,
+        amountPaise, method: 'UPI', idempotencyKey: `invalid-payment-${index}-${suffix}`,
+      })).rejects.toThrow('PAYMENT_AMOUNT_INVALID');
+    }
+
+    expect(await service.listDonationPaymentsForTenant(isolatedTenantId)).toHaveLength(0);
+    expect(await service.listDonationReceiptsForTenant(isolatedTenantId)).toHaveLength(0);
+    expect((await service.listDonationPledgesForTenant(isolatedTenantId)).find((item) => item.id === pledge.id))
+      .toMatchObject({ paidAmountPaise: 0, status: 'PLEDGED' });
+  });
+
+  it('rejects new pledges against a closed campaign without creating financial records', async () => {
+    const suffix = `emulator-closed-campaign-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const isolatedTenantId = `${tenantId}-${suffix}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const campaign = await service.createGivingCampaign({
+      tenantId: isolatedTenantId, actorUserId: `campaign-admin-${suffix}`, name: 'Closed campaign',
+    });
+    await service.updateGivingCampaignStatus(isolatedTenantId, campaign.id, 'ACTIVE');
+    await service.updateGivingCampaignStatus(isolatedTenantId, campaign.id, 'CLOSED');
+
+    await expect(service.createDonationPledge({
+      tenantId: isolatedTenantId, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 50000, idempotencyKey: `pledge-${suffix}`,
+    })).rejects.toThrow('CAMPAIGN_NOT_FOUND');
+
+    expect(await service.listDonationPledgesForTenant(isolatedTenantId)).toHaveLength(0);
+    expect(await service.listDonationPaymentsForTenant(isolatedTenantId)).toHaveLength(0);
+    expect(await service.listDonationReceiptsForTenant(isolatedTenantId)).toHaveLength(0);
+    expect((await service.listGivingCampaigns(isolatedTenantId, true)).find((item) => item.id === campaign.id)?.status)
+      .toBe('CLOSED');
+  });
+
+  it('keeps rejection atomic and does not consume the next receipt sequence', async () => {
+    const suffix = `emulator-rejection-sequence-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const isolatedTenantId = `${tenantId}-${suffix}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const campaign = await service.createGivingCampaign({
+      tenantId: isolatedTenantId, actorUserId: `campaign-admin-${suffix}`, name: 'Payment rejection campaign',
+    });
+    await service.updateGivingCampaignStatus(isolatedTenantId, campaign.id, 'ACTIVE');
+    const pledge = await service.createDonationPledge({
+      tenantId: isolatedTenantId, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 50000, idempotencyKey: `pledge-${suffix}`,
+    });
+    const rejectedPayment = await service.recordDonationPayment({
+      tenantId: isolatedTenantId, pledgeId: pledge.id, actorUserId: `cashier-reject-${suffix}`,
+      amountPaise: 20000, method: 'CASH', idempotencyKey: `payment-reject-${suffix}`,
+    });
+
+    const rejected = await service.rejectDonationPayment(
+      isolatedTenantId, rejectedPayment.id, `independent-reviewer-${suffix}`, '  Missing supporting evidence  ',
+    );
+    expect(rejected).toMatchObject({
+      status: 'REJECTED', approvedBy: `independent-reviewer-${suffix}`,
+      rejectionReason: 'Missing supporting evidence',
+    });
+    await expect(service.approveDonationPayment(isolatedTenantId, rejectedPayment.id, `second-reviewer-${suffix}`))
+      .rejects.toThrow('PAYMENT_NOT_PENDING');
+
+    expect((await service.listDonationPledgesForTenant(isolatedTenantId)).find((item) => item.id === pledge.id))
+      .toMatchObject({ paidAmountPaise: 0, status: 'PLEDGED' });
+    expect(await service.listDonationReceiptsForTenant(isolatedTenantId)).toHaveLength(0);
+
+    const acceptedPayment = await service.recordDonationPayment({
+      tenantId: isolatedTenantId, pledgeId: pledge.id, actorUserId: `cashier-accept-${suffix}`,
+      amountPaise: 50000, method: 'UPI', idempotencyKey: `payment-accept-${suffix}`,
+    });
+    const approved = await service.approveDonationPayment(
+      isolatedTenantId, acceptedPayment.id, `independent-approver-${suffix}`,
+    );
+    expect(approved.status).toBe('VERIFIED');
+    expect(approved.receiptNumber).toMatch(/-000001$/);
+
+    const persistedPayments = await service.listDonationPaymentsForTenant(isolatedTenantId);
+    expect(persistedPayments.find((item) => item.id === rejectedPayment.id)?.status).toBe('REJECTED');
+    expect(persistedPayments.find((item) => item.id === acceptedPayment.id)?.status).toBe('VERIFIED');
+    const receipts = await service.listDonationReceiptsForTenant(isolatedTenantId);
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0].paymentId).toBe(acceptedPayment.id);
+  });
+
 });
