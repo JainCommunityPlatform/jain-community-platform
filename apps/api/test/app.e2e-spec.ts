@@ -92,7 +92,7 @@ describe('API endpoints (integration)', () => {
         return {
           userId,
           tenantId: userId === 'user-cross-tenant' ? 'tenant-b' : tenantId,
-          role: userId === 'user-viewer' ? 'FINANCE_VIEWER' : 'TENANT_ADMIN',
+          role: userId === 'user-viewer' ? 'FINANCE_VIEWER' : userId === 'user-cross-tenant' ? 'FINANCE_OPERATOR' : 'TENANT_ADMIN',
         } as const;
       }),
     };
@@ -302,6 +302,61 @@ describe('API endpoints (integration)', () => {
   it('GET /api/giving/payments denies a finance user whose membership belongs to another tenant', async () => {
     await request(app.getHttpServer())
       .get('/api/giving/payments')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-cross-tenant')
+      .expect(403)
+      .expect({
+        statusCode: 403,
+        message: 'Tenant access denied',
+        error: 'Forbidden',
+      });
+  });
+
+
+  it('GET /api/giving/expenses denies tenant administrators at the HTTP authorization boundary', async () => {
+    await request(app.getHttpServer())
+      .get('/api/giving/expenses')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .expect(403)
+      .expect({
+        statusCode: 403,
+        message: 'Permission denied',
+        error: 'Forbidden',
+      });
+  });
+
+  it('GET /api/giving/adjustments denies tenant administrators at the HTTP authorization boundary', async () => {
+    await request(app.getHttpServer())
+      .get('/api/giving/adjustments')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .expect(403)
+      .expect({
+        statusCode: 403,
+        message: 'Permission denied',
+        error: 'Forbidden',
+      });
+  });
+
+  it('POST /api/giving/expenses denies finance viewers before expense creation', async () => {
+    await request(app.getHttpServer())
+      .post('/api/giving/expenses')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-viewer')
+      .set('idempotency-key', 'viewer-expense-attempt')
+      .send({ category: 'MAINTENANCE', amountPaise: 10000, description: 'Test expense' })
+      .expect(403)
+      .expect({
+        statusCode: 403,
+        message: 'Permission denied',
+        error: 'Forbidden',
+      });
+  });
+
+  it('GET /api/giving/expenses denies a finance operator whose membership belongs to another tenant', async () => {
+    await request(app.getHttpServer())
+      .get('/api/giving/expenses')
       .set('Host', 'badebabakharadi.com')
       .set('x-test-user', 'user-cross-tenant')
       .expect(403)
