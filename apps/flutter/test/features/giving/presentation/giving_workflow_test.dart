@@ -90,7 +90,7 @@ void main() {
             notificationRead = true;
             return jsonResponse({'id': 'notification-1', 'readAt': '2026-10-10T04:10:00.000Z'}, 201);
           default:
-            return jsonResponse({'message': 'Unexpected request ' + request.method + ' ' + request.url.path}, 404);
+            return jsonResponse({'message': 'Unexpected request ${request.method} ${request.url.path}'}, 404);
         }
       });
 
@@ -312,7 +312,7 @@ void main() {
       var expenseStatus = 'PENDING_APPROVAL';
       final calls = <String>[];
       final client = MockClient((request) async {
-        calls.add(request.method + ' ' + request.url.path);
+        calls.add('${request.method} ${request.url.path}');
         if (request.url.path == '/api/giving/reports/summary') return jsonResponse(summaryPayload());
         if (request.url.path == '/api/giving/reports/reconciliation') return jsonResponse(reconciliationPayload());
         if (request.url.path == '/api/giving/expenses' && request.method == 'GET') {
