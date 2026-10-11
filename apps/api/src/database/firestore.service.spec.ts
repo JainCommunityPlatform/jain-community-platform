@@ -826,7 +826,7 @@ describe('FirestoreService donation payment workflow', () => {
       receivedAmountPaise: 100000,
       adjustedAmountPaise: 20000,
       netReceivedAmountPaise: 80000,
-      outstandingAmountPaise: 0,
+      outstandingAmountPaise: 20000,
     });
     expect(reconciliation.donations).toMatchObject({
       verifiedAmountPaise: 100000,
