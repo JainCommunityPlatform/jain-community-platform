@@ -8,6 +8,7 @@ module.exports = {
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.module.ts',
+    '!src/**/*.firestore-emulator-spec.ts',
     '!src/**/dto/*.ts',
     '!src/main.ts',
   ],
