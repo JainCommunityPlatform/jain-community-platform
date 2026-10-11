@@ -340,3 +340,36 @@ And no receipt is issued for the second payment
 And reconciliation has no missing, orphaned, or amount-mismatched receipts
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “rejects overpayment and replayed approval without changing the persisted balance or receipts”. The assertions inspect persisted Firestore emulator state; this does not claim production/staging verification.
+
+
+### Scenario: Reusing a payment idempotency key with changed request data is rejected
+
+Given a pending payment was recorded with an idempotency key and a counter note
+When the same actor reuses that key but changes the note
+Then the API rejects the request with a payment idempotency conflict
+And the original pending payment and note remain unchanged
+And no additional payment or receipt is persisted
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “rejects payment idempotency-key reuse when the original note differs and preserves the original pending payment”. This test exposed and fixes a persistence-layer omission in the idempotency comparison. It verifies emulator persistence, not production/staging behaviour.
+
+### Scenario: Self-approval rejection does not mutate financial state or consume receipt sequence
+
+Given a finance operator records a payment for a pledge
+When the same operator attempts to approve that payment
+Then approval is rejected as a maker-checker violation
+And the payment remains pending with no receipt number
+And the pledge paid amount remains unchanged and no receipt exists
+When an independent approver subsequently approves the payment
+Then exactly one receipt is issued using the first sequence number for that isolated tenant
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “denies persisted self-approval without consuming a receipt number or changing the pledge”. This verifies persisted emulator state and receipt sequencing, not production/staging behaviour.
+
+### Scenario: Tenant-scoped giving queries do not leak persisted records
+
+Given two tenants each have a pledge, an approved payment and a receipt
+When finance queries pledges, payments and receipts for tenant A
+Then every returned record belongs to tenant A
+And tenant B's pledge, payment and receipt are absent
+And querying tenant B returns only tenant B's records
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “keeps pledge, payment and receipt queries isolated between tenants in persisted Firestore data”. This verifies the Firestore emulator query boundary, not the complete HTTP authorization or production environment.
