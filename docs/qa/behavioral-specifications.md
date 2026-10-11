@@ -813,6 +813,20 @@ And no rejection service method is invoked
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — “rejects invalid payment, adjustment and decision payloads before invoking persistence services”. The suite configures the same whitelist, forbidden-extra-fields and transform validation options as the production bootstrap; service methods are mocked, so this does not prove persistence or live environment behaviour.
 
+## Tenant-scoped idempotency regression
+
+### Scenario: Reusing the same idempotency keys in different tenants creates independent financial records
+
+Given the same donor participates in two tenants
+And each tenant has an active giving campaign
+When the donor creates pledges using the same idempotency key in both tenants with different amounts
+And finance operators record payments using the same idempotency key in both tenants
+Then each tenant persists a distinct pledge and payment with its own amount and tenant ID
+And tenant-scoped and donor-scoped reads return only records belonging to the requested tenant
+And a replay in one tenant never returns or exposes the other tenant's financial record
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “scopes pledge and payment idempotency keys to the tenant in persisted Firestore data”. This runs against the Firestore emulator, not production data.
+
 ## Persisted donor pledge-to-receipt history
 
 ### Scenario: Donor can see the persisted pledge, approved payments and receipts in history
