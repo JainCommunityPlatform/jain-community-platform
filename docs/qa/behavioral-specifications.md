@@ -317,3 +317,15 @@ And reconciliation reports 15000 paise approved expenses and 20000 paise approve
 And net after approved expenses and adjustments equals 65000 paise
 
 Executable regression: `apps/api/src/database/firestore.service.spec.ts` — “keeps finance and reconciliation reports aligned after partial payments, a refund, and an approved expense”. This uses the fake Firestore adapter; it does not prove live Firestore transaction behaviour or production data correctness.
+
+
+### Scenario: Receipt numbers remain unique under concurrent approvals
+
+Given two valid pending payments belong to separate pledges in the same tenant and receipt year
+When independent authorized approvers verify both payments concurrently
+Then both approvals succeed
+And each payment receives exactly one receipt
+And the receipt numbers are distinct and conform to the tenant receipt-number format
+And both receipt records refer to the correct payment
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “allocates unique receipt numbers when separate pledges are approved concurrently”. This exercises contention on the tenant/year receipt-sequence document in the Firestore emulator; it does not claim staging or production verification.
