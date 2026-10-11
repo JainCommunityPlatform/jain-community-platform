@@ -364,6 +364,68 @@ describe('FirestoreService against the Firestore emulator', () => {
     expect((await service.listDonationPledgesForDonor(tenantB, donor.id)).map((item) => item.id)).toEqual([pledgeB.id]);
   });
 
+  it('scopes expense and adjustment idempotency keys to the tenant in persisted Firestore data', async () => {
+    const suffix = `emulator-cross-tenant-finance-idempotency-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tenantA = `${tenantId}-finance-idempotency-a-${suffix}`;
+    const tenantB = `${tenantId}-finance-idempotency-b-${suffix}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const createVerifiedPayment = async (targetTenant: string, label: string) => {
+      const campaign = await service.createGivingCampaign({
+        tenantId: targetTenant, actorUserId: `campaign-admin-${label}`, name: `Campaign ${label}`,
+      });
+      await service.updateGivingCampaignStatus(targetTenant, campaign.id, 'ACTIVE');
+      const pledge = await service.createDonationPledge({
+        tenantId: targetTenant, donorUserId: donor.id, campaignId: campaign.id,
+        pledgedAmountPaise: 50000, idempotencyKey: `pledge-${label}`,
+      });
+      const payment = await service.recordDonationPayment({
+        tenantId: targetTenant, pledgeId: pledge.id, actorUserId: `cashier-${suffix}`,
+        amountPaise: 50000, method: 'UPI', idempotencyKey: `payment-${label}`,
+      });
+      await service.approveDonationPayment(targetTenant, payment.id, `payment-approver-${label}`);
+      return payment;
+    };
+
+    const expenseInput = {
+      actorUserId: `shared-expense-maker-${suffix}`,
+      category: 'Temple maintenance', description: 'Repair hall lights',
+      reference: `shared-reference-${suffix}`, idempotencyKey: `shared-expense-key-${suffix}`,
+    };
+    const expenseA = await service.createDonationExpense({
+      ...expenseInput, tenantId: tenantA, amountPaise: 12500,
+    });
+    const expenseB = await service.createDonationExpense({
+      ...expenseInput, tenantId: tenantB, amountPaise: 22500,
+    });
+
+    expect(expenseA.id).not.toBe(expenseB.id);
+    expect(expenseA).toMatchObject({ tenantId: tenantA, amountPaise: 12500 });
+    expect(expenseB).toMatchObject({ tenantId: tenantB, amountPaise: 22500 });
+    expect((await service.listDonationExpensesForTenant(tenantA)).map((item) => item.id)).toEqual([expenseA.id]);
+    expect((await service.listDonationExpensesForTenant(tenantB)).map((item) => item.id)).toEqual([expenseB.id]);
+
+    const paymentA = await createVerifiedPayment(tenantA, `a-${suffix}`);
+    const paymentB = await createVerifiedPayment(tenantB, `b-${suffix}`);
+    const adjustmentInput = {
+      actorUserId: `shared-refund-maker-${suffix}`, kind: 'REFUND' as const,
+      reason: 'Duplicate transfer', idempotencyKey: `shared-adjustment-key-${suffix}`,
+    };
+    const adjustmentA = await service.createDonationAdjustment({
+      ...adjustmentInput, tenantId: tenantA, paymentId: paymentA.id, amountPaise: 10000,
+    });
+    const adjustmentB = await service.createDonationAdjustment({
+      ...adjustmentInput, tenantId: tenantB, paymentId: paymentB.id, amountPaise: 15000,
+    });
+
+    expect(adjustmentA.id).not.toBe(adjustmentB.id);
+    expect(adjustmentA).toMatchObject({ tenantId: tenantA, paymentId: paymentA.id, amountPaise: 10000 });
+    expect(adjustmentB).toMatchObject({ tenantId: tenantB, paymentId: paymentB.id, amountPaise: 15000 });
+    expect((await service.listDonationAdjustmentsForTenant(tenantA)).map((item) => item.id)).toEqual([adjustmentA.id]);
+    expect((await service.listDonationAdjustmentsForTenant(tenantB)).map((item) => item.id)).toEqual([adjustmentB.id]);
+    expect((await service.listDonationPaymentsForTenant(tenantA)).map((item) => item.id)).toEqual([paymentA.id]);
+    expect((await service.listDonationPaymentsForTenant(tenantB)).map((item) => item.id)).toEqual([paymentB.id]);
+  });
+
   it('rejects pledge idempotency-key reuse with a changed amount and preserves the original pledge', async () => {
     const suffix = `emulator-pledge-idempotency-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const isolatedTenantId = `${tenantId}-${suffix}`;
