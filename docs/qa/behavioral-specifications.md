@@ -223,3 +223,18 @@ Then the API rejects it with HTTP 403 before expense creation
 Given a finance operator's membership belongs to a different tenant
 When they request expenses in the active tenant context
 Then the API rejects the request with HTTP 403 and a tenant access denied response
+
+
+## Finance protected-route matrix — follow-up
+
+Additional HTTP integration scenarios exercise protected report and record endpoints with the actual NestJS guards/interceptors and mocked identity/membership providers.
+
+| Route family | Negative scenario | Expected outcome |
+|---|---|---|
+| Tenant receipts, finance summary, reconciliation report, tenant pledges | Tenant administrator lacks finance.read | HTTP 403 |
+| Payment rejection | Tenant administrator lacks finance.approve | HTTP 403 before service processing |
+| Expense approval | Tenant administrator lacks finance.approve | HTTP 403 before service processing |
+| Adjustment approval | Tenant administrator lacks finance.approve | HTTP 403 before service processing |
+| Finance summary | Membership belongs to another tenant | HTTP 403, tenant access denied |
+
+These tests expand API boundary coverage only; persistence correctness, Firebase identity integration, and the full donor-to-receipt lifecycle remain separate verification tasks.
