@@ -100,7 +100,7 @@ describe('FirestoreService against the Firestore emulator', () => {
     const persistedPayments = await service.listDonationPaymentsForTenant(isolatedTenantId);
     expect(persistedPayments.find((payment) => payment.id === second.id))
       .toMatchObject({ status: 'PENDING_APPROVAL', receiptNumber: undefined });
-    const reconciliation = await service.getDonationReconciliationReport(tenantId);
+    const reconciliation = await service.getDonationReconciliationReport(isolatedTenantId);
     expect(reconciliation.receipts).toMatchObject({
       issuedReceiptCount: 1,
       missingReceiptPaymentIds: [],
