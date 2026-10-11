@@ -812,3 +812,18 @@ Then the API responds with HTTP 400
 And no rejection service method is invoked
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — “rejects invalid payment, adjustment and decision payloads before invoking persistence services”. The suite configures the same whitelist, forbidden-extra-fields and transform validation options as the production bootstrap; service methods are mocked, so this does not prove persistence or live environment behaviour.
+
+## Persisted donor pledge-to-receipt history
+
+### Scenario: Donor can see the persisted pledge, approved payments and receipts in history
+
+Given a donor has an active campaign and creates a pledge
+And two payments are recorded against that pledge with distinct idempotency keys
+When independent approvers approve both payments
+Then the persisted pledge balance equals the pledged amount and its status is `PAID`
+And the donor's pledge-history query returns that same paid pledge
+And the donor's receipt-history query returns one receipt for each approved payment
+And the receipts reference distinct payment IDs and belong to that donor
+And the tenant-wide and donor-scoped views agree on the persisted receipt records
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “persists partial payments, updates the pledge and issues distinct receipts transactionally”. This scenario uses the Firestore emulator and verifies persisted service queries; it is not evidence of a deployed production transaction.
