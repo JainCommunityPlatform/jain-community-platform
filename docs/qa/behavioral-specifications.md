@@ -484,3 +484,30 @@ And the pledge paid amount decreases by the approved refund
 And the original payment receipt remains unchanged
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “keeps adjustment idempotency and refund balances consistent through approval”. The payment view exposes its persisted adjustment balances for verification. This tests the Firestore emulator, not production/staging behaviour.
+
+### Scenario: Concurrent refund requests cannot reserve more than the verified payment amount
+
+Given a verified payment has 50000 paise available for adjustment
+When two concurrent refund requests each attempt to reserve 30000 paise
+Then exactly one request succeeds
+And the other request is rejected because it exceeds the remaining payment balance
+And only 30000 paise is reserved across pending adjustments
+And the pledge balance and issued receipt remain unchanged until approval
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “reserves adjustment balance atomically when refund requests race”. This verifies Firestore transaction contention and persisted emulator state, not production/staging behaviour.
+
+### Scenario: Rejecting a refund releases its reservation without changing paid balances
+
+Given a verified payment has a pending refund adjustment
+When the adjustment creator attempts to reject it
+Then rejection is denied by the maker-checker rule
+When an independent reviewer rejects it with a reason
+Then the reason is trimmed and persisted
+And the pending adjustment reservation is released
+And the payment's adjusted amount, pledge balance and issued receipt remain unchanged
+And the rejected adjustment cannot later be approved
+When a new valid full refund is created and independently approved
+Then the payment's adjusted amount increases and the pledge paid amount is reduced to zero
+And the original payment receipt remains present exactly once
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “releases a rejected refund reservation and permits a later valid full refund”. This verifies persisted emulator transaction outcomes, not production/staging behaviour.
