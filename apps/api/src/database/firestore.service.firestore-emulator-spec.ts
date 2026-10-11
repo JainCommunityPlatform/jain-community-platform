@@ -95,6 +95,18 @@ describe('FirestoreService against the Firestore emulator', () => {
     expect(persistedPledge).toMatchObject({ paidAmountPaise: 60000, status: 'PARTIALLY_PAID' });
     expect(receipts).toHaveLength(1);
     expect(receipts[0].paymentId).toBe(first.id);
+
+    const persistedPayments = await service.listDonationPaymentsForTenant(tenantId);
+    expect(persistedPayments.find((payment) => payment.id === second.id))
+      .toMatchObject({ status: 'PENDING_APPROVAL', receiptNumber: undefined });
+    const reconciliation = await service.getDonationReconciliationReport(tenantId);
+    expect(reconciliation.receipts).toMatchObject({
+      issuedReceiptCount: 1,
+      missingReceiptPaymentIds: [],
+      orphanReceiptPaymentIds: [],
+      amountMismatchPaymentIds: [],
+      isBalanced: true,
+    });
   });
 
 
