@@ -1761,6 +1761,8 @@ export class FirestoreService implements OnModuleInit {
       pledgeId: data.pledgeId as string,
       donorUserId: data.donorUserId as string,
       amountPaise: data.amountPaise as number,
+      adjustedAmountPaise: Number(data.adjustedAmountPaise ?? 0),
+      pendingAdjustmentAmountPaise: Number(data.pendingAdjustmentAmountPaise ?? 0),
       currency: 'INR' as const,
       method: data.method as 'CASH' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE',
       reference: (data.reference as string | null) ?? undefined,
