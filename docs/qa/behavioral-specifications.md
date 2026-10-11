@@ -827,6 +827,20 @@ And a replay in one tenant never returns or exposes the other tenant's financial
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “scopes pledge and payment idempotency keys to the tenant in persisted Firestore data”. This runs against the Firestore emulator, not production data.
 
+## Tenant-scoped finance idempotency regression
+
+### Scenario: Expense and adjustment idempotency keys remain isolated between tenants
+
+Given the same finance operator works in two tenants
+And each tenant has its own verified payment
+When the operator submits expenses with the same idempotency key but different amounts in both tenants
+And the operator submits refund adjustments with the same idempotency key against each tenant's verified payment
+Then each tenant persists a distinct expense and adjustment with its own tenant and payment IDs
+And tenant-scoped expense, adjustment and payment reads return only records from the selected tenant
+And retries cannot return another tenant's financial record
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “scopes expense and adjustment idempotency keys to the tenant in persisted Firestore data”. This runs against the Firestore emulator, not production data.
+
 ## Persisted donor pledge-to-receipt history
 
 ### Scenario: Donor can see the persisted pledge, approved payments and receipts in history
