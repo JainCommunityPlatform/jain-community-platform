@@ -546,6 +546,9 @@ describe('API endpoints (integration)', () => {
     giving.approveExpense.mockClear();
     giving.approveAdjustment.mockClear();
     giving.approvePayment.mockClear();
+    giving.rejectExpense.mockClear();
+    giving.rejectAdjustment.mockClear();
+    giving.rejectPayment.mockClear();
 
     await request(app.getHttpServer())
       .post('/api/giving/expenses')
@@ -570,6 +573,24 @@ describe('API endpoints (integration)', () => {
       .post('/api/giving/payments/payment-1/approve')
       .set('Host', 'badebabakharadi.com')
       .set('x-test-user', 'user-finance-operator')
+      .expect(403);
+    await request(app.getHttpServer())
+      .post('/api/giving/expenses/expense-1/reject')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-operator')
+      .send({ reason: 'Not authorized' })
+      .expect(403);
+    await request(app.getHttpServer())
+      .post('/api/giving/adjustments/adjustment-1/reject')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-operator')
+      .send({ reason: 'Not authorized' })
+      .expect(403);
+    await request(app.getHttpServer())
+      .post('/api/giving/payments/payment-1/reject')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-operator')
+      .send({ reason: 'Not authorized' })
       .expect(403);
 
     expect(giving.createExpense).toHaveBeenCalledWith(expect.objectContaining({
@@ -622,6 +643,30 @@ describe('API endpoints (integration)', () => {
       .expect(201)
       .expect((response) => expect(response.body.status).toBe('APPROVED'));
 
+    await request(app.getHttpServer())
+      .post('/api/giving/expenses/expense-1/reject')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-approver')
+      .send({ reason: 'Evidence incomplete' })
+      .expect(201)
+      .expect((response) => expect(response.body.status).toBe('REJECTED'));
+
+    await request(app.getHttpServer())
+      .post('/api/giving/payments/payment-1/reject')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-approver')
+      .send({ reason: 'Payment evidence does not match' })
+      .expect(201)
+      .expect((response) => expect(response.body.status).toBe('REJECTED'));
+
+    await request(app.getHttpServer())
+      .post('/api/giving/adjustments/adjustment-1/reject')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-approver')
+      .send({ reason: 'Refund evidence incomplete' })
+      .expect(201)
+      .expect((response) => expect(response.body.status).toBe('REJECTED'));
+
     expect(giving.approveExpense).toHaveBeenCalledWith(
       '00000000-0000-0000-0000-000000000001', 'expense-1', 'user-finance-approver',
     );
@@ -631,12 +676,25 @@ describe('API endpoints (integration)', () => {
     expect(giving.approveAdjustment).toHaveBeenCalledWith(
       '00000000-0000-0000-0000-000000000001', 'adjustment-1', 'user-finance-approver',
     );
+    expect(giving.rejectExpense).toHaveBeenCalledWith(
+      '00000000-0000-0000-0000-000000000001', 'expense-1', 'user-finance-approver', 'Evidence incomplete',
+    );
+    expect(giving.rejectPayment).toHaveBeenCalledWith(
+      '00000000-0000-0000-0000-000000000001', 'payment-1', 'user-finance-approver', 'Payment evidence does not match',
+    );
+    expect(giving.rejectAdjustment).toHaveBeenCalledWith(
+      '00000000-0000-0000-0000-000000000001', 'adjustment-1', 'user-finance-approver', 'Refund evidence incomplete',
+    );
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'DONATION_EXPENSE_APPROVED' }));
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'DONATION_PAYMENT_VERIFIED' }));
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'DONATION_ADJUSTMENT_APPROVED' }));
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'DONATION_EXPENSE_REJECTED' }));
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'DONATION_PAYMENT_REJECTED' }));
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'DONATION_ADJUSTMENT_REJECTED' }));
   });
 
   it('does not grant finance access to tenant administrators with a legacy combined role or platform admins', async () => {
+    giving.listTenantExpenses.mockClear();
     for (const user of ['user-legacy-finance-admin', 'user-platform-admin']) {
       await request(app.getHttpServer())
         .get('/api/giving/expenses')
