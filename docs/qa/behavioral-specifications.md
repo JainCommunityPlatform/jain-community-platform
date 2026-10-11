@@ -406,3 +406,36 @@ And no payment or receipt is created for tenant B
 And tenant A's pledge remains unpaid
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “rejects recording a payment against another tenant pledge without creating a payment”. This verifies the persisted Firestore emulator boundary, not production/staging behaviour.
+
+### Scenario: Invalid payment amounts never create financial records
+
+Given an active campaign has an unpaid pledge
+When a cashier attempts to record a zero, negative, or fractional-paise payment
+Then each request is rejected as an invalid payment amount
+And no payment or receipt is persisted
+And the pledge remains unpaid
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “rejects invalid payment amounts without persisting payments or receipts”. This verifies Firestore emulator persistence, not production/staging behaviour.
+
+### Scenario: Closed campaigns do not accept new pledges
+
+Given a campaign has been closed by its tenant
+When a donor attempts to create a new pledge against that campaign
+Then the operation is rejected
+And no pledge, payment, or receipt is persisted
+And the campaign remains closed
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “rejects new pledges against a closed campaign without creating financial records”. This verifies the service and Firestore emulator, not production/staging behaviour.
+
+### Scenario: Rejected payments do not affect balances or consume receipt sequence numbers
+
+Given a valid payment is awaiting approval
+When an independent reviewer rejects it with a reason
+Then the rejection reason is trimmed and persisted
+And the pledge balance and receipts remain unchanged
+And a later approval attempt for that rejected payment is refused
+When another valid payment for the same pledge is approved
+Then it receives the first receipt sequence number
+And exactly one receipt exists for the approved payment
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “keeps rejection atomic and does not consume the next receipt sequence”. This verifies persisted emulator state and sequence behaviour, not production/staging behaviour.
