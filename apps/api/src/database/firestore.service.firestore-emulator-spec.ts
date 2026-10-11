@@ -1,5 +1,5 @@
 import { ConfigService } from '@nestjs/config';
-import { getApps } from 'firebase-admin/app';
+import { deleteApp, getApps } from 'firebase-admin/app';
 import { FirestoreService } from './firestore.service';
 
 describe('FirestoreService against the Firestore emulator', () => {
@@ -18,7 +18,7 @@ describe('FirestoreService against the Firestore emulator', () => {
 
   afterAll(async () => {
     const app = getApps().find((candidate) => candidate.name === '[DEFAULT]');
-    if (app) await app.delete();
+    if (app) await deleteApp(app);
   });
 
   it('persists partial payments, updates the pledge and issues distinct receipts transactionally', async () => {
