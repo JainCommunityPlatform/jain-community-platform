@@ -302,6 +302,19 @@ describe('FirestoreService against the Firestore emulator', () => {
       .toEqual([b.payment.id]);
     expect((await service.listDonationReceiptsForTenant(tenantB)).map((item) => item.paymentId))
       .toEqual([b.payment.id]);
+
+    // Donor history must be scoped by both tenant and donor, even when the same
+    // donor has giving activity in more than one tenant.
+    expect((await service.listDonationPledgesForDonor(tenantA, donor.id)).map((item) => item.id))
+      .toEqual([a.pledge.id]);
+    expect((await service.listDonationReceiptsForDonor(tenantA, donor.id)).map((item) => item.paymentId))
+      .toEqual([a.payment.id]);
+    expect((await service.listDonationPledgesForDonor(tenantB, donor.id)).map((item) => item.id))
+      .toEqual([b.pledge.id]);
+    expect((await service.listDonationReceiptsForDonor(tenantB, donor.id)).map((item) => item.paymentId))
+      .toEqual([b.payment.id]);
+    expect(await service.listDonationPledgesForDonor(tenantA, 'unrelated-donor')).toEqual([]);
+    expect(await service.listDonationReceiptsForDonor(tenantA, 'unrelated-donor')).toEqual([]);
   });
 
   it('rejects pledge idempotency-key reuse with a changed amount and preserves the original pledge', async () => {
