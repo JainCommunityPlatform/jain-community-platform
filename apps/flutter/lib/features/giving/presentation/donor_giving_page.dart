@@ -357,6 +357,7 @@ class _PledgeAmountDialogState extends State<_PledgeAmountDialog> {
               prefixText: '₹ ',
               helperText: 'You can make a partial payment later through the temple finance team.',
             ),
+            onSaved: (value) => amountValue = double.tryParse((value ?? '').trim()),
             validator: (value) {
               final parsed = double.tryParse((value ?? '').trim());
               if (parsed == null || !parsed.isFinite || parsed <= 0 || parsed > 1000000000) {
