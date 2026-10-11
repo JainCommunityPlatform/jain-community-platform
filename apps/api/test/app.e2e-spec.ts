@@ -367,4 +367,78 @@ describe('API endpoints (integration)', () => {
       });
   });
 
+
+  it.each([
+    ['GET', '/api/giving/receipts'],
+    ['GET', '/api/giving/reports/summary'],
+    ['GET', '/api/giving/reports/reconciliation'],
+    ['GET', '/api/giving/pledges'],
+  ])('%s %s denies tenant administrators at the HTTP authorization boundary', async (method, path) => {
+    const call = method === 'GET'
+      ? request(app.getHttpServer()).get(path)
+      : request(app.getHttpServer()).post(path);
+    await call
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .expect(403)
+      .expect({
+        statusCode: 403,
+        message: 'Permission denied',
+        error: 'Forbidden',
+      });
+  });
+
+  it('POST /api/giving/payments/:paymentId/reject denies tenant administrators before payment processing', async () => {
+    await request(app.getHttpServer())
+      .post('/api/giving/payments/payment-1/reject')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .send({ reason: 'Not valid' })
+      .expect(403)
+      .expect({
+        statusCode: 403,
+        message: 'Permission denied',
+        error: 'Forbidden',
+      });
+  });
+
+  it('POST /api/giving/expenses/:expenseId/approve denies tenant administrators before expense processing', async () => {
+    await request(app.getHttpServer())
+      .post('/api/giving/expenses/expense-1/approve')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .expect(403)
+      .expect({
+        statusCode: 403,
+        message: 'Permission denied',
+        error: 'Forbidden',
+      });
+  });
+
+  it('POST /api/giving/adjustments/:adjustmentId/approve denies tenant administrators before adjustment processing', async () => {
+    await request(app.getHttpServer())
+      .post('/api/giving/adjustments/adjustment-1/approve')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .expect(403)
+      .expect({
+        statusCode: 403,
+        message: 'Permission denied',
+        error: 'Forbidden',
+      });
+  });
+
+  it('GET /api/giving/reports/summary denies finance viewers from another tenant', async () => {
+    await request(app.getHttpServer())
+      .get('/api/giving/reports/summary')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-cross-tenant')
+      .expect(403)
+      .expect({
+        statusCode: 403,
+        message: 'Tenant access denied',
+        error: 'Forbidden',
+      });
+  });
+
 });
