@@ -351,5 +351,232 @@ void main() {
       expect(find.text('Decision saved.'), findsOneWidget);
       expect(find.text('Repair water pump • APPROVED'), findsOneWidget);
     });
+
+    testWidgets('requires a rejection reason and refreshes the expense after rejection', (tester) async {
+      var expenseStatus = 'PENDING_APPROVAL';
+      var rejectionCalls = 0;
+      Map<String, dynamic>? rejectionBody;
+      final client = MockClient((request) async {
+        if (request.url.path == '/api/giving/reports/summary') return jsonResponse(summaryPayload());
+        if (request.url.path == '/api/giving/reports/reconciliation') return jsonResponse(reconciliationPayload());
+        if (request.url.path == '/api/giving/expenses' && request.method == 'GET') {
+          return jsonResponse([
+            {'id': 'expense-1', 'category': 'Maintenance', 'description': 'Repair water pump', 'amountPaise': 25000, 'status': expenseStatus}
+          ]);
+        }
+        if (request.method == 'POST' && request.url.path == '/api/giving/expenses/expense-1/reject') {
+          rejectionCalls++;
+          rejectionBody = Map<String, dynamic>.from(jsonDecode(request.body) as Map);
+          expenseStatus = 'REJECTED';
+          return jsonResponse({'id': 'expense-1', 'status': expenseStatus}, 201);
+        }
+        return jsonResponse(emptyList());
+      });
+
+      await tester.pumpWidget(MaterialApp(home: FinanceConsolePage(api: apiFor(client))));
+      await tester.pumpAndSettle();
+      final expensesChip = find.widgetWithText(ChoiceChip, 'Expenses');
+      await tester.ensureVisible(expensesChip);
+      await tester.pumpAndSettle();
+      await tester.tap(expensesChip);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Reject'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Required'), findsOneWidget);
+      expect(rejectionCalls, 0);
+
+      await tester.enterText(find.byType(TextFormField), 'Invoice does not match the approved work');
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      expect(rejectionCalls, 1);
+      expect(rejectionBody, {'reason': 'Invoice does not match the approved work'});
+      expect(expenseStatus, 'REJECTED');
+      expect(find.text('Repair water pump • REJECTED'), findsOneWidget);
+      expect(find.text('Decision saved.'), findsOneWidget);
+    });
+
+    testWidgets('shows a finance load error and recovers when reports become available', (tester) async {
+      var failFirstSummaryRequest = true;
+      final client = MockClient((request) async {
+        if (request.url.path == '/api/giving/reports/summary' && failFirstSummaryRequest) {
+          return jsonResponse({'message': 'Finance summary temporarily unavailable'}, 503);
+        }
+        if (request.url.path == '/api/giving/reports/summary') return jsonResponse(summaryPayload());
+        if (request.url.path == '/api/giving/reports/reconciliation') return jsonResponse(reconciliationPayload());
+        return jsonResponse(emptyList());
+      });
+
+      await tester.pumpWidget(MaterialApp(home: FinanceConsolePage(api: apiFor(client))));
+      await tester.pumpAndSettle();
+      expect(find.text('Finance summary temporarily unavailable'), findsOneWidget);
+      expect(find.text('Retry'), findsOneWidget);
+
+      failFirstSummaryRequest = false;
+      await tester.tap(find.text('Retry'));
+      await tester.pumpAndSettle();
+      expect(find.text('Tenant finance overview'), findsOneWidget);
+      expect(find.text('Finance summary temporarily unavailable'), findsNothing);
+    });
+
+    testWidgets('records a partial payment using integer paise and an idempotency key', (tester) async {
+      var paymentCreated = false;
+      Map<String, dynamic>? postedBody;
+      String? postedIdempotencyKey;
+      final client = MockClient((request) async {
+        if (request.url.path == '/api/giving/reports/summary') return jsonResponse(summaryPayload());
+        if (request.url.path == '/api/giving/reports/reconciliation') return jsonResponse(reconciliationPayload());
+        if (request.url.path == '/api/giving/pledges') {
+          return jsonResponse([
+            {'id': 'pledge-1', 'campaignId': 'campaign-1', 'pledgedAmountPaise': 100000, 'paidAmountPaise': 25000, 'status': 'PARTIALLY_PAID'}
+          ]);
+        }
+        if (request.url.path == '/api/giving/payments') {
+          return jsonResponse(paymentCreated
+              ? [
+                  {'id': 'payment-2', 'pledgeId': 'pledge-1', 'amountPaise': 25075, 'method': 'UPI', 'status': 'PENDING_APPROVAL'}
+                ]
+              : emptyList());
+        }
+        if (request.method == 'POST' && request.url.path == '/api/giving/pledges/pledge-1/payments') {
+          postedBody = Map<String, dynamic>.from(jsonDecode(request.body) as Map);
+          postedIdempotencyKey = request.headers['idempotency-key'] ?? request.headers['Idempotency-Key'];
+          paymentCreated = true;
+          return jsonResponse({'id': 'payment-2', 'status': 'PENDING_APPROVAL'}, 201);
+        }
+        return jsonResponse(emptyList());
+      });
+
+      await tester.pumpWidget(MaterialApp(home: FinanceConsolePage(api: apiFor(client))));
+      await tester.pumpAndSettle();
+      final pledgesChip = find.widgetWithText(ChoiceChip, 'Pledges');
+      await tester.ensureVisible(pledgesChip);
+      await tester.pumpAndSettle();
+      await tester.tap(pledgesChip);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Record payment'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField), '250.75');
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('UPI'));
+      await tester.pumpAndSettle();
+
+      expect(paymentCreated, isTrue);
+      expect(postedBody, {'amountPaise': 25075, 'method': 'UPI'});
+      expect(postedIdempotencyKey, startsWith('finance-payment-'));
+      expect(find.text('Payment submitted for approval.'), findsOneWidget);
+
+      final paymentsChip = find.widgetWithText(ChoiceChip, 'Payments');
+      await tester.ensureVisible(paymentsChip);
+      await tester.pumpAndSettle();
+      await tester.tap(paymentsChip);
+      await tester.pumpAndSettle();
+      expect(find.text('₹250.75 • UPI'), findsOneWidget);
+      expect(find.text('PENDING_APPROVAL • Pledge pledge-1'), findsOneWidget);
+    });
+
+    testWidgets('submits a refund adjustment with a reason, paise and an idempotency key', (tester) async {
+      var adjustmentCreated = false;
+      Map<String, dynamic>? postedBody;
+      String? postedIdempotencyKey;
+      final client = MockClient((request) async {
+        if (request.url.path == '/api/giving/reports/summary') return jsonResponse(summaryPayload());
+        if (request.url.path == '/api/giving/reports/reconciliation') return jsonResponse(reconciliationPayload());
+        if (request.url.path == '/api/giving/payments') {
+          return jsonResponse([
+            {'id': 'payment-1', 'pledgeId': 'pledge-1', 'amountPaise': 100000, 'method': 'UPI', 'status': 'VERIFIED'}
+          ]);
+        }
+        if (request.url.path == '/api/giving/adjustments') {
+          return jsonResponse(adjustmentCreated
+              ? [
+                  {'id': 'adjustment-1', 'paymentId': 'payment-1', 'kind': 'REFUND', 'amountPaise': 2550, 'reason': 'Duplicate transfer', 'status': 'PENDING_APPROVAL'}
+                ]
+              : emptyList());
+        }
+        if (request.method == 'POST' && request.url.path == '/api/giving/payments/payment-1/adjustments') {
+          postedBody = Map<String, dynamic>.from(jsonDecode(request.body) as Map);
+          postedIdempotencyKey = request.headers['idempotency-key'] ?? request.headers['Idempotency-Key'];
+          adjustmentCreated = true;
+          return jsonResponse({'id': 'adjustment-1', 'status': 'PENDING_APPROVAL'}, 201);
+        }
+        return jsonResponse(emptyList());
+      });
+
+      await tester.pumpWidget(MaterialApp(home: FinanceConsolePage(api: apiFor(client))));
+      await tester.pumpAndSettle();
+      final paymentsChip = find.widgetWithText(ChoiceChip, 'Payments');
+      await tester.ensureVisible(paymentsChip);
+      await tester.pumpAndSettle();
+      await tester.tap(paymentsChip);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Refund / reversal'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField), '25.50');
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField), 'Duplicate transfer');
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('REFUND'));
+      await tester.pumpAndSettle();
+
+      expect(adjustmentCreated, isTrue);
+      expect(postedBody, {'kind': 'REFUND', 'amountPaise': 2550, 'reason': 'Duplicate transfer'});
+      expect(postedIdempotencyKey, startsWith('finance-adjustment-'));
+      expect(find.text('Adjustment submitted for approval.'), findsOneWidget);
+
+      final adjustmentsChip = find.widgetWithText(ChoiceChip, 'Adjustments');
+      await tester.ensureVisible(adjustmentsChip);
+      await tester.pumpAndSettle();
+      await tester.tap(adjustmentsChip);
+      await tester.pumpAndSettle();
+      expect(find.text('REFUND • ₹25.50'), findsOneWidget);
+      expect(find.text('Duplicate transfer • PENDING_APPROVAL'), findsOneWidget);
+    });
+
+    testWidgets('surfaces an approval API failure and keeps the expense pending', (tester) async {
+      var approveCalls = 0;
+      final client = MockClient((request) async {
+        if (request.url.path == '/api/giving/reports/summary') return jsonResponse(summaryPayload());
+        if (request.url.path == '/api/giving/reports/reconciliation') return jsonResponse(reconciliationPayload());
+        if (request.url.path == '/api/giving/expenses' && request.method == 'GET') {
+          return jsonResponse([
+            {'id': 'expense-1', 'category': 'Maintenance', 'description': 'Repair water pump', 'amountPaise': 25000, 'status': 'PENDING_APPROVAL'}
+          ]);
+        }
+        if (request.method == 'POST' && request.url.path == '/api/giving/expenses/expense-1/approve') {
+          approveCalls++;
+          return jsonResponse({'message': 'Reviewer is no longer assigned to this tenant'}, 403);
+        }
+        return jsonResponse(emptyList());
+      });
+
+      await tester.pumpWidget(MaterialApp(home: FinanceConsolePage(api: apiFor(client))));
+      await tester.pumpAndSettle();
+      final expensesChip = find.widgetWithText(ChoiceChip, 'Expenses');
+      await tester.ensureVisible(expensesChip);
+      await tester.pumpAndSettle();
+      await tester.tap(expensesChip);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Approve'));
+      await tester.pumpAndSettle();
+
+      expect(approveCalls, 1);
+      expect(find.text('Reviewer is no longer assigned to this tenant'), findsOneWidget);
+      expect(find.text('Repair water pump • PENDING_APPROVAL'), findsOneWidget);
+    });
+
   });
 }

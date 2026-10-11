@@ -734,3 +734,54 @@ And the empty tenant's receipt reconciliation is balanced with no discrepancies
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “keeps finance and reconciliation totals aligned across verified, pending and rejected states” and “returns zero-valued finance reports and a balanced reconciliation for an empty tenant”.
 
+## Finance decision and failure-path widget coverage
+
+### Scenario: Rejection requires a reason and refreshes the terminal state
+
+Given a pending expense is shown in the finance workspace
+When the reviewer attempts to reject it without a reason
+Then validation prevents the rejection request
+When the reviewer supplies a reason
+Then the rejection request includes that reason
+And the workspace refreshes and shows REJECTED
+
+Executable regression: `apps/flutter/test/features/giving/presentation/giving_workflow_test.dart` — “requires a rejection reason and refreshes the expense after rejection”.
+
+### Scenario: Finance workspace recovers from report loading failures
+
+Given the finance summary endpoint returns an error
+When the finance user opens the workspace
+Then the error and Retry action are shown
+When the endpoint recovers and the user retries
+Then the summary is displayed and the error clears
+
+Executable regression: `apps/flutter/test/features/giving/presentation/giving_workflow_test.dart` — “shows a finance load error and recovers when reports become available”.
+
+### Scenario: Finance operator records a partial payment
+
+Given a pledge is shown in the finance workspace
+When the operator records a valid partial payment and selects a payment method
+Then the rupee amount is converted to integer paise
+And the request includes an idempotency key
+And the payment is shown as pending approval after refresh
+
+Executable regression: `apps/flutter/test/features/giving/presentation/giving_workflow_test.dart` — “records a partial payment using integer paise and an idempotency key”.
+
+### Scenario: Finance operator submits a refund adjustment
+
+Given a verified payment is shown in the finance workspace
+When the operator submits a positive refund amount, reason and adjustment type
+Then the request includes integer paise and an idempotency key
+And the adjustment appears as pending approval after refresh
+
+Executable regression: `apps/flutter/test/features/giving/presentation/giving_workflow_test.dart` — “submits a refund adjustment with a reason, paise and an idempotency key”.
+
+### Scenario: Failed approval does not falsely change the expense state
+
+Given a pending expense is shown
+When the approval API returns a forbidden/error response
+Then the workspace surfaces the API error
+And the expense remains pending rather than showing a false approval
+
+Executable regression: `apps/flutter/test/features/giving/presentation/giving_workflow_test.dart` — “surfaces an approval API failure and keeps the expense pending”.
+
