@@ -373,3 +373,36 @@ And tenant B's pledge, payment and receipt are absent
 And querying tenant B returns only tenant B's records
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “keeps pledge, payment and receipt queries isolated between tenants in persisted Firestore data”. This verifies the Firestore emulator query boundary, not the complete HTTP authorization or production environment.
+
+### Scenario: Pledge idempotency protects the original amount
+
+Given a donor has created a pledge with an idempotency key
+When the same request is replayed unchanged
+Then the existing pledge is returned without creating a duplicate
+When the same key is reused with a different pledge amount
+Then the operation is rejected with an idempotency conflict
+And the original pledge amount and unpaid status remain unchanged
+And no payment or receipt is created
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “rejects pledge idempotency-key reuse with a changed amount and preserves the original pledge”. This verifies Firestore emulator persistence, not production/staging behaviour.
+
+### Scenario: A different tenant cannot approve another tenant's payment
+
+Given tenant A owns a pending payment and pledge
+When an approver acting in tenant B attempts to approve that payment
+Then the operation returns payment not found
+And the payment remains pending in tenant A
+And tenant A's pledge balance and receipts remain unchanged
+And tenant B cannot see the payment or receipt in its tenant-scoped queries
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “does not allow another tenant to approve a persisted payment or mutate its financial state”. This tests service-level tenant enforcement against persisted emulator data; HTTP role authorization and production/staging remain separate evidence.
+
+### Scenario: A tenant cannot record a payment against another tenant's pledge
+
+Given a pledge belongs to tenant A
+When a cashier acting in tenant B attempts to record a payment against that pledge
+Then the operation is rejected as pledge not found
+And no payment or receipt is created for tenant B
+And tenant A's pledge remains unpaid
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “rejects recording a payment against another tenant pledge without creating a payment”. This verifies the persisted Firestore emulator boundary, not production/staging behaviour.

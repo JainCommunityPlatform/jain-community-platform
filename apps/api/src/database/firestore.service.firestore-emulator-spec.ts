@@ -292,4 +292,86 @@ describe('FirestoreService against the Firestore emulator', () => {
       .toEqual([b.payment.id]);
   });
 
+  it('rejects pledge idempotency-key reuse with a changed amount and preserves the original pledge', async () => {
+    const suffix = `emulator-pledge-idempotency-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const isolatedTenantId = `${tenantId}-${suffix}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const campaign = await service.createGivingCampaign({
+      tenantId: isolatedTenantId, actorUserId: `campaign-admin-${suffix}`, name: 'Pledge replay campaign',
+    });
+    await service.updateGivingCampaignStatus(isolatedTenantId, campaign.id, 'ACTIVE');
+    const input = {
+      tenantId: isolatedTenantId, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 50000, idempotencyKey: `pledge-${suffix}`,
+    };
+    const original = await service.createDonationPledge(input);
+    const replay = await service.createDonationPledge(input);
+    expect(replay.id).toBe(original.id);
+    await expect(service.createDonationPledge({ ...input, pledgedAmountPaise: 75000 }))
+      .rejects.toThrow('IDEMPOTENCY_CONFLICT');
+
+    const persisted = await service.listDonationPledgesForTenant(isolatedTenantId);
+    expect(persisted).toHaveLength(1);
+    expect(persisted[0]).toMatchObject({
+      id: original.id, pledgedAmountPaise: 50000, paidAmountPaise: 0, status: 'PLEDGED',
+    });
+    expect(await service.listDonationPaymentsForTenant(isolatedTenantId)).toHaveLength(0);
+    expect(await service.listDonationReceiptsForTenant(isolatedTenantId)).toHaveLength(0);
+  });
+
+  it('does not allow another tenant to approve a persisted payment or mutate its financial state', async () => {
+    const suffix = `emulator-cross-tenant-approval-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const ownerTenant = `${tenantId}-owner-${suffix}`;
+    const foreignTenant = `${tenantId}-foreign-${suffix}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const campaign = await service.createGivingCampaign({
+      tenantId: ownerTenant, actorUserId: `campaign-admin-${suffix}`, name: 'Owner tenant campaign',
+    });
+    await service.updateGivingCampaignStatus(ownerTenant, campaign.id, 'ACTIVE');
+    const pledge = await service.createDonationPledge({
+      tenantId: ownerTenant, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 40000, idempotencyKey: `pledge-${suffix}`,
+    });
+    const payment = await service.recordDonationPayment({
+      tenantId: ownerTenant, pledgeId: pledge.id, actorUserId: `cashier-${suffix}`,
+      amountPaise: 20000, method: 'UPI', idempotencyKey: `payment-${suffix}`,
+    });
+
+    await expect(service.approveDonationPayment(foreignTenant, payment.id, `foreign-approver-${suffix}`))
+      .rejects.toThrow('PAYMENT_NOT_FOUND');
+
+    expect((await service.listDonationPaymentsForTenant(ownerTenant)).find((item) => item.id === payment.id))
+      .toMatchObject({ status: 'PENDING_APPROVAL', receiptNumber: undefined });
+    expect((await service.listDonationPledgesForTenant(ownerTenant)).find((item) => item.id === pledge.id))
+      .toMatchObject({ paidAmountPaise: 0, status: 'PLEDGED' });
+    expect(await service.listDonationReceiptsForTenant(ownerTenant)).toHaveLength(0);
+    expect(await service.listDonationPaymentsForTenant(foreignTenant)).toHaveLength(0);
+    expect(await service.listDonationReceiptsForTenant(foreignTenant)).toHaveLength(0);
+  });
+
+  it('rejects recording a payment against another tenant pledge without creating a payment', async () => {
+    const suffix = `emulator-cross-tenant-record-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const ownerTenant = `${tenantId}-pledge-owner-${suffix}`;
+    const foreignTenant = `${tenantId}-payment-foreign-${suffix}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const campaign = await service.createGivingCampaign({
+      tenantId: ownerTenant, actorUserId: `campaign-admin-${suffix}`, name: 'Pledge owner campaign',
+    });
+    await service.updateGivingCampaignStatus(ownerTenant, campaign.id, 'ACTIVE');
+    const pledge = await service.createDonationPledge({
+      tenantId: ownerTenant, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 40000, idempotencyKey: `pledge-${suffix}`,
+    });
+
+    await expect(service.recordDonationPayment({
+      tenantId: foreignTenant, pledgeId: pledge.id, actorUserId: `foreign-cashier-${suffix}`,
+      amountPaise: 20000, method: 'CASH', idempotencyKey: `payment-${suffix}`,
+    })).rejects.toThrow('PLEDGE_NOT_FOUND');
+
+    expect(await service.listDonationPaymentsForTenant(foreignTenant)).toHaveLength(0);
+    expect(await service.listDonationReceiptsForTenant(foreignTenant)).toHaveLength(0);
+    expect((await service.listDonationPledgesForTenant(ownerTenant)).find((item) => item.id === pledge.id))
+      .toMatchObject({ paidAmountPaise: 0, status: 'PLEDGED' });
+  });
+
 });
