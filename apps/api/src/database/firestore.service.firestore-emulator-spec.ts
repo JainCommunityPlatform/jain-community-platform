@@ -57,6 +57,17 @@ describe('FirestoreService against the Firestore emulator', () => {
     expect(receipts).toHaveLength(2);
     expect(new Set(receipts.map((receipt) => receipt.paymentId)).size).toBe(2);
     expect(new Set(receipts.map((receipt) => receipt.receiptNumber)).size).toBe(2);
+
+    // Verify the donor-facing history APIs expose the same persisted workflow,
+    // not just tenant-wide finance queries.
+    const donorPledges = await service.listDonationPledgesForDonor(tenantId, donor.id);
+    const donorReceipts = await service.listDonationReceiptsForDonor(tenantId, donor.id);
+    expect(donorPledges.filter((item) => item.id === pledge.id)).toMatchObject([
+      { id: pledge.id, tenantId, donorUserId: donor.id, paidAmountPaise: 100000, status: 'PAID' },
+    ]);
+    expect(donorReceipts.filter((receipt) => receipt.pledgeId === pledge.id)).toHaveLength(2);
+    expect(new Set(donorReceipts.filter((receipt) => receipt.pledgeId === pledge.id).map((receipt) => receipt.paymentId)).size).toBe(2);
+    expect(donorReceipts.filter((receipt) => receipt.pledgeId === pledge.id).every((receipt) => receipt.donorUserId === donor.id)).toBe(true);
   });
 
   it('rejects overpayment and replayed approval without changing the persisted balance or receipts', async () => {
