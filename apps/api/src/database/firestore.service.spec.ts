@@ -649,6 +649,40 @@ describe('FirestoreService donation payment workflow', () => {
     expect(report.netAfterApprovedExpensesPaise).toBe(13000);
   });
 
+  it('keeps finance summary and reconciliation totals aligned across partial and pending payments', async () => {
+    const { instance, pledge } = await setup();
+    const approvedPartial = await instance.recordDonationPayment({
+      tenantId: 'tenant-a', pledgeId: pledge.id, actorUserId: 'cashier-a',
+      amountPaise: 30000, method: 'UPI', idempotencyKey: 'report-approved-partial',
+    });
+    await instance.approveDonationPayment('tenant-a', approvedPartial.id, 'approver-a');
+
+    await instance.recordDonationPayment({
+      tenantId: 'tenant-a', pledgeId: pledge.id, actorUserId: 'cashier-b',
+      amountPaise: 20000, method: 'CASH', idempotencyKey: 'report-pending-payment',
+    });
+
+    const finance = await instance.getDonationFinanceReport('tenant-a');
+    const reconciliation = await instance.getDonationReconciliationReport('tenant-a');
+
+    expect(finance.totals).toMatchObject({
+      pledgedAmountPaise: 100000,
+      receivedAmountPaise: 30000,
+      outstandingAmountPaise: 70000,
+      pendingApprovalAmountPaise: 20000,
+    });
+    expect(reconciliation.donations).toMatchObject({
+      verifiedAmountPaise: 30000,
+      verifiedPaymentCount: 1,
+    });
+    expect(reconciliation.receipts).toMatchObject({
+      issuedAmountPaise: 30000,
+      issuedReceiptCount: 1,
+      isBalanced: true,
+    });
+    expect(reconciliation.netAfterApprovedExpensesPaise).toBe(30000);
+  });
+
   it('builds a tenant-scoped summary from verified and pending payments only', async () => {
     const { instance, pledge } = await setup();
     await instance.recordDonationPayment({

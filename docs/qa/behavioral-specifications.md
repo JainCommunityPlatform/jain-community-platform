@@ -138,6 +138,19 @@ And the pledge paid amount and receipt sequence are not incremented again
 
 Executable regression: `apps/api/src/database/firestore.service.spec.ts` — “does not issue a second receipt or double-count a replayed payment approval”. The current test uses a fake Firestore adapter; true transaction concurrency and live Firestore atomicity remain unverified.
 
+### Scenario: Finance summary agrees with reconciliation for partial and pending payments
+
+Given a tenant has a pledge for 100000 paise
+And a 30000-paise payment has been approved and receipted
+And a separate 20000-paise payment is still pending approval
+When the finance summary and reconciliation report are generated
+Then received and reconciled receipt amounts both equal 30000 paise
+And the pending approval amount is 20000 paise and is not counted as received
+And the outstanding pledge balance is 70000 paise
+And the reconciliation reports the issued receipt as balanced
+
+Executable regression: `apps/api/src/database/firestore.service.spec.ts` — “keeps finance summary and reconciliation totals aligned across partial and pending payments”. The test uses fake Firestore; it does not establish live persistence or transaction guarantees.
+
 ## Feature: Expenses and reconciliation
 
 - A finance operator submits an expense with an integer-paise amount and evidence reference.
