@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { GivingService } from './giving.service';
 
 describe('GivingService', () => {
@@ -128,6 +128,72 @@ describe('GivingService', () => {
       tenantId: 'tenant-a', pledgeId: 'pledge-a', actorUserId: 'operator',
       amountPaise: 20000, method: 'UPI', idempotencyKey: 'req-1',
     })).rejects.toBeInstanceOf(UnprocessableEntityException);
+  });
+
+
+  describe('pledge and payment behavioural scenarios', () => {
+    const paymentInput = {
+      tenantId: 'tenant-a',
+      pledgeId: 'pledge-a',
+      actorUserId: 'finance-operator',
+      amountPaise: 2500,
+      method: 'UPI' as const,
+      idempotencyKey: 'payment-request-1',
+    };
+
+    const paymentErrorScenarios: Array<{
+      persistenceError: string;
+      expectedException: 'not-found' | 'conflict' | 'bad-request';
+    }> = [
+      { persistenceError: 'PLEDGE_NOT_FOUND', expectedException: 'not-found' },
+      { persistenceError: 'PLEDGE_CANCELLED', expectedException: 'conflict' },
+      { persistenceError: 'PAYMENT_AMOUNT_INVALID', expectedException: 'bad-request' },
+      { persistenceError: 'PAYMENT_IDEMPOTENCY_CONFLICT', expectedException: 'conflict' },
+    ];
+
+    it.each(paymentErrorScenarios)(
+      'rejects payment scenario $persistenceError with the documented API error',
+      async ({ persistenceError, expectedException }) => {
+        firestore.recordDonationPayment.mockRejectedValue(new Error(persistenceError));
+        const result = expect(service().recordPayment(paymentInput)).rejects;
+        if (expectedException === 'not-found') await result.toBeInstanceOf(NotFoundException);
+        if (expectedException === 'conflict') await result.toBeInstanceOf(ConflictException);
+        if (expectedException === 'bad-request') await result.toBeInstanceOf(BadRequestException);
+        expect(firestore.recordDonationPayment).toHaveBeenCalledWith(paymentInput);
+      },
+    );
+
+    it('does not persist a pledge when the donor relationship is inactive', async () => {
+      firestore.createDonationPledge.mockRejectedValue(new Error('DONOR_INACTIVE'));
+      await expect(service().createPledge({
+        tenantId: 'tenant-a',
+        donorUserId: 'donor-a',
+        campaignId: 'campaign-a',
+        pledgedAmountPaise: 5000,
+        idempotencyKey: 'pledge-request-1',
+      })).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('keeps a successfully created pledge successful when notification delivery fails', async () => {
+      firestore.createDonationPledge.mockResolvedValue({ id: 'pledge-2', donorUserId: 'donor-a' });
+      const dispatcher = { dispatchForEntity: jest.fn().mockRejectedValue(new Error('notification provider unavailable')) };
+      const instance = new GivingService(firestore as never, dispatcher as never);
+
+      await expect(instance.createPledge({
+        tenantId: 'tenant-a',
+        donorUserId: 'donor-a',
+        campaignId: 'campaign-a',
+        pledgedAmountPaise: 5000,
+        idempotencyKey: 'pledge-request-2',
+      })).resolves.toMatchObject({ id: 'pledge-2' });
+      expect(firestore.createDonationPledge).toHaveBeenCalledTimes(1);
+      expect(dispatcher.dispatchForEntity).toHaveBeenCalledWith({
+        tenantId: 'tenant-a',
+        userId: 'donor-a',
+        entityType: 'DonationPledge',
+        entityId: 'pledge-2',
+      });
+    });
   });
 
 });
