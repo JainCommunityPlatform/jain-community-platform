@@ -1296,4 +1296,57 @@ describe('FirestoreService against the Firestore emulator', () => {
     });
   });
 
+  it('deduplicates concurrent same-key pledge, payment, expense and adjustment writes in persisted Firestore data', async () => {
+    const suffix = `emulator-concurrent-idempotency-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const isolatedTenantId = `${tenantId}-concurrent-idempotency-${suffix}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const campaign = await service.createGivingCampaign({
+      tenantId: isolatedTenantId, actorUserId: `campaign-admin-${suffix}`, name: 'Concurrent idempotency campaign',
+    });
+    await service.updateGivingCampaignStatus(isolatedTenantId, campaign.id, 'ACTIVE');
+
+    const pledgeInput = {
+      tenantId: isolatedTenantId, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 100000, idempotencyKey: `same-pledge-key-${suffix}`,
+    };
+    const pledges = await Promise.all(Array.from({ length: 5 }, () => service.createDonationPledge(pledgeInput)));
+    expect(new Set(pledges.map((item) => item.id)).size).toBe(1);
+    expect((await service.listDonationPledgesForTenant(isolatedTenantId))).toHaveLength(1);
+    const pledge = pledges[0];
+
+    const paymentInput = {
+      tenantId: isolatedTenantId, pledgeId: pledge.id, actorUserId: `cashier-${suffix}`,
+      amountPaise: 40000, method: 'UPI' as const, idempotencyKey: `same-payment-key-${suffix}`,
+      note: 'Concurrent payment submission',
+    };
+    const payments = await Promise.all(Array.from({ length: 5 }, () => service.recordDonationPayment(paymentInput)));
+    expect(new Set(payments.map((item) => item.id)).size).toBe(1);
+    expect((await service.listDonationPaymentsForTenant(isolatedTenantId))).toHaveLength(1);
+    const payment = payments[0];
+    await service.approveDonationPayment(isolatedTenantId, payment.id, `payment-approver-${suffix}`);
+
+    const expenseInput = {
+      tenantId: isolatedTenantId, actorUserId: `expense-maker-${suffix}`, category: 'Maintenance',
+      description: 'Concurrent expense submission', amountPaise: 12500,
+      idempotencyKey: `same-expense-key-${suffix}`,
+    };
+    const expenses = await Promise.all(Array.from({ length: 5 }, () => service.createDonationExpense(expenseInput)));
+    expect(new Set(expenses.map((item) => item.id)).size).toBe(1);
+    expect((await service.listDonationExpensesForTenant(isolatedTenantId))).toHaveLength(1);
+
+    const adjustmentInput = {
+      tenantId: isolatedTenantId, paymentId: payment.id, actorUserId: `refund-maker-${suffix}`,
+      amountPaise: 5000, kind: 'REFUND' as const, reason: 'Concurrent duplicate refund request',
+      idempotencyKey: `same-adjustment-key-${suffix}`,
+    };
+    const adjustments = await Promise.all(Array.from({ length: 5 }, () => service.createDonationAdjustment(adjustmentInput)));
+    expect(new Set(adjustments.map((item) => item.id)).size).toBe(1);
+    expect((await service.listDonationAdjustmentsForTenant(isolatedTenantId))).toHaveLength(1);
+
+    expect(pledge).toMatchObject({ pledgedAmountPaise: 100000, paidAmountPaise: 0, status: 'PLEDGED' });
+    expect(payment).toMatchObject({ amountPaise: 40000, status: 'PENDING_APPROVAL' });
+    expect(expenses[0]).toMatchObject({ amountPaise: 12500, status: 'PENDING_APPROVAL' });
+    expect(adjustments[0]).toMatchObject({ amountPaise: 5000, status: 'PENDING_APPROVAL' });
+  });
+
 });
