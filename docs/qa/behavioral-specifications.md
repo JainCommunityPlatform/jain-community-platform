@@ -203,3 +203,23 @@ And no financial data is returned
 | Tenant administrator is denied payment-list access | `apps/api/test/app.e2e-spec.ts` — “GET /api/giving/payments denies tenant administrators at the HTTP authorization boundary” | NestJS HTTP integration | Real Nest guards/interceptors; mocked identity and membership providers |
 | Tenant administrator is denied payment approval | `apps/api/test/app.e2e-spec.ts` — “POST /api/giving/payments/:paymentId/approve denies tenant administrators before payment processing” | NestJS HTTP integration | Authorization rejection at HTTP boundary; no Firestore persistence claim |
 | Cross-tenant finance request is denied | `apps/api/test/app.e2e-spec.ts` — “GET /api/giving/payments denies a finance user whose membership belongs to another tenant” | NestJS HTTP integration | Real Nest guards/interceptors; tenant and identity fixtures are mocked |
+
+
+## HTTP finance authorization regression coverage
+
+The API integration suite exercises the real NestJS HTTP route, authorization guard, and membership-context pipeline with mocked identity/membership providers. It is not a Firestore-backed or deployed-environment test.
+
+### Scenario: Tenant administrator cannot read finance expenses or adjustments
+Given a user has the tenant administrator role without a finance role
+When they request the tenant expense list or adjustment list
+Then each request is rejected with HTTP 403 before finance data is returned
+
+### Scenario: Finance viewer cannot create an expense
+Given a user has the finance viewer role for the active tenant
+When they submit an expense creation request
+Then the API rejects it with HTTP 403 before expense creation
+
+### Scenario: Finance operator cannot access another tenant's expenses
+Given a finance operator's membership belongs to a different tenant
+When they request expenses in the active tenant context
+Then the API rejects the request with HTTP 403 and a tenant access denied response
