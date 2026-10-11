@@ -25,7 +25,6 @@ describe('API endpoints (integration)', () => {
     createExpense: jest.Mock;
     createPledge: jest.Mock;
     recordPayment: jest.Mock;
-    createAdjustment: jest.Mock;
     approveExpense: jest.Mock;
     rejectExpense: jest.Mock;
     listTenantAdjustments: jest.Mock;
@@ -133,7 +132,6 @@ describe('API endpoints (integration)', () => {
     giving = {
       createPledge: jest.fn().mockResolvedValue({ id: 'pledge-created', status: 'PLEDGED', pledgedAmountPaise: 5000 }),
       recordPayment: jest.fn().mockResolvedValue({ id: 'payment-created', status: 'PENDING_APPROVAL', amountPaise: 5000 }),
-      createAdjustment: jest.fn().mockResolvedValue({ id: 'adjustment-created', status: 'PENDING_APPROVAL', amountPaise: 1000 }),
       listTenantExpenses: jest.fn().mockResolvedValue([
         { id: 'expense-1', tenantId: '00000000-0000-0000-0000-000000000001', status: 'PENDING_APPROVAL', amountPaise: 10000 },
       ]),
