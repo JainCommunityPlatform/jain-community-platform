@@ -866,3 +866,21 @@ And querying history for an unrelated donor returns no records
 And the two tenant histories never expose each other's pledge IDs or payment IDs
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “keeps pledge, payment and receipt queries isolated between tenants in persisted Firestore data”.
+
+
+## Concurrent financial idempotency regression
+
+### Scenario: Concurrent retries of the same financial write create one persisted record
+
+Given an active campaign and a valid donor pledge request
+When multiple identical pledge requests with the same tenant and idempotency key arrive concurrently
+Then every response identifies the same persisted pledge
+And only one pledge record exists for the tenant
+
+Given the pledge has a valid payment request, and a verified payment for a refund request
+When multiple identical payment, expense, or refund-adjustment requests arrive concurrently with their respective same idempotency keys
+Then each set of responses identifies one persisted record
+And the tenant has exactly one payment, expense and adjustment for those requests
+And the persisted pledge balance and financial records reflect the operation only once
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “deduplicates concurrent same-key pledge, payment, expense and adjustment writes in persisted Firestore data”. This uses the Firestore emulator and tests concurrent persistence retries; it does not establish production/staging behaviour.
