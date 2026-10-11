@@ -97,4 +97,44 @@ describe('FirestoreService against the Firestore emulator', () => {
     expect(receipts[0].paymentId).toBe(first.id);
   });
 
+
+  it('allows only one concurrent approval when two payments would overpay a pledge', async () => {
+    const suffix = `emulator-race-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const campaign = await service.createGivingCampaign({
+      tenantId, actorUserId: `campaign-admin-${suffix}`, name: 'Emulator concurrent approval campaign',
+    });
+    await service.updateGivingCampaignStatus(tenantId, campaign.id, 'ACTIVE');
+    const pledge = await service.createDonationPledge({
+      tenantId, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 100000, idempotencyKey: `pledge-${suffix}`,
+    });
+    const first = await service.recordDonationPayment({
+      tenantId, pledgeId: pledge.id, actorUserId: `cashier-a-${suffix}`,
+      amountPaise: 60000, method: 'UPI', idempotencyKey: `payment-a-${suffix}`,
+    });
+    const second = await service.recordDonationPayment({
+      tenantId, pledgeId: pledge.id, actorUserId: `cashier-b-${suffix}`,
+      amountPaise: 60000, method: 'BANK_TRANSFER', idempotencyKey: `payment-b-${suffix}`,
+    });
+
+    const outcomes = await Promise.allSettled([
+      service.approveDonationPayment(tenantId, first.id, `approver-a-${suffix}`),
+      service.approveDonationPayment(tenantId, second.id, `approver-b-${suffix}`),
+    ]);
+    expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
+    const rejected = outcomes.find((outcome) => outcome.status === 'rejected');
+    expect(rejected).toBeDefined();
+    if (rejected?.status === 'rejected') {
+      expect(String(rejected.reason?.message ?? rejected.reason)).toContain('PAYMENT_EXCEEDS_BALANCE');
+    }
+
+    const persistedPledge = (await service.listDonationPledgesForTenant(tenantId))
+      .find((item) => item.id === pledge.id);
+    const receipts = (await service.listDonationReceiptsForTenant(tenantId))
+      .filter((receipt) => receipt.pledgeId === pledge.id);
+    expect(persistedPledge).toMatchObject({ paidAmountPaise: 60000, status: 'PARTIALLY_PAID' });
+    expect(receipts).toHaveLength(1);
+  });
+
 });
