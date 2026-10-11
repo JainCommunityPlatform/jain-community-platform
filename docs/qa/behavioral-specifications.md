@@ -127,6 +127,9 @@ And no receipt is issued for the rejected approval attempt
 
 Executable regressions: `apps/api/src/database/firestore.service.spec.ts` — “completes a pledge across multiple approved partial payments with distinct receipts” and “rejects a second pending payment when approval would exceed the remaining pledge balance”. Both use a fake Firestore adapter; concurrent transactions and live Firestore atomicity remain unverified.
 
+Emulator-level regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “rejects overpayment and replayed approval without changing the persisted balance or receipts”. This runs against the Firestore emulator and verifies persisted state after rejected approval and idempotent recording. It does not replace staging verification or a dedicated concurrent-approval race test.
+
+
 ### Scenario: Replaying payment approval does not issue a second receipt
 
 Given a payment has been verified by an authorized finance approver
