@@ -439,3 +439,48 @@ Then it receives the first receipt sequence number
 And exactly one receipt exists for the approved payment
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “keeps rejection atomic and does not consume the next receipt sequence”. This verifies persisted emulator state and sequence behaviour, not production/staging behaviour.
+
+### Scenario: Expense records follow maker-checker and idempotency rules
+
+Given an expense is submitted with supporting evidence
+When the creator retries the same request
+Then the same pending expense is returned without duplication
+When the idempotency key is reused with a changed amount
+Then the request is rejected and the original expense remains unchanged
+And the creator cannot approve their own expense
+When an independent reviewer rejects the expense with a reason
+Then the reason is trimmed and persisted
+And the rejected expense cannot later be approved
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “enforces expense maker-checker approval and prevents replay after rejection”. This verifies persisted Firestore emulator state, not production/staging behaviour.
+
+### Scenario: Approved expenses require an independent reviewer and cannot be replay-approved
+
+Given an expense is pending approval
+When an independent finance reviewer approves it
+Then the expense is persisted as approved with the reviewer identity
+And a repeated approval attempt is rejected
+And only one expense record exists
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “approves a valid expense only by an independent reviewer and blocks approval replay”. This verifies the Firestore emulator service workflow, not production/staging behaviour.
+
+### Scenario: Refund adjustments preserve idempotency and reconcile balances atomically
+
+Given a payment has been recorded but is still pending approval
+When finance attempts to create a refund adjustment
+Then the request is rejected because the payment is not verified
+And no adjustment amount is reserved
+Given the payment is verified and has an issued receipt and an unpaid pledge balance
+When finance creates a refund adjustment within the remaining payment amount
+Then the identical request returns the existing pending adjustment
+And reusing its key with changed data is rejected
+And another adjustment exceeding the remaining payment balance is rejected
+When the adjustment creator attempts to approve it
+Then approval is rejected as a maker-checker violation and balances remain unchanged
+When an independent reviewer approves the adjustment
+Then the adjustment is approved exactly once with an adjustment number
+And the payment's adjusted and pending-adjustment balances are updated
+And the pledge paid amount decreases by the approved refund
+And the original payment receipt remains unchanged
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “keeps adjustment idempotency and refund balances consistent through approval”. The payment view exposes its persisted adjustment balances for verification. This tests the Firestore emulator, not production/staging behaviour.
