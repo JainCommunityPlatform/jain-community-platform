@@ -550,6 +550,14 @@ describe('FirestoreService against the Firestore emulator', () => {
       tenantId: isolatedTenantId, pledgeId: pledge.id, actorUserId: `cashier-${suffix}`,
       amountPaise: 50000, method: 'UPI', idempotencyKey: `payment-${suffix}`,
     });
+    await expect(service.createDonationAdjustment({
+      tenantId: isolatedTenantId, paymentId: payment.id, actorUserId: `refund-maker-${suffix}`,
+      amountPaise: 10000, kind: 'REFUND', reason: 'Attempt before verification',
+      idempotencyKey: `early-adjustment-${suffix}`,
+    })).rejects.toThrow('PAYMENT_NOT_VERIFIED');
+    expect((await service.listDonationPaymentsForTenant(isolatedTenantId)).find((item) => item.id === payment.id))
+      .toMatchObject({ status: 'PENDING_APPROVAL', adjustedAmountPaise: 0, pendingAdjustmentAmountPaise: 0 });
+
     await service.approveDonationPayment(isolatedTenantId, payment.id, `payment-approver-${suffix}`);
 
     const input = {
