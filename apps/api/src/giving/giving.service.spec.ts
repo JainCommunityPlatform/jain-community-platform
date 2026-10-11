@@ -141,16 +141,24 @@ describe('GivingService', () => {
       idempotencyKey: 'payment-request-1',
     };
 
-    it.each([
-      ['PLEDGE_NOT_FOUND', NotFoundException],
-      ['PLEDGE_CANCELLED', ConflictException],
-      ['PAYMENT_AMOUNT_INVALID', BadRequestException],
-      ['PAYMENT_IDEMPOTENCY_CONFLICT', ConflictException],
-    ])('rejects payment scenario %s with the documented API error', async (persistenceError, expectedException) => {
-      firestore.recordDonationPayment.mockRejectedValue(new Error(persistenceError));
-      await expect(service().recordPayment(paymentInput)).rejects.toBeInstanceOf(expectedException);
-      expect(firestore.recordDonationPayment).toHaveBeenCalledWith(paymentInput);
-    });
+    const paymentErrorScenarios: Array<{
+      persistenceError: string;
+      expectedException: new (...args: any[]) => Error;
+    }> = [
+      { persistenceError: 'PLEDGE_NOT_FOUND', expectedException: NotFoundException },
+      { persistenceError: 'PLEDGE_CANCELLED', expectedException: ConflictException },
+      { persistenceError: 'PAYMENT_AMOUNT_INVALID', expectedException: BadRequestException },
+      { persistenceError: 'PAYMENT_IDEMPOTENCY_CONFLICT', expectedException: ConflictException },
+    ];
+
+    it.each(paymentErrorScenarios)(
+      'rejects payment scenario $persistenceError with the documented API error',
+      async ({ persistenceError, expectedException }) => {
+        firestore.recordDonationPayment.mockRejectedValue(new Error(persistenceError));
+        await expect(service().recordPayment(paymentInput)).rejects.toBeInstanceOf(expectedException);
+        expect(firestore.recordDonationPayment).toHaveBeenCalledWith(paymentInput);
+      },
+    );
 
     it('does not persist a pledge when the donor relationship is inactive', async () => {
       firestore.createDonationPledge.mockRejectedValue(new Error('DONOR_INACTIVE'));
