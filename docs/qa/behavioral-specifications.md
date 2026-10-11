@@ -296,3 +296,17 @@ And only tenant A's pledges belonging to donor A are returned
 And the query does not first load every pledge belonging to tenant A into application memory
 
 The implementation uses a Firestore query constrained by both `tenantId` and `donorUserId`. Existing persistence workflow tests cover returned results across two donors and two tenants using a fake Firestore adapter; this is not a live Firestore emulator test.
+
+
+### Scenario: Cross-check reports after partial payments, refund and expense
+
+Given a tenant has a 100000-paise pledge paid through two approved partial payments
+And a 20000-paise refund is independently approved against one payment
+And a 15000-paise expense is independently approved
+When finance and reconciliation reports are generated for that tenant
+Then gross verified payments and issued receipts both total 100000 paise
+And finance reports 20000 paise adjusted and 80000 paise net received
+And reconciliation reports 15000 paise approved expenses and 20000 paise approved adjustments
+And net after approved expenses and adjustments equals 65000 paise
+
+Executable regression: `apps/api/src/database/firestore.service.spec.ts` — “keeps finance and reconciliation reports aligned after partial payments, a refund, and an approved expense”. This uses the fake Firestore adapter; it does not prove live Firestore transaction behaviour or production data correctness.
