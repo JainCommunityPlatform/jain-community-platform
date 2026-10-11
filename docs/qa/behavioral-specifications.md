@@ -827,3 +827,14 @@ And the receipts reference distinct payment IDs and belong to that donor
 And the tenant-wide and donor-scoped views agree on the persisted receipt records
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “persists partial payments, updates the pledge and issues distinct receipts transactionally”. This scenario uses the Firestore emulator and verifies persisted service queries; it is not evidence of a deployed production transaction.
+
+### Scenario: Donor history is isolated by both tenant and donor
+
+Given the same donor has a completed pledge and approved payment in two different tenants
+When the donor opens pledge history for either tenant
+Then only the pledge belonging to the selected tenant is returned
+And receipt history returns only receipts belonging to that tenant and donor
+And querying history for an unrelated donor returns no records
+And the two tenant histories never expose each other's pledge IDs or payment IDs
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “keeps pledge, payment and receipt queries isolated between tenants in persisted Firestore data”.
