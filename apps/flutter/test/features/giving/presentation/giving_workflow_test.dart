@@ -242,7 +242,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Tenant finance overview'), findsOneWidget);
-      expect(find.text('₹500.00'), findsOneWidget);
+      expect(find.text('₹500.00'), findsNWidgets(2));
       expect(find.text('₹350.00'), findsOneWidget);
       expect(find.text('Pending payments'), findsOneWidget);
 
