@@ -471,6 +471,8 @@ When finance creates a refund adjustment within the remaining payment amount
 Then the identical request returns the existing pending adjustment
 And reusing its key with changed data is rejected
 And another adjustment exceeding the remaining payment balance is rejected
+When the adjustment creator attempts to approve it
+Then approval is rejected as a maker-checker violation and balances remain unchanged
 When an independent reviewer approves the adjustment
 Then the adjustment is approved exactly once with an adjustment number
 And the payment's adjusted and pending-adjustment balances are updated
