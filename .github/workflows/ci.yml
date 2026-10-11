@@ -122,6 +122,10 @@ jobs:
         if: steps.backend.outputs.available == 'true'
         working-directory: apps/api
         run: npm run test:integration --if-present
+      - name: Run Firestore emulator integration tests
+        if: steps.backend.outputs.available == 'true'
+        working-directory: apps/api
+        run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-jcp "npm run test:firestore-emulator"
       - name: Build
         if: steps.backend.outputs.available == 'true'
         working-directory: apps/api
