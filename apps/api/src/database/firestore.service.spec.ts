@@ -531,6 +531,32 @@ describe('FirestoreService donation payment workflow', () => {
     expect(updatedPledge).toMatchObject({ paidAmountPaise: 25000, status: 'PARTIALLY_PAID' });
   });
 
+  it('does not issue a second receipt or double-count a replayed payment approval', async () => {
+    const { instance, db, pledge } = await setup();
+    const payment = await instance.recordDonationPayment({
+      tenantId: 'tenant-a',
+      pledgeId: pledge.id,
+      actorUserId: 'finance-operator',
+      amountPaise: 25000,
+      method: 'UPI',
+      idempotencyKey: 'approval-replay-payment',
+    });
+
+    const firstApproval = await instance.approveDonationPayment('tenant-a', payment.id, 'finance-approver');
+    await expect(instance.approveDonationPayment('tenant-a', payment.id, 'finance-second-approver'))
+      .rejects.toThrow('PAYMENT_NOT_PENDING');
+
+    const persistedPledge = (await instance.listDonationPledgesForTenant('tenant-a'))
+      .find((item) => item.id === pledge.id);
+    const receipts = await instance.listDonationReceiptsForTenant('tenant-a');
+
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0].receiptNumber).toBe(firstApproval.receiptNumber);
+    expect(persistedPledge?.paidAmountPaise).toBe(25000);
+    expect(db.entries('donationReceiptSequences')).toHaveLength(1);
+    expect(db.entries('donationReceiptSequences')[0][1].nextSequence).toBe(2);
+  });
+
   it('records expenses with idempotency, tenant scope, and maker-checker approval', async () => {
     const { instance } = await setup();
     const input = { tenantId: 'tenant-a', actorUserId: 'expense-maker', category: 'Maintenance', description: 'Repair temple lighting',
