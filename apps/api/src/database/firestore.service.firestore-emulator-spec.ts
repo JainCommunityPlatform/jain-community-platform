@@ -561,6 +561,8 @@ describe('FirestoreService against the Firestore emulator', () => {
       ...input, amountPaise: 31000, idempotencyKey: `over-limit-${suffix}`,
     })).rejects.toThrow('ADJUSTMENT_EXCEEDS_PAYMENT');
 
+    await expect(service.approveDonationAdjustment(isolatedTenantId, adjustment.id, input.actorUserId))
+      .rejects.toThrow('ADJUSTMENT_SELF_APPROVAL');
     expect((await service.listDonationPaymentsForTenant(isolatedTenantId)).find((item) => item.id === payment.id))
       .toMatchObject({ status: 'VERIFIED', amountPaise: 50000 });
     const approved = await service.approveDonationAdjustment(
