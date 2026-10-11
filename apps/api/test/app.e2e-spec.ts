@@ -15,9 +15,29 @@ import { MembershipService } from '../src/authorization/membership.service';
 import { UserIdentityService } from '../src/identity/user-identity.service';
 import { FirestoreTenantResolver } from '../src/tenant/firestore-tenant.resolver';
 import { ProfileService } from '../src/profile/profile.service';
+import { AuditService } from '../src/audit/audit.service';
+import { GivingService } from '../src/giving/giving.service';
 
 describe('API endpoints (integration)', () => {
   let app: INestApplication;
+  let giving: {
+    listTenantExpenses: jest.Mock;
+    createExpense: jest.Mock;
+    approveExpense: jest.Mock;
+    rejectExpense: jest.Mock;
+    listTenantAdjustments: jest.Mock;
+    createAdjustment: jest.Mock;
+    approveAdjustment: jest.Mock;
+    rejectAdjustment: jest.Mock;
+    listTenantPayments: jest.Mock;
+    approvePayment: jest.Mock;
+    rejectPayment: jest.Mock;
+    listTenantReceipts: jest.Mock;
+    getFinanceReport: jest.Mock;
+    getReconciliationReport: jest.Mock;
+    listTenantPledges: jest.Mock;
+  };
+  let audit: { record: jest.Mock };
 
   beforeAll(async () => {
     const authenticationGuard = {
@@ -38,6 +58,7 @@ describe('API endpoints (integration)', () => {
         authSubject: user.subject,
         email: user.email,
         displayName: user.displayName,
+        platformRoles: user.subject === 'user-platform-admin' ? ['PLATFORM_ADMIN'] : [],
       })),
     };
 
@@ -88,14 +109,59 @@ describe('API endpoints (integration)', () => {
     const membership = {
       resolve: jest.fn(async (userId: string, tenantId: string) => {
         if (userId === 'user-none') return null;
-
+        const role =
+          userId === 'user-viewer' ? 'FINANCE_VIEWER' :
+          userId === 'user-finance-operator' ? 'FINANCE_OPERATOR' :
+          userId === 'user-finance-approver' ? 'FINANCE_APPROVER' :
+          userId === 'user-tenant-finance' ? 'TENANT_FINANCE' :
+          userId === 'user-cross-tenant' ? 'FINANCE_OPERATOR' :
+          userId === 'user-platform-admin' ? 'FINANCE_APPROVER' : 'TENANT_ADMIN';
         return {
           userId,
           tenantId: userId === 'user-cross-tenant' ? 'tenant-b' : tenantId,
-          role: userId === 'user-viewer' ? 'FINANCE_VIEWER' : userId === 'user-cross-tenant' ? 'FINANCE_OPERATOR' : 'TENANT_ADMIN',
+          role,
+          ...(userId === 'user-legacy-finance-admin'
+            ? { roles: ['TENANT_ADMIN', 'TENANT_FINANCE'] as const }
+            : {}),
         } as const;
       }),
     };
+
+    giving = {
+      listTenantExpenses: jest.fn().mockResolvedValue([
+        { id: 'expense-1', tenantId: '00000000-0000-0000-0000-000000000001', status: 'PENDING_APPROVAL', amountPaise: 10000 },
+      ]),
+      createExpense: jest.fn().mockResolvedValue({
+        id: 'expense-created', tenantId: '00000000-0000-0000-0000-000000000001',
+        status: 'PENDING_APPROVAL', amountPaise: 10000,
+      }),
+      approveExpense: jest.fn().mockResolvedValue({
+        id: 'expense-1', tenantId: '00000000-0000-0000-0000-000000000001', status: 'APPROVED', amountPaise: 10000,
+      }),
+      rejectExpense: jest.fn().mockResolvedValue({
+        id: 'expense-1', tenantId: '00000000-0000-0000-0000-000000000001', status: 'REJECTED', amountPaise: 10000,
+      }),
+      listTenantAdjustments: jest.fn().mockResolvedValue([
+        { id: 'adjustment-1', tenantId: '00000000-0000-0000-0000-000000000001', status: 'PENDING_APPROVAL', amountPaise: 5000 },
+      ]),
+      createAdjustment: jest.fn().mockResolvedValue({
+        id: 'adjustment-created', tenantId: '00000000-0000-0000-0000-000000000001', status: 'PENDING_APPROVAL', amountPaise: 5000,
+      }),
+      approveAdjustment: jest.fn().mockResolvedValue({
+        id: 'adjustment-1', tenantId: '00000000-0000-0000-0000-000000000001', status: 'APPROVED', amountPaise: 5000,
+      }),
+      rejectAdjustment: jest.fn().mockResolvedValue({
+        id: 'adjustment-1', tenantId: '00000000-0000-0000-0000-000000000001', status: 'REJECTED', amountPaise: 5000,
+      }),
+      listTenantPayments: jest.fn().mockResolvedValue([]),
+      approvePayment: jest.fn().mockResolvedValue({ id: 'payment-1', status: 'VERIFIED', amountPaise: 10000 }),
+      rejectPayment: jest.fn().mockResolvedValue({ id: 'payment-1', status: 'REJECTED', amountPaise: 10000 }),
+      listTenantReceipts: jest.fn().mockResolvedValue([]),
+      getFinanceReport: jest.fn().mockResolvedValue({ totals: { receivedAmountPaise: 0 } }),
+      getReconciliationReport: jest.fn().mockResolvedValue({ receipts: { isBalanced: true } }),
+      listTenantPledges: jest.fn().mockResolvedValue([]),
+    };
+    audit = { record: jest.fn().mockResolvedValue(undefined) };
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -110,6 +176,10 @@ describe('API endpoints (integration)', () => {
       .useValue(tenantResolver)
       .overrideProvider(ProfileService)
       .useValue(profile)
+      .overrideProvider(GivingService)
+      .useValue(giving)
+      .overrideProvider(AuditService)
+      .useValue(audit)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -439,6 +509,143 @@ describe('API endpoints (integration)', () => {
         message: 'Tenant access denied',
         error: 'Forbidden',
       });
+  });
+
+
+  it('allows a finance viewer to read tenant expenses but not create adjustments or expenses', async () => {
+    giving.createExpense.mockClear();
+    giving.createAdjustment.mockClear();
+    await request(app.getHttpServer())
+      .get('/api/giving/expenses')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-viewer')
+      .expect(200)
+      .expect((response) => expect(response.body).toHaveLength(1));
+
+    await request(app.getHttpServer())
+      .post('/api/giving/expenses')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-viewer')
+      .set('idempotency-key', 'viewer-write-denied')
+      .send({ category: 'MAINTENANCE', amountPaise: 10000, description: 'Test expense' })
+      .expect(403);
+    await request(app.getHttpServer())
+      .post('/api/giving/payments/payment-1/adjustments')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-viewer')
+      .set('idempotency-key', 'viewer-adjustment-denied')
+      .send({ kind: 'REFUND', amountPaise: 5000, reason: 'Duplicate' })
+      .expect(403);
+    expect(giving.listTenantExpenses).toHaveBeenCalledWith('00000000-0000-0000-0000-000000000001');
+    expect(giving.createExpense).not.toHaveBeenCalled();
+    expect(giving.createAdjustment).not.toHaveBeenCalled();
+  });
+
+  it('allows a finance operator to create an expense but not approve financial decisions', async () => {
+    giving.createExpense.mockClear();
+    giving.approveExpense.mockClear();
+    giving.approveAdjustment.mockClear();
+    giving.approvePayment.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/giving/expenses')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-operator')
+      .set('idempotency-key', 'operator-expense-create')
+      .send({ category: 'MAINTENANCE', amountPaise: 10000, description: 'Replace temple lights' })
+      .expect(201)
+      .expect((response) => expect(response.body.status).toBe('PENDING_APPROVAL'));
+
+    await request(app.getHttpServer())
+      .post('/api/giving/expenses/expense-1/approve')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-operator')
+      .expect(403);
+    await request(app.getHttpServer())
+      .post('/api/giving/adjustments/adjustment-1/approve')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-operator')
+      .expect(403);
+    await request(app.getHttpServer())
+      .post('/api/giving/payments/payment-1/approve')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-operator')
+      .expect(403);
+
+    expect(giving.createExpense).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: '00000000-0000-0000-0000-000000000001',
+      actorUserId: 'user-finance-operator',
+      idempotencyKey: 'operator-expense-create',
+      amountPaise: 10000,
+    }));
+    expect(giving.approveExpense).not.toHaveBeenCalled();
+    expect(giving.approveAdjustment).not.toHaveBeenCalled();
+    expect(giving.approvePayment).not.toHaveBeenCalled();
+  });
+
+  it('requires an idempotency key for an authorized finance write before persistence', async () => {
+    giving.createExpense.mockClear();
+    await request(app.getHttpServer())
+      .post('/api/giving/expenses')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-operator')
+      .send({ category: 'MAINTENANCE', amountPaise: 10000, description: 'Replace temple lights' })
+      .expect(400)
+      .expect((response) => expect(response.body.message).toContain('Idempotency-Key'));
+    expect(giving.createExpense).not.toHaveBeenCalled();
+  });
+
+  it('allows a finance approver to approve expenses, payments and refunds through protected HTTP routes', async () => {
+    giving.approveExpense.mockClear();
+    giving.approvePayment.mockClear();
+    giving.approveAdjustment.mockClear();
+    audit.record.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/giving/expenses/expense-1/approve')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-approver')
+      .expect(201)
+      .expect((response) => expect(response.body.status).toBe('APPROVED'));
+
+    await request(app.getHttpServer())
+      .post('/api/giving/payments/payment-1/approve')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-approver')
+      .expect(201)
+      .expect((response) => expect(response.body.status).toBe('VERIFIED'));
+
+    await request(app.getHttpServer())
+      .post('/api/giving/adjustments/adjustment-1/approve')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-approver')
+      .expect(201)
+      .expect((response) => expect(response.body.status).toBe('APPROVED'));
+
+    expect(giving.approveExpense).toHaveBeenCalledWith(
+      '00000000-0000-0000-0000-000000000001', 'expense-1', 'user-finance-approver',
+    );
+    expect(giving.approvePayment).toHaveBeenCalledWith(
+      '00000000-0000-0000-0000-000000000001', 'payment-1', 'user-finance-approver',
+    );
+    expect(giving.approveAdjustment).toHaveBeenCalledWith(
+      '00000000-0000-0000-0000-000000000001', 'adjustment-1', 'user-finance-approver',
+    );
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'DONATION_EXPENSE_APPROVED' }));
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'DONATION_PAYMENT_VERIFIED' }));
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'DONATION_ADJUSTMENT_APPROVED' }));
+  });
+
+  it('does not grant finance access to tenant administrators with a legacy combined role or platform admins', async () => {
+    for (const user of ['user-legacy-finance-admin', 'user-platform-admin']) {
+      await request(app.getHttpServer())
+        .get('/api/giving/expenses')
+        .set('Host', 'badebabakharadi.com')
+        .set('x-test-user', user)
+        .expect(403)
+        .expect((response) => expect(response.body.message).toBe('Permission denied'));
+    }
+    expect(giving.listTenantExpenses).not.toHaveBeenCalled();
   });
 
 });
