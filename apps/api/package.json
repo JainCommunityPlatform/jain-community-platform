@@ -10,7 +10,8 @@
     "test": "jest --runInBand",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "test:integration": "jest --config ./test/jest-e2e.json --runInBand"
+    "test:integration": "jest --config ./test/jest-e2e.json --runInBand",
+    "test:firestore-emulator": "jest --config ./test/jest-firestore-emulator.json --runInBand"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.6",
