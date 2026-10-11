@@ -143,19 +143,22 @@ describe('GivingService', () => {
 
     const paymentErrorScenarios: Array<{
       persistenceError: string;
-      expectedException: new (...args: any[]) => Error;
+      expectedException: 'not-found' | 'conflict' | 'bad-request';
     }> = [
-      { persistenceError: 'PLEDGE_NOT_FOUND', expectedException: NotFoundException },
-      { persistenceError: 'PLEDGE_CANCELLED', expectedException: ConflictException },
-      { persistenceError: 'PAYMENT_AMOUNT_INVALID', expectedException: BadRequestException },
-      { persistenceError: 'PAYMENT_IDEMPOTENCY_CONFLICT', expectedException: ConflictException },
+      { persistenceError: 'PLEDGE_NOT_FOUND', expectedException: 'not-found' },
+      { persistenceError: 'PLEDGE_CANCELLED', expectedException: 'conflict' },
+      { persistenceError: 'PAYMENT_AMOUNT_INVALID', expectedException: 'bad-request' },
+      { persistenceError: 'PAYMENT_IDEMPOTENCY_CONFLICT', expectedException: 'conflict' },
     ];
 
     it.each(paymentErrorScenarios)(
       'rejects payment scenario $persistenceError with the documented API error',
       async ({ persistenceError, expectedException }) => {
         firestore.recordDonationPayment.mockRejectedValue(new Error(persistenceError));
-        await expect(service().recordPayment(paymentInput)).rejects.toBeInstanceOf(expectedException);
+        const result = expect(service().recordPayment(paymentInput)).rejects;
+        if (expectedException === 'not-found') await result.toBeInstanceOf(NotFoundException);
+        if (expectedException === 'conflict') await result.toBeInstanceOf(ConflictException);
+        if (expectedException === 'bad-request') await result.toBeInstanceOf(BadRequestException);
         expect(firestore.recordDonationPayment).toHaveBeenCalledWith(paymentInput);
       },
     );
