@@ -22,7 +22,21 @@ class _FinanceConsolePageState extends State<FinanceConsolePage>{
   String money(dynamic v){final n=v is num?v.toInt():int.tryParse('$v')??0;return '₹'+(n/100).toStringAsFixed(2);}
   String err(Object e)=>e is ApiException?e.message:'Request failed. Please retry.';
   Future<void> load()async{setState(() { loading = true; error = null; });try{final r=await Future.wait<dynamic>([widget.api.getObject('/api/giving/reports/summary'),widget.api.getObject('/api/giving/reports/reconciliation'),widget.api.getList('/api/giving/campaigns'),widget.api.getList('/api/giving/pledges'),widget.api.getList('/api/giving/payments'),widget.api.getList('/api/giving/expenses'),widget.api.getList('/api/giving/adjustments'),widget.api.getList('/api/giving/receipts')]);if(!mounted)return;setState(() { summary=Map<String,dynamic>.from(r[0] as Map); recon=Map<String,dynamic>.from(r[1] as Map); campaigns=maps(r[2]); pledges=maps(r[3]); payments=maps(r[4]); expenses=maps(r[5]); adjustments=maps(r[6]); receipts=maps(r[7]); loading=false; });}catch(e){if(mounted)setState(() { error=e; loading=false; });}}
-  Future<String?> ask(String title,String label,{bool required=true,TextInputType keyboard=TextInputType.text})async{final c=TextEditingController();final k=GlobalKey<FormState>();final v=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(title:Text(title),content:Form(key:k,child:TextFormField(controller:c,keyboardType:keyboard,decoration:InputDecoration(labelText:label),validator:(v)=>required&&(v==null||v.trim().isEmpty)?'Required':null)),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Cancel')),FilledButton(onPressed:(){if(k.currentState?.validate()??false)Navigator.pop(ctx,c.text.trim());},child:const Text('Continue'))]));c.dispose();return v;}
+  Future<String?> ask(
+    String title,
+    String label, {
+    bool required = true,
+    TextInputType keyboard = TextInputType.text,
+  }) =>
+      showDialog<String>(
+        context: context,
+        builder: (_) => _FinanceTextPromptDialog(
+          title: title,
+          label: label,
+          isRequired: required,
+          keyboard: keyboard,
+        ),
+      );
   Future<String?> choose(String title,List<String> values)=>showDialog<String>(context:context,builder:(ctx)=>SimpleDialog(title:Text(title),children:[for(final v in values)SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,v),child:Text(v.replaceAll('_',' ')))]));
   Future<void> run(Future<void> Function() fn,String success)async{setState(()=>busy=true);try{await fn();await load();if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(success)));}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(err(e))));}finally{if(mounted)setState(()=>busy=false);}}
   Future<void> createCampaign()async{final n=await ask('New campaign','Campaign name');if(n==null)return;final d=await ask('Campaign description','Description',required:false);if(d==null)return;await run(()async{await widget.api.post('/api/giving/campaigns',body:{'name':n,'description':d});},'Campaign created.');}
@@ -44,4 +58,59 @@ class _FinanceConsolePageState extends State<FinanceConsolePage>{
   Widget adjustmentList()=>ListView(padding:const EdgeInsets.all(16),children:[header('Refunds and reversals'),if(adjustments.isEmpty)empty('No requests found.')else for(final a in adjustments)card(s(a['kind'])+' • '+money(a['amountPaise']),s(a['reason'])+' • '+s(a['status']),Icons.currency_exchange,action:a['status']=='PENDING_APPROVAL'?PopupMenuButton<String>(onSelected:(v)=>v=='approve'?review('/api/giving/adjustments/'+s(a['id'])+'/approve'):reject('/api/giving/adjustments/'+s(a['id'])+'/reject'),itemBuilder:(_)=>const[PopupMenuItem(value:'approve',child:Text('Approve')),PopupMenuItem(value:'reject',child:Text('Reject'))]):null)]);
   Widget receiptList()=>ListView(padding:const EdgeInsets.all(16),children:[header('Issued receipts'),if(receipts.isEmpty)empty('No receipts found.')else for(final r in receipts)card(s(r['receiptNumber'],'Receipt'),money(r['amountPaise'])+' • '+s(r['method'])+' • '+s(r['issuedAt']??r['createdAt']),Icons.receipt_outlined)]);
   Widget reconList(){final a=Map<String,dynamic>.from((recon['adjustments'] as Map?)??const{});return ListView(padding:const EdgeInsets.all(16),children:[header('Reconciliation'),const Text('Operational control report only; it does not confirm bank settlement or replace a double-entry ledger.'),card('Verified payments',money(recon['verifiedPaymentAmountPaise']??recon['receivedAmountPaise']),Icons.payments_outlined),card('Approved expenses',money(recon['approvedExpenseAmountPaise']),Icons.receipt_long_outlined),card('Approved adjustments',money(a['approvedAmountPaise']),Icons.currency_exchange),card('Net after expenses and adjustments',money(recon['netAfterApprovedExpensesAndAdjustmentsPaise']),Icons.account_balance),card('Receipt discrepancies',((recon['receiptDiscrepancies'] as List?)?.length??0).toString(),Icons.fact_check_outlined)]);}
+}
+
+class _FinanceTextPromptDialog extends StatefulWidget {
+  const _FinanceTextPromptDialog({
+    required this.title,
+    required this.label,
+    required this.isRequired,
+    required this.keyboard,
+  });
+
+  final String title;
+  final String label;
+  final bool isRequired;
+  final TextInputType keyboard;
+
+  @override
+  State<_FinanceTextPromptDialog> createState() => _FinanceTextPromptDialogState();
+}
+
+class _FinanceTextPromptDialogState extends State<_FinanceTextPromptDialog> {
+  final TextEditingController _controller = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: Text(widget.title),
+        content: Form(
+          key: _formKey,
+          child: TextFormField(
+            controller: _controller,
+            keyboardType: widget.keyboard,
+            decoration: InputDecoration(labelText: widget.label),
+            validator: (value) => widget.isRequired && (value == null || value.trim().isEmpty)
+                ? 'Required'
+                : null,
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              if (_formKey.currentState?.validate() ?? false) {
+                Navigator.pop(context, _controller.text.trim());
+              }
+            },
+            child: const Text('Continue'),
+          ),
+        ],
+      );
 }

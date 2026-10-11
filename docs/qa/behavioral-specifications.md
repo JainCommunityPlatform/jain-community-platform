@@ -637,3 +637,66 @@ Then the API returns 403 before finance data is read
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — “does not grant finance access to tenant administrators with a legacy combined role or platform admins”.
 
+## Flutter donor and finance-console workflows — executable widget coverage
+
+### Scenario: Donor can review campaign, pledge, receipt and notification state
+
+Given the donor giving page loads successfully
+When the donor switches between Campaigns, My pledges, Receipts and Notifications
+Then each tab displays data from the authenticated donor or resolved tenant endpoint
+And pledge paid/outstanding amounts and issued receipt numbers are visible
+When the donor marks an unread notification as read
+Then the read action is submitted and the notification changes to its read state after refresh
+
+Executable regression: `apps/flutter/test/features/giving/presentation/giving_workflow_test.dart` — “browses campaigns, pledge history, receipts and marks a notification read”.
+
+### Scenario: Donor pledge submission validates amount and uses integer paise
+
+Given an active campaign is displayed
+When the donor submits an empty or invalid pledge amount
+Then validation prevents the API request
+When the donor submits a valid decimal rupee amount
+Then the amount is converted to integer paise
+And the request includes an idempotency key
+And the pledge appears in My pledges with a success confirmation
+
+Executable regression: `apps/flutter/test/features/giving/presentation/giving_workflow_test.dart` — “validates a pledge amount and submits paise with an idempotency key”.
+
+### Scenario: Donor giving page recovers from an API failure
+
+Given the campaign endpoint returns an error
+When the donor opens the giving page
+Then a useful error and Retry action are shown
+When the endpoint becomes available and the donor retries
+Then the campaign list loads and the error is cleared
+
+Executable regression: `apps/flutter/test/features/giving/presentation/giving_workflow_test.dart` — “shows a recoverable load error and retries successfully”.
+
+### Scenario: Finance workspace displays summary and reconciliation values
+
+Given the finance console receives summary and reconciliation responses
+When the finance user opens Overview and then Reconciliation
+Then displayed rupee totals are converted from integer paise
+And verified payments, approved expenses, approved adjustments and receipt discrepancies are shown
+And the UI clearly identifies reconciliation as an operational control report rather than bank settlement proof or a statutory ledger
+
+Executable regression: `apps/flutter/test/features/giving/presentation/giving_workflow_test.dart` — “shows reconciled totals and supports switching to the reconciliation report”.
+
+### Scenario: Finance operator submits an expense from the workspace
+
+Given the finance workspace is loaded
+When an operator enters a category, description and valid rupee amount
+Then the expense request uses integer paise and an idempotency key
+And the new expense is displayed as pending approval with a confirmation
+
+Executable regression: `apps/flutter/test/features/giving/presentation/giving_workflow_test.dart` — “records an expense with paise conversion and a unique idempotency key”.
+
+### Scenario: Finance approver decision updates the displayed expense state
+
+Given a pending expense is displayed in the finance workspace
+When the finance approver chooses Approve
+Then the approval endpoint is called
+And the workspace reloads and displays the approved status with a decision confirmation
+
+Executable regression: `apps/flutter/test/features/giving/presentation/giving_workflow_test.dart` — “approves a pending expense, refreshes state and reports the decision”.
+
