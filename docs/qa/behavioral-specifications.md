@@ -238,3 +238,15 @@ Additional HTTP integration scenarios exercise protected report and record endpo
 | Finance summary | Membership belongs to another tenant | HTTP 403, tenant access denied |
 
 These tests expand API boundary coverage only; persistence correctness, Firebase identity integration, and the full donor-to-receipt lifecycle remain separate verification tasks.
+
+
+## Donor pledge query isolation
+
+### Scenario: Donor pledge history is queried by tenant and donor
+Given tenant A has pledges for donor A and donor B, and tenant B has a pledge for donor A
+When donor A requests their pledge history for tenant A
+Then the persistence query is constrained by both tenant A and donor A
+And only tenant A's pledges belonging to donor A are returned
+And the query does not first load every pledge belonging to tenant A into application memory
+
+The implementation uses a Firestore query constrained by both `tenantId` and `donorUserId`. Existing persistence workflow tests cover returned results across two donors and two tenants using a fake Firestore adapter; this is not a live Firestore emulator test.

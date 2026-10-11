@@ -1095,8 +1095,13 @@ export class FirestoreService implements OnModuleInit {
   }
 
   async listDonationPledgesForDonor(tenantId: string, donorUserId: string) {
-    const pledges = await this.listDonationPledgesForTenant(tenantId);
-    return pledges.filter((pledge) => pledge.donorUserId === donorUserId);
+    const snapshot = await this.getDb().collection('donationPledges')
+      .where('tenantId', '==', tenantId)
+      .where('donorUserId', '==', donorUserId)
+      .get();
+    return snapshot.docs
+      .map((doc) => this.toDonationPledge(doc.id, doc.data()))
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
   async recordDonationPayment(input: {
