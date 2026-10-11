@@ -127,7 +127,7 @@ And no receipt is issued for the rejected approval attempt
 
 Executable regressions: `apps/api/src/database/firestore.service.spec.ts` — “completes a pledge across multiple approved partial payments with distinct receipts” and “rejects a second pending payment when approval would exceed the remaining pledge balance”. Both use a fake Firestore adapter; concurrent transactions and live Firestore atomicity remain unverified.
 
-Emulator-level regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “rejects overpayment and replayed approval without changing the persisted balance or receipts”. This runs against the Firestore emulator and verifies persisted state after rejected approval and idempotent recording. It does not replace staging verification or a dedicated concurrent-approval race test.
+Emulator-level regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “rejects overpayment and replayed approval without changing the persisted balance or receipts”. This runs against the Firestore emulator and verifies persisted state after rejected approval and idempotent recording. It does not replace staging verification. The separate concurrent-approval race scenario below exercises transaction contention in the emulator.
 
 
 ### Scenario: Replaying payment approval does not issue a second receipt
@@ -153,6 +153,10 @@ And the outstanding pledge balance is 70000 paise
 And the reconciliation reports the issued receipt as balanced
 
 Executable regression: `apps/api/src/database/firestore.service.spec.ts` — “keeps finance summary and reconciliation totals aligned across partial and pending payments”. The test uses fake Firestore; it does not establish live persistence or transaction guarantees.
+
+
+
+Emulator-level concurrency regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “allows only one concurrent approval when two payments would overpay a pledge”. Two 60000-paise approvals race against a 100000-paise pledge; exactly one approval and one receipt must persist, leaving the pledge partially paid at 60000 paise. This exercises emulator transaction contention but is not a substitute for production/staging verification.
 
 ## Feature: Expenses and reconciliation
 
