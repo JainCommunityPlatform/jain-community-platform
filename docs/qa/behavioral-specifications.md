@@ -466,7 +466,11 @@ Executable regression: `apps/api/src/database/firestore.service.firestore-emulat
 
 ### Scenario: Refund adjustments preserve idempotency and reconcile balances atomically
 
-Given a verified payment has an issued receipt and an unpaid pledge balance
+Given a payment has been recorded but is still pending approval
+When finance attempts to create a refund adjustment
+Then the request is rejected because the payment is not verified
+And no adjustment amount is reserved
+Given the payment is verified and has an issued receipt and an unpaid pledge balance
 When finance creates a refund adjustment within the remaining payment amount
 Then the identical request returns the existing pending adjustment
 And reusing its key with changed data is rejected
