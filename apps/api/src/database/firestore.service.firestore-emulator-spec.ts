@@ -137,4 +137,44 @@ describe('FirestoreService against the Firestore emulator', () => {
     expect(receipts).toHaveLength(1);
   });
 
+
+  it('allocates unique receipt numbers when separate pledges are approved concurrently', async () => {
+    const suffix = `emulator-receipt-race-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const campaign = await service.createGivingCampaign({
+      tenantId, actorUserId: `campaign-admin-${suffix}`, name: 'Emulator receipt sequence campaign',
+    });
+    await service.updateGivingCampaignStatus(tenantId, campaign.id, 'ACTIVE');
+
+    const firstPledge = await service.createDonationPledge({
+      tenantId, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 50000, idempotencyKey: `pledge-a-${suffix}`,
+    });
+    const secondPledge = await service.createDonationPledge({
+      tenantId, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 50000, idempotencyKey: `pledge-b-${suffix}`,
+    });
+    const firstPayment = await service.recordDonationPayment({
+      tenantId, pledgeId: firstPledge.id, actorUserId: `cashier-a-${suffix}`,
+      amountPaise: 50000, method: 'UPI', idempotencyKey: `payment-a-${suffix}`,
+    });
+    const secondPayment = await service.recordDonationPayment({
+      tenantId, pledgeId: secondPledge.id, actorUserId: `cashier-b-${suffix}`,
+      amountPaise: 50000, method: 'BANK_TRANSFER', idempotencyKey: `payment-b-${suffix}`,
+    });
+
+    const outcomes = await Promise.allSettled([
+      service.approveDonationPayment(tenantId, firstPayment.id, `approver-a-${suffix}`),
+      service.approveDonationPayment(tenantId, secondPayment.id, `approver-b-${suffix}`),
+    ]);
+    expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(2);
+
+    const receipts = (await service.listDonationReceiptsForTenant(tenantId))
+      .filter((receipt) => [firstPayment.id, secondPayment.id].includes(receipt.paymentId));
+    expect(receipts).toHaveLength(2);
+    expect(new Set(receipts.map((receipt) => receipt.receiptNumber)).size).toBe(2);
+    expect(new Set(receipts.map((receipt) => receipt.paymentId)).size).toBe(2);
+    expect(receipts.every((receipt) => /^JCP-/.test(receipt.receiptNumber))).toBe(true);
+  });
+
 });
