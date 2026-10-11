@@ -329,3 +329,14 @@ And the receipt numbers are distinct and conform to the tenant receipt-number fo
 And both receipt records refer to the correct payment
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “allocates unique receipt numbers when separate pledges are approved concurrently”. This exercises contention on the tenant/year receipt-sequence document in the Firestore emulator; it does not claim staging or production verification.
+
+### Scenario: Failed overpayment approval leaves no partial financial side effects
+
+Given a 100000-paise pledge has one approved 60000-paise payment and a second pending 50000-paise payment
+When finance attempts to approve the second payment and the operation is rejected as exceeding the pledge balance
+Then the pledge remains partially paid at 60000 paise
+And the rejected approval attempt leaves the second payment pending
+And no receipt is issued for the second payment
+And reconciliation has no missing, orphaned, or amount-mismatched receipts
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “rejects overpayment and replayed approval without changing the persisted balance or receipts”. The assertions inspect persisted Firestore emulator state; this does not claim production/staging verification.
