@@ -93,6 +93,18 @@ And no tenant media or configuration is changed
 - Invalid amounts, wrong tenant, invalid transitions and concurrent over-payment/over-adjustment are rejected.
 - Original verified payment/receipt records remain auditable after an approved reversal.
 
+
+### Scenario: Payment approval remains committed when notification delivery fails
+
+Given a pending payment is approved by an authorized independent finance approver
+And the persistence operation returns the verified payment and receipt reference
+When post-approval notification dispatch fails
+Then the approval result remains successful
+And the payment persistence operation is not repeated or rolled back
+And the notification failure does not turn a committed financial operation into an API failure
+
+Executable regression: `apps/api/src/giving/giving.service.spec.ts` — “keeps an approved payment successful when post-approval notification dispatch fails”. This unit test uses a mocked persistence boundary; it proves service-level failure isolation only, not Firestore transaction atomicity or real receipt persistence.
+
 ## Feature: Expenses and reconciliation
 
 - A finance operator submits an expense with an integer-paise amount and evidence reference.
