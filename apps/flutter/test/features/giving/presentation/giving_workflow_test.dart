@@ -167,7 +167,7 @@ void main() {
             'status': 'PLEDGED',
           }, 201);
         }
-        return jsonResponse({'message': 'Unexpected request ' + request.method + ' ' + request.url.path}, 404);
+        return jsonResponse({'message': 'Unexpected request ${request.method} ${request.url.path}'}, 404);
       });
 
       await tester.pumpWidget(MaterialApp(home: DonorGivingPage(api: apiFor(client))));
