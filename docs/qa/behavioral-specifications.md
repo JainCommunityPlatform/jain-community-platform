@@ -156,3 +156,38 @@ And no tenant media or configuration is changed
 | Mobile session/profile | Existing API integration tests exercise profile reads/updates and activity history | Firebase emulator/device login, revoked membership, sign-out/session clearing, and offline/error states |
 
 Do not label a workflow fully covered until its remaining verification has executable tests and the relevant CI/environment evidence. A passing unit or widget test is not proof that Firebase, deployed storage, or a real device workflow works.
+
+
+## Feature: Finance authorization at the HTTP boundary
+
+### Scenario: Tenant administrator cannot list tenant payments
+
+Given an authenticated tenant administrator belongs to tenant A
+And the request resolves tenant A as the active tenant
+When the administrator requests the tenant payment list directly from the API
+Then the API responds with 403 Forbidden
+And the finance service is not invoked
+
+### Scenario: Tenant administrator cannot approve a payment by calling the API directly
+
+Given an authenticated tenant administrator belongs to tenant A
+And a payment identifier is supplied
+When the administrator submits a payment approval request directly to the API
+Then the API responds with 403 Forbidden
+And payment approval is not invoked
+
+### Scenario: A finance role cannot be used with another tenant's membership
+
+Given an authenticated user has a membership associated with tenant B
+And the request resolves tenant A as the active tenant
+When the user requests tenant A's payment list directly from the API
+Then the API responds with 403 Forbidden
+And no financial data is returned
+
+### Executable test traceability
+
+| Behaviour | Executable test | Layer | Evidence boundary |
+|---|---|---|---|
+| Tenant administrator is denied payment-list access | `apps/api/test/app.e2e-spec.ts` — “GET /api/giving/payments denies tenant administrators at the HTTP authorization boundary” | NestJS HTTP integration | Real Nest guards/interceptors; mocked identity and membership providers |
+| Tenant administrator is denied payment approval | `apps/api/test/app.e2e-spec.ts` — “POST /api/giving/payments/:paymentId/approve denies tenant administrators before payment processing” | NestJS HTTP integration | Authorization rejection at HTTP boundary; no Firestore persistence claim |
+| Cross-tenant finance request is denied | `apps/api/test/app.e2e-spec.ts` — “GET /api/giving/payments denies a finance user whose membership belongs to another tenant” | NestJS HTTP integration | Real Nest guards/interceptors; tenant and identity fixtures are mocked |
