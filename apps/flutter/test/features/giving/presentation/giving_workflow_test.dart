@@ -212,6 +212,7 @@ void main() {
 
       await tester.pumpWidget(MaterialApp(home: DonorGivingPage(api: apiFor(client))));
       await tester.pumpAndSettle();
+      expect(find.text('Giving service temporarily unavailable'), findsOneWidget);
       expect(find.text('Retry'), findsOneWidget);
 
       failFirstCampaignRequest = false;
