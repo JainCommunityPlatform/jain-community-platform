@@ -511,3 +511,28 @@ Then the payment's adjusted amount increases and the pledge paid amount is reduc
 And the original payment receipt remains present exactly once
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “releases a rejected refund reservation and permits a later valid full refund”. This verifies persisted emulator transaction outcomes, not production/staging behaviour.
+
+### Scenario: Refund requests require a verified payment
+
+Given a payment is still pending approval
+When a user requests a refund against that payment
+Then the request is rejected because the payment is not verified
+And no adjustment is persisted or reserved
+And the payment, pledge balance and receipt list remain unchanged
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “rejects refund requests against unverified payments without reserving adjustment balance”. This verifies Firestore emulator persistence, not production/staging behaviour.
+
+### Scenario: Reconciliation agrees with persisted donations, receipts, expenses and refunds
+
+Given a 100000-paise payment has been verified and its receipt issued
+And a 15000-paise expense has been approved
+And a 20000-paise refund has been approved
+When finance generates the persisted reconciliation report
+Then verified donations and issued receipts both total 100000 paise with no missing, orphaned, or mismatched receipts
+And approved expenses total 15000 paise
+And approved adjustments total 20000 paise
+And net after expenses is 85000 paise
+And net after expenses and adjustments is 65000 paise
+And the pledge balance is 80000 paise
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “reconciles persisted donation, receipt, approved expense and approved refund totals”. This validates the service against Firestore emulator persistence, not production/staging data.
