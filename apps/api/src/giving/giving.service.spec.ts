@@ -196,4 +196,35 @@ describe('GivingService', () => {
     });
   });
 
+
+  it('keeps an approved payment successful when post-approval notification dispatch fails', async () => {
+    const persistedPayment = {
+      id: 'payment-verified',
+      tenantId: 'tenant-a',
+      donorUserId: 'donor-a',
+      status: 'VERIFIED',
+      receiptId: 'receipt-a',
+    };
+    firestore.approveDonationPayment.mockResolvedValue(persistedPayment);
+    const dispatcher = {
+      dispatchForEntity: jest.fn().mockRejectedValue(new Error('notification provider unavailable')),
+    };
+    const instance = new GivingService(firestore as never, dispatcher as never);
+
+    await expect(instance.approvePayment('tenant-a', 'payment-verified', 'independent-approver'))
+      .resolves.toEqual(persistedPayment);
+
+    expect(firestore.approveDonationPayment).toHaveBeenCalledWith(
+      'tenant-a',
+      'payment-verified',
+      'independent-approver',
+    );
+    expect(dispatcher.dispatchForEntity).toHaveBeenCalledWith({
+      tenantId: 'tenant-a',
+      userId: 'donor-a',
+      entityType: 'DonationReceipt',
+      entityId: 'payment-verified',
+    });
+  });
+
 });
