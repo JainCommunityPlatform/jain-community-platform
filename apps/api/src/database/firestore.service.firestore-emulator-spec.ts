@@ -480,6 +480,12 @@ describe('FirestoreService against the Firestore emulator', () => {
       amountPaise: 12500, reference: `INV-${suffix}`,
       evidenceReferences: [`evidence://invoice-${suffix}`], idempotencyKey: `expense-${suffix}`,
     };
+    await expect(service.createDonationExpense({ ...input, amountPaise: 0, idempotencyKey: `invalid-amount-${suffix}` }))
+      .rejects.toThrow('EXPENSE_AMOUNT_INVALID');
+    await expect(service.createDonationExpense({ ...input, incurredAt: 'not-a-date', idempotencyKey: `invalid-date-${suffix}` }))
+      .rejects.toThrow('EXPENSE_DATE_INVALID');
+    expect(await service.listDonationExpensesForTenant(isolatedTenantId)).toHaveLength(0);
+
     const expense = await service.createDonationExpense(input);
     const replay = await service.createDonationExpense(input);
     expect(replay.id).toBe(expense.id);
