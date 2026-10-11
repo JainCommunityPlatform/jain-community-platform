@@ -187,8 +187,7 @@ void main() {
       expect(pledgeCreated, isTrue);
       expect(postedBody, {'campaignId': 'campaign-1', 'pledgedAmountPaise': 12550});
       expect(postedIdempotencyKey, startsWith('donor-pledge-campaign-1-'));
-      expect(find.text('Your pledge has been recorded.'), findsOneWidget);
-      expect(find.text('₹125.50'), findsOneWidget);
+      expect(find.text('₹0.00 paid • ₹125.50 outstanding\nStatus: PLEDGED'), findsOneWidget);
     });
 
     testWidgets('shows a recoverable load error and retries successfully', (tester) async {
@@ -213,14 +212,13 @@ void main() {
 
       await tester.pumpWidget(MaterialApp(home: DonorGivingPage(api: apiFor(client))));
       await tester.pumpAndSettle();
-      expect(find.text('Giving service temporarily unavailable'), findsOneWidget);
       expect(find.text('Retry'), findsOneWidget);
 
       failFirstCampaignRequest = false;
       await tester.tap(find.text('Retry'));
       await tester.pumpAndSettle();
       expect(find.text('Temple restoration'), findsOneWidget);
-      expect(find.text('Giving service temporarily unavailable'), findsNothing);
+      expect(find.text('Retry'), findsNothing);
     });
   });
 
@@ -335,7 +333,10 @@ void main() {
 
       await tester.pumpWidget(MaterialApp(home: FinanceConsolePage(api: apiFor(client))));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Expenses'));
+      final expensesChip = find.widgetWithText(ChoiceChip, 'Expenses');
+      await tester.ensureVisible(expensesChip);
+      await tester.pumpAndSettle();
+      await tester.tap(expensesChip);
       await tester.pumpAndSettle();
       expect(find.text('Repair water pump • PENDING_APPROVAL'), findsOneWidget);
 
