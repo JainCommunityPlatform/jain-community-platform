@@ -1,4 +1,4 @@
-import { ExecutionContext, INestApplication } from '@nestjs/common';
+import { ExecutionContext, INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
@@ -23,6 +23,9 @@ describe('API endpoints (integration)', () => {
   let giving: {
     listTenantExpenses: jest.Mock;
     createExpense: jest.Mock;
+    createPledge: jest.Mock;
+    recordPayment: jest.Mock;
+    createAdjustment: jest.Mock;
     approveExpense: jest.Mock;
     rejectExpense: jest.Mock;
     listTenantAdjustments: jest.Mock;
@@ -128,6 +131,9 @@ describe('API endpoints (integration)', () => {
     };
 
     giving = {
+      createPledge: jest.fn().mockResolvedValue({ id: 'pledge-created', status: 'PLEDGED', pledgedAmountPaise: 5000 }),
+      recordPayment: jest.fn().mockResolvedValue({ id: 'payment-created', status: 'PENDING_APPROVAL', amountPaise: 5000 }),
+      createAdjustment: jest.fn().mockResolvedValue({ id: 'adjustment-created', status: 'PENDING_APPROVAL', amountPaise: 1000 }),
       listTenantExpenses: jest.fn().mockResolvedValue([
         { id: 'expense-1', tenantId: '00000000-0000-0000-0000-000000000001', status: 'PENDING_APPROVAL', amountPaise: 10000 },
       ]),
@@ -184,6 +190,7 @@ describe('API endpoints (integration)', () => {
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api');
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
     await app.init();
   });
 
@@ -704,6 +711,94 @@ describe('API endpoints (integration)', () => {
         .expect((response) => expect(response.body.message).toBe('Permission denied'));
     }
     expect(giving.listTenantExpenses).not.toHaveBeenCalled();
+  });
+
+  it('requires idempotency keys for pledge, payment and adjustment writes before calling the service', async () => {
+    giving.createPledge.mockClear();
+    giving.recordPayment.mockClear();
+    giving.createAdjustment.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/giving/pledges')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .send({ campaignId: 'campaign-1', pledgedAmountPaise: 5000 })
+      .expect(400)
+      .expect((response) => expect(response.body.message).toContain('Idempotency-Key'));
+
+    await request(app.getHttpServer())
+      .post('/api/giving/pledges/pledge-1/payments')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-operator')
+      .send({ amountPaise: 5000, method: 'UPI' })
+      .expect(400)
+      .expect((response) => expect(response.body.message).toContain('Idempotency-Key'));
+
+    await request(app.getHttpServer())
+      .post('/api/giving/payments/payment-1/adjustments')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-operator')
+      .send({ kind: 'REFUND', amountPaise: 1000, reason: 'Duplicate payment' })
+      .expect(400)
+      .expect((response) => expect(response.body.message).toContain('Idempotency-Key'));
+
+    expect(giving.createPledge).not.toHaveBeenCalled();
+    expect(giving.recordPayment).not.toHaveBeenCalled();
+    expect(giving.createAdjustment).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid payment, adjustment and decision payloads before invoking persistence services', async () => {
+    giving.recordPayment.mockClear();
+    giving.createAdjustment.mockClear();
+    giving.rejectPayment.mockClear();
+    giving.rejectExpense.mockClear();
+    giving.rejectAdjustment.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/giving/pledges/pledge-1/payments')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-operator')
+      .set('idempotency-key', 'invalid-payment-amount')
+      .send({ amountPaise: 0, method: 'UPI' })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post('/api/giving/pledges/pledge-1/payments')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-operator')
+      .set('idempotency-key', 'invalid-payment-method')
+      .send({ amountPaise: 1000, method: 'CRYPTO' })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post('/api/giving/payments/payment-1/adjustments')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-operator')
+      .set('idempotency-key', 'invalid-adjustment')
+      .send({ kind: 'DONATION', amountPaise: 0, reason: 'Duplicate payment' })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post('/api/giving/payments/payment-1/reject')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-approver')
+      .send({ reason: 'no' })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post('/api/giving/expenses/expense-1/reject')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-approver')
+      .send({ reason: '' })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post('/api/giving/adjustments/adjustment-1/reject')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-approver')
+      .send({ reason: 'ok', extra: 'must be rejected' })
+      .expect(400);
+
+    expect(giving.recordPayment).not.toHaveBeenCalled();
+    expect(giving.createAdjustment).not.toHaveBeenCalled();
+    expect(giving.rejectPayment).not.toHaveBeenCalled();
+    expect(giving.rejectExpense).not.toHaveBeenCalled();
+    expect(giving.rejectAdjustment).not.toHaveBeenCalled();
   });
 
 });
