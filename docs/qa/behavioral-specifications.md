@@ -785,3 +785,30 @@ And the expense remains pending rather than showing a false approval
 
 Executable regression: `apps/flutter/test/features/giving/presentation/giving_workflow_test.dart` — “surfaces an approval API failure and keeps the expense pending”.
 
+
+
+## HTTP contract and request-validation coverage
+
+### Scenario: Financial writes require idempotency keys at the HTTP boundary
+
+Given an authenticated donor or authorized finance operator submits a pledge, payment, or adjustment request
+When the required `Idempotency-Key` header is missing
+Then the API responds with HTTP 400 and identifies the missing header
+And the corresponding service method is not called
+And no financial persistence operation is attempted
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “requires idempotency keys for pledge, payment and adjustment writes before calling the service”. This exercises the NestJS HTTP pipeline with mocked services, not production persistence.
+
+### Scenario: Invalid finance payloads are rejected before service invocation
+
+Given a finance operator submits a payment or adjustment request with an invalid amount or method
+When the request passes through the API validation pipe
+Then the API responds with HTTP 400
+And no payment or adjustment service method is invoked
+
+Given a finance approver submits a rejection reason that is too short or empty, or includes an unsupported field
+When the request is validated
+Then the API responds with HTTP 400
+And no rejection service method is invoked
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “rejects invalid payment, adjustment and decision payloads before invoking persistence services”. The suite configures the same whitelist, forbidden-extra-fields and transform validation options as the production bootstrap; service methods are mocked, so this does not prove persistence or live environment behaviour.
