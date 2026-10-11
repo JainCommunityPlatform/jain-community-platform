@@ -971,4 +971,196 @@ describe('FirestoreService against the Firestore emulator', () => {
     expect(notifications.docs).toHaveLength(1);
   });
 
+
+  it('flags missing, orphaned and amount-mismatched receipts in persisted reconciliation', async () => {
+    const suffix = `emulator-receipt-integrity-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const isolatedTenantId = `${tenantId}-${suffix}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const campaign = await service.createGivingCampaign({
+      tenantId: isolatedTenantId, actorUserId: `campaign-admin-${suffix}`, name: 'Receipt integrity campaign',
+    });
+    await service.updateGivingCampaignStatus(isolatedTenantId, campaign.id, 'ACTIVE');
+    const pledge = await service.createDonationPledge({
+      tenantId: isolatedTenantId, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 1000000, idempotencyKey: `pledge-${suffix}`,
+    });
+    const payments = [];
+    for (const [index, amountPaise] of [100000, 200000, 150000].entries()) {
+      const payment = await service.recordDonationPayment({
+        tenantId: isolatedTenantId, pledgeId: pledge.id, actorUserId: `cashier-${suffix}`,
+        amountPaise, method: 'UPI', idempotencyKey: `payment-${suffix}-${index}`,
+      });
+      await service.approveDonationPayment(isolatedTenantId, payment.id, `reviewer-${suffix}-${index}`);
+      payments.push(payment);
+    }
+
+    const receipts = await service.listDonationReceiptsForTenant(isolatedTenantId);
+    const mismatchedReceipt = receipts.find((receipt) => receipt.paymentId === payments[0].id);
+    const missingReceipt = receipts.find((receipt) => receipt.paymentId === payments[1].id);
+    const orphanReceipt = receipts.find((receipt) => receipt.paymentId === payments[2].id);
+    expect(mismatchedReceipt).toBeDefined();
+    expect(missingReceipt).toBeDefined();
+    expect(orphanReceipt).toBeDefined();
+
+    await getFirestore().collection('donationReceipts').doc(mismatchedReceipt!.id).update({
+      amountPaise: mismatchedReceipt!.amountPaise + 100,
+    });
+    await getFirestore().collection('donationReceipts').doc(missingReceipt!.id).delete();
+    await getFirestore().collection('donationPayments').doc(payments[2].id).update({ status: 'REJECTED' });
+
+    const report = await service.getDonationReconciliationReport(isolatedTenantId);
+    expect(report.receipts).toMatchObject({
+      missingReceiptPaymentIds: [payments[1].id],
+      orphanReceiptPaymentIds: [payments[2].id],
+      amountMismatchPaymentIds: [payments[0].id],
+      isBalanced: false,
+    });
+    expect(report.receipts.amountDifferencePaise).toBe(49900);
+    expect(report.donations).toMatchObject({ verifiedAmountPaise: 300000, verifiedPaymentCount: 2 });
+  });
+
+  it('keeps finance and reconciliation totals aligned across verified, pending and rejected states', async () => {
+    const suffix = `emulator-report-state-matrix-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tenantA = `${tenantId}-a-${suffix}`;
+    const tenantB = `${tenantId}-b-${suffix}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const campaign = await service.createGivingCampaign({
+      tenantId: tenantA, actorUserId: `campaign-admin-${suffix}`, name: 'Report state campaign',
+    });
+    await service.updateGivingCampaignStatus(tenantA, campaign.id, 'ACTIVE');
+    const pledge = await service.createDonationPledge({
+      tenantId: tenantA, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 500000, idempotencyKey: `pledge-${suffix}`,
+    });
+
+    const verifiedPayment = await service.recordDonationPayment({
+      tenantId: tenantA, pledgeId: pledge.id, actorUserId: `cashier-${suffix}`,
+      amountPaise: 100000, method: 'UPI', idempotencyKey: `verified-payment-${suffix}`,
+    });
+    await service.approveDonationPayment(tenantA, verifiedPayment.id, `payment-reviewer-${suffix}`);
+    const pendingPayment = await service.recordDonationPayment({
+      tenantId: tenantA, pledgeId: pledge.id, actorUserId: `cashier-${suffix}`,
+      amountPaise: 20000, method: 'CASH', idempotencyKey: `pending-payment-${suffix}`,
+    });
+    const rejectedPayment = await service.recordDonationPayment({
+      tenantId: tenantA, pledgeId: pledge.id, actorUserId: `cashier-${suffix}`,
+      amountPaise: 15000, method: 'CHEQUE', idempotencyKey: `rejected-payment-${suffix}`,
+    });
+    await service.rejectDonationPayment(tenantA, rejectedPayment.id, `payment-reviewer-${suffix}`, 'Cheque details did not match');
+
+    const approvedAdjustment = await service.createDonationAdjustment({
+      tenantId: tenantA, paymentId: verifiedPayment.id, actorUserId: `adjustment-maker-${suffix}`,
+      amountPaise: 5000, kind: 'REFUND', reason: 'Approved partial refund',
+      idempotencyKey: `approved-adjustment-${suffix}`,
+    });
+    await service.approveDonationAdjustment(tenantA, approvedAdjustment.id, `adjustment-reviewer-${suffix}`);
+    const pendingAdjustment = await service.createDonationAdjustment({
+      tenantId: tenantA, paymentId: verifiedPayment.id, actorUserId: `adjustment-maker-${suffix}`,
+      amountPaise: 3000, kind: 'REFUND', reason: 'Pending partial refund',
+      idempotencyKey: `pending-adjustment-${suffix}`,
+    });
+    const rejectedAdjustment = await service.createDonationAdjustment({
+      tenantId: tenantA, paymentId: verifiedPayment.id, actorUserId: `adjustment-maker-${suffix}`,
+      amountPaise: 2000, kind: 'REFUND', reason: 'Rejected partial refund',
+      idempotencyKey: `rejected-adjustment-${suffix}`,
+    });
+    await service.rejectDonationAdjustment(tenantA, rejectedAdjustment.id, `adjustment-reviewer-${suffix}`, 'Refund evidence is insufficient');
+
+    const approvedExpense = await service.createDonationExpense({
+      tenantId: tenantA, actorUserId: `expense-maker-${suffix}`, category: 'Maintenance',
+      description: 'Approved expense', amountPaise: 7000, idempotencyKey: `approved-expense-${suffix}`,
+    });
+    await service.approveDonationExpense(tenantA, approvedExpense.id, `expense-reviewer-${suffix}`);
+    await service.createDonationExpense({
+      tenantId: tenantA, actorUserId: `expense-maker-${suffix}`, category: 'Utilities',
+      description: 'Pending expense', amountPaise: 8000, idempotencyKey: `pending-expense-${suffix}`,
+    });
+    const rejectedExpense = await service.createDonationExpense({
+      tenantId: tenantA, actorUserId: `expense-maker-${suffix}`, category: 'Repairs',
+      description: 'Rejected expense', amountPaise: 9000, idempotencyKey: `rejected-expense-${suffix}`,
+    });
+    await service.rejectDonationExpense(tenantA, rejectedExpense.id, `expense-reviewer-${suffix}`, 'Invoice does not match work');
+
+    const finance = await service.getDonationFinanceReport(tenantA);
+    expect(finance.totals).toMatchObject({
+      pledgedAmountPaise: 500000,
+      receivedAmountPaise: 100000,
+      adjustedAmountPaise: 5000,
+      netReceivedAmountPaise: 95000,
+      pendingAdjustmentAmountPaise: 3000,
+      rejectedAdjustmentAmountPaise: 2000,
+      pendingApprovalAmountPaise: 20000,
+      rejectedAmountPaise: 15000,
+      verifiedPaymentCount: 1,
+      pendingPaymentCount: 1,
+      rejectedPaymentCount: 1,
+    });
+    expect(finance.byPaymentMethod.find((item) => item.method === 'UPI'))
+      .toMatchObject({ verifiedAmountPaise: 100000, verifiedCount: 1 });
+    expect(finance.byPaymentMethod.find((item) => item.method === 'CASH'))
+      .toMatchObject({ verifiedAmountPaise: 0, verifiedCount: 0 });
+    expect(finance.byCampaign).toMatchObject([
+      { campaignId: campaign.id, pledgedAmountPaise: 500000, receivedAmountPaise: 100000 },
+    ]);
+
+    const reconciliation = await service.getDonationReconciliationReport(tenantA);
+    expect(reconciliation.receipts).toMatchObject({
+      issuedAmountPaise: 100000, issuedReceiptCount: 1, isBalanced: true,
+    });
+    expect(reconciliation.expenses).toMatchObject({
+      approvedAmountPaise: 7000, approvedCount: 1,
+      pendingAmountPaise: 8000, pendingCount: 1,
+      rejectedAmountPaise: 9000, rejectedCount: 1,
+    });
+    expect(reconciliation.adjustments).toMatchObject({
+      approvedAmountPaise: 5000, approvedCount: 1,
+      pendingAmountPaise: 3000, pendingCount: 1,
+      rejectedAmountPaise: 2000, rejectedCount: 1,
+    });
+    expect(reconciliation.netAfterApprovedExpensesPaise).toBe(93000);
+    expect(reconciliation.netAfterApprovedExpensesAndAdjustmentsPaise).toBe(88000);
+
+    const otherTenantFinance = await service.getDonationFinanceReport(tenantB);
+    expect(otherTenantFinance.totals).toMatchObject({
+      pledgedAmountPaise: 0, receivedAmountPaise: 0, pledgeCount: 0, verifiedPaymentCount: 0,
+    });
+    expect(otherTenantFinance.byCampaign).toHaveLength(0);
+    const otherTenantReconciliation = await service.getDonationReconciliationReport(tenantB);
+    expect(otherTenantReconciliation).toMatchObject({
+      tenantId: tenantB,
+      donations: { verifiedAmountPaise: 0, verifiedPaymentCount: 0 },
+      receipts: { issuedAmountPaise: 0, issuedReceiptCount: 0, amountDifferencePaise: 0, isBalanced: true },
+      netAfterApprovedExpensesAndAdjustmentsPaise: 0,
+    });
+    expect(pendingPayment.status).toBe('PENDING_APPROVAL');
+    expect(pendingAdjustment.status).toBe('PENDING_APPROVAL');
+  });
+
+  it('returns zero-valued finance reports and a balanced reconciliation for an empty tenant', async () => {
+    const emptyTenant = `${tenantId}-empty-report-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const finance = await service.getDonationFinanceReport(emptyTenant);
+    const reconciliation = await service.getDonationReconciliationReport(emptyTenant);
+
+    expect(finance.totals).toMatchObject({
+      pledgedAmountPaise: 0, receivedAmountPaise: 0, adjustedAmountPaise: 0,
+      netReceivedAmountPaise: 0, outstandingAmountPaise: 0, pledgeCount: 0,
+      verifiedPaymentCount: 0, pendingPaymentCount: 0, rejectedPaymentCount: 0,
+    });
+    expect(finance.byCampaign).toHaveLength(0);
+    expect(finance.byPaymentMethod).toHaveLength(4);
+    expect(finance.byPaymentMethod.every((item) => item.verifiedAmountPaise === 0 && item.verifiedCount === 0)).toBe(true);
+    expect(reconciliation).toMatchObject({
+      tenantId: emptyTenant,
+      donations: { verifiedAmountPaise: 0, verifiedPaymentCount: 0 },
+      receipts: {
+        issuedAmountPaise: 0, issuedReceiptCount: 0, amountDifferencePaise: 0,
+        missingReceiptPaymentIds: [], orphanReceiptPaymentIds: [], amountMismatchPaymentIds: [], isBalanced: true,
+      },
+      expenses: { approvedAmountPaise: 0, pendingAmountPaise: 0, rejectedAmountPaise: 0 },
+      adjustments: { approvedAmountPaise: 0, pendingAmountPaise: 0, rejectedAmountPaise: 0 },
+      netAfterApprovedExpensesPaise: 0,
+      netAfterApprovedExpensesAndAdjustmentsPaise: 0,
+    });
+  });
+
 });
