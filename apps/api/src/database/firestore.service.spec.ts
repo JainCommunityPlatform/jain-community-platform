@@ -790,4 +790,63 @@ describe('FirestoreService donation payment workflow', () => {
     await expect(instance.approveDonationPayment('tenant-b', first.id, 'approver'))
       .rejects.toThrow('PAYMENT_NOT_FOUND');
   });
+
+  it('keeps finance and reconciliation reports aligned after partial payments, a refund, and an approved expense', async () => {
+    const { instance, pledge } = await setup();
+    const first = await instance.recordDonationPayment({
+      tenantId: 'tenant-a', pledgeId: pledge.id, actorUserId: 'cashier-a',
+      amountPaise: 60000, method: 'UPI', idempotencyKey: 'cross-report-partial-1',
+    });
+    const second = await instance.recordDonationPayment({
+      tenantId: 'tenant-a', pledgeId: pledge.id, actorUserId: 'cashier-b',
+      amountPaise: 40000, method: 'BANK_TRANSFER', idempotencyKey: 'cross-report-partial-2',
+    });
+    await instance.approveDonationPayment('tenant-a', first.id, 'approver-a');
+    await instance.approveDonationPayment('tenant-a', second.id, 'approver-b');
+
+    const refund = await instance.createDonationAdjustment({
+      tenantId: 'tenant-a', paymentId: first.id, actorUserId: 'refund-maker',
+      amountPaise: 20000, kind: 'REFUND', reason: 'Duplicate portion returned',
+      idempotencyKey: 'cross-report-refund',
+    });
+    await instance.approveDonationAdjustment('tenant-a', refund.id, 'refund-approver');
+
+    const expense = await instance.createDonationExpense({
+      tenantId: 'tenant-a', actorUserId: 'expense-maker', category: 'Maintenance',
+      description: 'Temple entrance repair', amountPaise: 15000,
+      idempotencyKey: 'cross-report-expense',
+    });
+    await instance.approveDonationExpense('tenant-a', expense.id, 'expense-approver');
+
+    const finance = await instance.getDonationFinanceReport('tenant-a');
+    const reconciliation = await instance.getDonationReconciliationReport('tenant-a');
+
+    expect(finance.totals).toMatchObject({
+      pledgedAmountPaise: 100000,
+      receivedAmountPaise: 100000,
+      adjustedAmountPaise: 20000,
+      netReceivedAmountPaise: 80000,
+      outstandingAmountPaise: 0,
+    });
+    expect(reconciliation.donations).toMatchObject({
+      verifiedAmountPaise: 100000,
+      verifiedPaymentCount: 2,
+    });
+    expect(reconciliation.receipts).toMatchObject({
+      issuedAmountPaise: 100000,
+      issuedReceiptCount: 2,
+      isBalanced: true,
+    });
+    expect(reconciliation.expenses).toMatchObject({
+      approvedAmountPaise: 15000,
+      approvedCount: 1,
+    });
+    expect(reconciliation.adjustments).toMatchObject({
+      approvedAmountPaise: 20000,
+      approvedCount: 1,
+      pendingCount: 0,
+    });
+    expect(reconciliation.netAfterApprovedExpensesAndAdjustmentsPaise).toBe(65000);
+  });
+
 });
