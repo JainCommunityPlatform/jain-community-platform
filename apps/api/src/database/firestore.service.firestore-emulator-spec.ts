@@ -984,7 +984,7 @@ describe('FirestoreService against the Firestore emulator', () => {
       tenantId: isolatedTenantId, donorUserId: donor.id, campaignId: campaign.id,
       pledgedAmountPaise: 1000000, idempotencyKey: `pledge-${suffix}`,
     });
-    const payments = [];
+    const payments: { id: string }[] = [];
     for (const [index, amountPaise] of [100000, 200000, 150000].entries()) {
       const payment = await service.recordDonationPayment({
         tenantId: isolatedTenantId, pledgeId: pledge.id, actorUserId: `cashier-${suffix}`,
