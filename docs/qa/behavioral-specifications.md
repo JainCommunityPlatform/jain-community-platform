@@ -105,6 +105,28 @@ And the notification failure does not turn a committed financial operation into 
 
 Executable regression: `apps/api/src/giving/giving.service.spec.ts` — “keeps an approved payment successful when post-approval notification dispatch fails”. This unit test uses a mocked persistence boundary; it proves service-level failure isolation only, not Firestore transaction atomicity or real receipt persistence.
 
+### Scenario: Multiple approved partial payments complete a pledge
+
+Given a donor has a pledge for 100000 paise
+And two separate pending payments total exactly 100000 paise
+When an authorized independent approver verifies both payments
+Then the first payment leaves the pledge partially paid
+And the second payment marks the pledge paid in full
+And each verified payment has a distinct receipt
+And the paid amount equals the pledged amount
+
+### Scenario: Pending payments cannot collectively overpay a pledge
+
+Given a donor has a pledge for 100000 paise
+And two pending payments are recorded for 60000 and 50000 paise
+When the first payment is verified
+And approval is attempted for the second payment
+Then the second approval is rejected because it exceeds the remaining balance
+And the pledge paid amount remains 60000 paise
+And no receipt is issued for the rejected approval attempt
+
+Executable regressions: `apps/api/src/database/firestore.service.spec.ts` — “completes a pledge across multiple approved partial payments with distinct receipts” and “rejects a second pending payment when approval would exceed the remaining pledge balance”. Both use a fake Firestore adapter; concurrent transactions and live Firestore atomicity remain unverified.
+
 ### Scenario: Replaying payment approval does not issue a second receipt
 
 Given a payment has been verified by an authorized finance approver

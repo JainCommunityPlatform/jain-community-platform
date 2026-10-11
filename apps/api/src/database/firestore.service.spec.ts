@@ -531,6 +531,58 @@ describe('FirestoreService donation payment workflow', () => {
     expect(updatedPledge).toMatchObject({ paidAmountPaise: 25000, status: 'PARTIALLY_PAID' });
   });
 
+  it('completes a pledge across multiple approved partial payments with distinct receipts', async () => {
+    const { instance, pledge } = await setup();
+    const first = await instance.recordDonationPayment({
+      tenantId: 'tenant-a', pledgeId: pledge.id, actorUserId: 'cashier-a',
+      amountPaise: 60000, method: 'UPI', idempotencyKey: 'partial-payment-1',
+    });
+    const second = await instance.recordDonationPayment({
+      tenantId: 'tenant-a', pledgeId: pledge.id, actorUserId: 'cashier-b',
+      amountPaise: 40000, method: 'BANK_TRANSFER', idempotencyKey: 'partial-payment-2',
+    });
+
+    const firstVerified = await instance.approveDonationPayment('tenant-a', first.id, 'approver-a');
+    const afterFirst = (await instance.listDonationPledgesForTenant('tenant-a'))
+      .find((item) => item.id === pledge.id);
+    expect(afterFirst).toMatchObject({ paidAmountPaise: 60000, status: 'PARTIALLY_PAID' });
+
+    const secondVerified = await instance.approveDonationPayment('tenant-a', second.id, 'approver-b');
+    const finalPledge = (await instance.listDonationPledgesForTenant('tenant-a'))
+      .find((item) => item.id === pledge.id);
+    const receipts = await instance.listDonationReceiptsForTenant('tenant-a');
+
+    expect(finalPledge).toMatchObject({ paidAmountPaise: 100000, status: 'PAID' });
+    expect(receipts).toHaveLength(2);
+    expect(receipts.map((receipt) => receipt.paymentId).sort()).toEqual([first.id, second.id].sort());
+    expect(new Set(receipts.map((receipt) => receipt.receiptNumber)).size).toBe(2);
+    expect(new Set([firstVerified.receiptNumber, secondVerified.receiptNumber]).size).toBe(2);
+  });
+
+  it('rejects a second pending payment when approval would exceed the remaining pledge balance', async () => {
+    const { instance, pledge } = await setup();
+    const first = await instance.recordDonationPayment({
+      tenantId: 'tenant-a', pledgeId: pledge.id, actorUserId: 'cashier-a',
+      amountPaise: 60000, method: 'UPI', idempotencyKey: 'pending-overpay-1',
+    });
+    const second = await instance.recordDonationPayment({
+      tenantId: 'tenant-a', pledgeId: pledge.id, actorUserId: 'cashier-b',
+      amountPaise: 50000, method: 'CASH', idempotencyKey: 'pending-overpay-2',
+    });
+
+    await instance.approveDonationPayment('tenant-a', first.id, 'approver-a');
+    await expect(instance.approveDonationPayment('tenant-a', second.id, 'approver-b'))
+      .rejects.toThrow('PAYMENT_EXCEEDS_BALANCE');
+
+    const persistedPledge = (await instance.listDonationPledgesForTenant('tenant-a'))
+      .find((item) => item.id === pledge.id);
+    const persistedSecondPayment = (await instance.listDonationPaymentsForTenant('tenant-a'))
+      .find((item) => item.id === second.id);
+    expect(persistedPledge).toMatchObject({ paidAmountPaise: 60000, status: 'PARTIALLY_PAID' });
+    expect(persistedSecondPayment?.status).toBe('PENDING_APPROVAL');
+    expect(await instance.listDonationReceiptsForTenant('tenant-a')).toHaveLength(1);
+  });
+
   it('does not issue a second receipt or double-count a replayed payment approval', async () => {
     const { instance, db, pledge } = await setup();
     const payment = await instance.recordDonationPayment({
