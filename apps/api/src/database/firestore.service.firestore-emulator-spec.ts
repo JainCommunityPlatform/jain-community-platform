@@ -603,4 +603,114 @@ describe('FirestoreService against the Firestore emulator', () => {
       .toHaveLength(1);
   });
 
+  it('reserves adjustment balance atomically when refund requests race', async () => {
+    const suffix = `emulator-adjustment-race-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const isolatedTenantId = `${tenantId}-${suffix}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const campaign = await service.createGivingCampaign({
+      tenantId: isolatedTenantId, actorUserId: `campaign-admin-${suffix}`, name: 'Concurrent adjustment campaign',
+    });
+    await service.updateGivingCampaignStatus(isolatedTenantId, campaign.id, 'ACTIVE');
+    const pledge = await service.createDonationPledge({
+      tenantId: isolatedTenantId, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 50000, idempotencyKey: `pledge-${suffix}`,
+    });
+    const payment = await service.recordDonationPayment({
+      tenantId: isolatedTenantId, pledgeId: pledge.id, actorUserId: `cashier-${suffix}`,
+      amountPaise: 50000, method: 'UPI', idempotencyKey: `payment-${suffix}`,
+    });
+    await service.approveDonationPayment(isolatedTenantId, payment.id, `payment-approver-${suffix}`);
+
+    const createAdjustment = (label: string) => service.createDonationAdjustment({
+      tenantId: isolatedTenantId, paymentId: payment.id, actorUserId: `refund-maker-${label}`,
+      amountPaise: 30000, kind: 'REFUND', reason: `Concurrent refund ${label}`,
+      idempotencyKey: `adjustment-${label}`,
+    });
+    const outcomes = await Promise.allSettled([
+      createAdjustment(`a-${suffix}`),
+      createAdjustment(`b-${suffix}`),
+    ]);
+    expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
+    const rejected = outcomes.find((outcome) => outcome.status === 'rejected');
+    expect(rejected).toBeDefined();
+    if (rejected?.status === 'rejected') {
+      expect(String(rejected.reason?.message ?? rejected.reason)).toContain('ADJUSTMENT_EXCEEDS_PAYMENT');
+    }
+
+    const persistedPayment = (await service.listDonationPaymentsForTenant(isolatedTenantId))
+      .find((item) => item.id === payment.id);
+    expect(persistedPayment).toMatchObject({
+      status: 'VERIFIED', amountPaise: 50000,
+      adjustedAmountPaise: 0, pendingAdjustmentAmountPaise: 30000,
+    });
+    expect((await service.listDonationAdjustmentsForTenant(isolatedTenantId)))
+      .toHaveLength(1);
+    expect((await service.listDonationPledgesForTenant(isolatedTenantId)).find((item) => item.id === pledge.id))
+      .toMatchObject({ paidAmountPaise: 50000, status: 'PAID' });
+    expect(await service.listDonationReceiptsForTenant(isolatedTenantId)).toHaveLength(1);
+  });
+
+  it('releases a rejected refund reservation and permits a later valid full refund', async () => {
+    const suffix = `emulator-adjustment-rejection-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const isolatedTenantId = `${tenantId}-${suffix}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const campaign = await service.createGivingCampaign({
+      tenantId: isolatedTenantId, actorUserId: `campaign-admin-${suffix}`, name: 'Rejected adjustment campaign',
+    });
+    await service.updateGivingCampaignStatus(isolatedTenantId, campaign.id, 'ACTIVE');
+    const pledge = await service.createDonationPledge({
+      tenantId: isolatedTenantId, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 50000, idempotencyKey: `pledge-${suffix}`,
+    });
+    const payment = await service.recordDonationPayment({
+      tenantId: isolatedTenantId, pledgeId: pledge.id, actorUserId: `cashier-${suffix}`,
+      amountPaise: 50000, method: 'UPI', idempotencyKey: `payment-${suffix}`,
+    });
+    await service.approveDonationPayment(isolatedTenantId, payment.id, `payment-approver-${suffix}`);
+
+    const rejectedRequest = await service.createDonationAdjustment({
+      tenantId: isolatedTenantId, paymentId: payment.id, actorUserId: `refund-maker-${suffix}`,
+      amountPaise: 20000, kind: 'REFUND', reason: 'First request', idempotencyKey: `refund-first-${suffix}`,
+    });
+    await expect(service.rejectDonationAdjustment(isolatedTenantId, rejectedRequest.id, `refund-maker-${suffix}`, 'not independent'))
+      .rejects.toThrow('ADJUSTMENT_SELF_APPROVAL');
+    await expect(service.rejectDonationAdjustment(isolatedTenantId, rejectedRequest.id, `reviewer-${suffix}`, '   '))
+      .rejects.toThrow('ADJUSTMENT_REJECTION_REASON_REQUIRED');
+    const rejected = await service.rejectDonationAdjustment(
+      isolatedTenantId, rejectedRequest.id, `reviewer-${suffix}`, '  Refund evidence is incomplete  ',
+    );
+    expect(rejected).toMatchObject({
+      status: 'REJECTED', approvedBy: `reviewer-${suffix}`,
+      rejectionReason: 'Refund evidence is incomplete',
+    });
+    await expect(service.approveDonationAdjustment(isolatedTenantId, rejectedRequest.id, `later-reviewer-${suffix}`))
+      .rejects.toThrow('ADJUSTMENT_NOT_PENDING');
+
+    expect((await service.listDonationPaymentsForTenant(isolatedTenantId)).find((item) => item.id === payment.id))
+      .toMatchObject({ adjustedAmountPaise: 0, pendingAdjustmentAmountPaise: 0, status: 'VERIFIED' });
+    expect((await service.listDonationPledgesForTenant(isolatedTenantId)).find((item) => item.id === pledge.id))
+      .toMatchObject({ paidAmountPaise: 50000, status: 'PAID' });
+    const originalReceipts = await service.listDonationReceiptsForTenant(isolatedTenantId);
+    expect(originalReceipts).toHaveLength(1);
+    expect(originalReceipts[0]).toMatchObject({ paymentId: payment.id, amountPaise: 50000 });
+
+    const acceptedRequest = await service.createDonationAdjustment({
+      tenantId: isolatedTenantId, paymentId: payment.id, actorUserId: `second-refund-maker-${suffix}`,
+      amountPaise: 50000, kind: 'REFUND', reason: 'Verified full refund', idempotencyKey: `refund-full-${suffix}`,
+    });
+    const approved = await service.approveDonationAdjustment(
+      isolatedTenantId, acceptedRequest.id, `independent-refund-approver-${suffix}`,
+    );
+    expect(approved).toMatchObject({ status: 'APPROVED', amountPaise: 50000 });
+    expect((await service.listDonationPaymentsForTenant(isolatedTenantId)).find((item) => item.id === payment.id))
+      .toMatchObject({ adjustedAmountPaise: 50000, pendingAdjustmentAmountPaise: 0 });
+    expect((await service.listDonationPledgesForTenant(isolatedTenantId)).find((item) => item.id === pledge.id))
+      .toMatchObject({ paidAmountPaise: 0, status: 'PLEDGED' });
+    expect(await service.listDonationReceiptsForTenant(isolatedTenantId)).toHaveLength(1);
+    const adjustments = await service.listDonationAdjustmentsForTenant(isolatedTenantId);
+    expect(adjustments).toHaveLength(2);
+    expect(adjustments.find((item) => item.id === rejectedRequest.id)?.status).toBe('REJECTED');
+    expect(adjustments.find((item) => item.id === acceptedRequest.id)?.status).toBe('APPROVED');
+  });
+
 });
