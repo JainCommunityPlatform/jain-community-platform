@@ -588,3 +588,52 @@ Executable regression: `apps/api/src/database/firestore.service.firestore-emulat
 
 The executable policy suite in `apps/api/src/authorization/authorization.policy.spec.ts` verifies positive and negative permissions for Tenant Admin, Tenant Finance, Finance Viewer, Finance Operator, Finance Approver, legacy combined roles, platform administrators, and mismatched tenant membership. These are policy-level tests; route-level HTTP authorization coverage remains a separate check.
 
+## HTTP finance role matrix — executable integration scenarios
+
+### Scenario: Finance Viewer can read but cannot write financial records
+
+Given a member has the FINANCE_VIEWER role in the resolved tenant
+When the member requests the tenant expense list
+Then the API returns the tenant-scoped result
+When the member attempts to create an expense or refund adjustment
+Then the API returns 403 before invoking financial persistence
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “allows a finance viewer to read tenant expenses but not create adjustments or expenses”.
+
+### Scenario: Finance Operator can submit but cannot approve or reject financial decisions
+
+Given a member has the FINANCE_OPERATOR role in the resolved tenant
+When the member submits a valid expense with an idempotency key
+Then the API records the expense as pending approval using the authenticated actor and resolved tenant
+When the same member attempts to approve or reject a payment, expense, or refund adjustment
+Then every decision endpoint returns 403 before invoking the service
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “allows a finance operator to create an expense but not approve financial decisions”.
+
+### Scenario: Finance write endpoints require idempotency keys
+
+Given a finance operator is authorized to create an expense
+When the request omits the Idempotency-Key header
+Then the API returns 400
+And no persistence method is invoked
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “requires an idempotency key for an authorized finance write before persistence”.
+
+### Scenario: Finance Approver can approve and reject payments, expenses and adjustments
+
+Given a member has the FINANCE_APPROVER role in the resolved tenant
+When the member approves or rejects a pending payment, expense, or refund adjustment
+Then each protected endpoint is reachable
+And the service receives the authenticated reviewer identity and resolved tenant ID
+And the matching audit event is recorded
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “allows a finance approver to approve expenses, payments and refunds through protected HTTP routes”. The service is mocked in this integration suite so this scenario verifies routing, role authorization, tenant/actor propagation, and audit invocation; persisted state is verified by Firestore emulator tests.
+
+### Scenario: Legacy combined roles cannot bypass finance separation of duties
+
+Given a membership combines TENANT_ADMIN with a legacy financial role, or the user is a platform administrator
+When that user calls a tenant finance endpoint
+Then the API returns 403 before finance data is read
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “does not grant finance access to tenant administrators with a legacy combined role or platform admins”.
+
