@@ -57,4 +57,44 @@ describe('FirestoreService against the Firestore emulator', () => {
     expect(new Set(receipts.map((receipt) => receipt.paymentId)).size).toBe(2);
     expect(new Set(receipts.map((receipt) => receipt.receiptNumber)).size).toBe(2);
   });
+
+  it('rejects overpayment and replayed approval without changing the persisted balance or receipts', async () => {
+    const suffix = `emulator-overpay-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const campaign = await service.createGivingCampaign({
+      tenantId, actorUserId: `campaign-admin-${suffix}`, name: 'Emulator overpayment campaign',
+    });
+    await service.updateGivingCampaignStatus(tenantId, campaign.id, 'ACTIVE');
+    const pledge = await service.createDonationPledge({
+      tenantId, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 100000, idempotencyKey: `pledge-${suffix}`,
+    });
+    const firstInput = {
+      tenantId, pledgeId: pledge.id, actorUserId: `cashier-${suffix}`,
+      amountPaise: 60000, method: 'UPI' as const, idempotencyKey: `payment-first-${suffix}`,
+    };
+    const first = await service.recordDonationPayment(firstInput);
+    const replayedRecord = await service.recordDonationPayment(firstInput);
+    expect(replayedRecord.id).toBe(first.id);
+
+    const second = await service.recordDonationPayment({
+      tenantId, pledgeId: pledge.id, actorUserId: `cashier-second-${suffix}`,
+      amountPaise: 50000, method: 'BANK_TRANSFER', idempotencyKey: `payment-second-${suffix}`,
+    });
+
+    await service.approveDonationPayment(tenantId, first.id, `approver-${suffix}`);
+    await expect(service.approveDonationPayment(tenantId, second.id, `approver-second-${suffix}`))
+      .rejects.toThrow('PAYMENT_EXCEEDS_BALANCE');
+    await expect(service.approveDonationPayment(tenantId, first.id, `approver-replay-${suffix}`))
+      .rejects.toThrow('PAYMENT_NOT_PENDING');
+
+    const persistedPledge = (await service.listDonationPledgesForTenant(tenantId))
+      .find((item) => item.id === pledge.id);
+    const receipts = (await service.listDonationReceiptsForTenant(tenantId))
+      .filter((receipt) => receipt.pledgeId === pledge.id);
+    expect(persistedPledge).toMatchObject({ paidAmountPaise: 60000, status: 'PARTIALLY_PAID' });
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0].paymentId).toBe(first.id);
+  });
+
 });
