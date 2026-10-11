@@ -65,7 +65,7 @@ describe('FirestoreService against the Firestore emulator', () => {
     const campaign = await service.createGivingCampaign({
       tenantId: isolatedTenantId, actorUserId: `campaign-admin-${suffix}`, name: 'Emulator overpayment campaign',
     });
-    await service.updateGivingCampaignStatus(tenantId: isolatedTenantId, campaign.id, 'ACTIVE');
+    await service.updateGivingCampaignStatus(isolatedTenantId, campaign.id, 'ACTIVE');
     const pledge = await service.createDonationPledge({
       tenantId: isolatedTenantId, donorUserId: donor.id, campaignId: campaign.id,
       pledgedAmountPaise: 100000, idempotencyKey: `pledge-${suffix}`,
@@ -83,10 +83,10 @@ describe('FirestoreService against the Firestore emulator', () => {
       amountPaise: 50000, method: 'BANK_TRANSFER', idempotencyKey: `payment-second-${suffix}`,
     });
 
-    await service.approveDonationPayment(tenantId: isolatedTenantId, first.id, `approver-${suffix}`);
-    await expect(service.approveDonationPayment(tenantId: isolatedTenantId, second.id, `approver-second-${suffix}`))
+    await service.approveDonationPayment(isolatedTenantId, first.id, `approver-${suffix}`);
+    await expect(service.approveDonationPayment(isolatedTenantId, second.id, `approver-second-${suffix}`))
       .rejects.toThrow('PAYMENT_EXCEEDS_BALANCE');
-    await expect(service.approveDonationPayment(tenantId: isolatedTenantId, first.id, `approver-replay-${suffix}`))
+    await expect(service.approveDonationPayment(isolatedTenantId, first.id, `approver-replay-${suffix}`))
       .rejects.toThrow('PAYMENT_NOT_PENDING');
 
     const persistedPledge = (await service.listDonationPledgesForTenant(isolatedTenantId))
