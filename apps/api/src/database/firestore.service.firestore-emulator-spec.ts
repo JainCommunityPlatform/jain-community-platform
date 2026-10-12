@@ -1557,4 +1557,31 @@ describe('FirestoreService against the Firestore emulator', () => {
     ]);
   }, 15000);
 
+
+  it('preserves the shared user record when one tenant membership is deleted', async () => {
+    const suffix = `emulator-membership-delete-user-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tenantA = `${tenantId}-delete-a-${suffix}`;
+    const tenantB = `${tenantId}-delete-b-${suffix}`;
+    const authSubject = `shared-delete-user-${suffix}`;
+    const user = await service.upsertUser({
+      subject: authSubject, email: `${authSubject}@example.test`,
+    });
+
+    await service.createMembership({ userId: user.id, tenantId: tenantA, role: 'TEMPLE_ADMIN' });
+    await service.createMembership({ userId: user.id, tenantId: tenantB, role: 'EVENT_MANAGER' });
+
+    await service.deleteMembership(user.id, tenantA);
+
+    expect(await service.getMembership(user.id, tenantA)).toBeNull();
+    expect(await service.getMembership(user.id, tenantB)).toMatchObject({
+      userId: user.id, tenantId: tenantB, role: 'EVENT_MANAGER',
+    });
+    expect(await service.getUser(user.id)).toMatchObject({
+      id: user.id, email: `${authSubject}@example.test`,
+    });
+    expect(await service.listMemberships(tenantB)).toMatchObject([
+      expect.objectContaining({ userId: user.id, tenantId: tenantB, role: 'EVENT_MANAGER' }),
+    ]);
+  }, 15000);
+
 });
