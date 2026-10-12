@@ -12,13 +12,13 @@ Repository: [JainCommunityPlatform/jain-community-platform](https://github.com/J
 
 ## Current item
 
-- **In progress:** P0 auth/session UI — verify direct navigation to protected screens is denied when the authenticated session lacks the required role.
-- **Branch:** `qa/auth-role-redirect-denials`.
-- **Test:** `apps/flutter/test/widget_test.dart` — “redirects authenticated users without each required role to member home”. Covers tenant admin, website admin, finance, platform admin, and inventory routes.
-- **Previous item:** [PR #169](https://github.com/JainCommunityPlatform/jain-community-platform/pull/169) merged as `1c5a85038d3182452cc3d54ce54ad5d260d4c958`; exact PR-head [CI #762](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38292799818) passed all required checks; post-merge [CI #763](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38293137101) pending final verification.
-- **Current PR / CI:** not yet opened; exact-head CI pending.
-- **Evidence boundary:** Flutter widget/router behavior only; live session role refresh and backend authorization are separate evidence layers.
+- **In progress:** restore green default-branch CI after a Firestore emulator concurrency failure.
+- **Branch:** `qa/firestore-pledge-idempotency-race`.
+- **Failure evidence:** post-merge [CI #765](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38293792926) failed in `deduplicates concurrent pledge creation with the same idempotency key` with `3 INVALID_ARGUMENT: Transaction is invalid or closed` (41 passed, 1 failed).
+- **Fix:** re-read the deterministic pledge after a transaction error and return the matching committed pledge if found; retry only the specific closed-transaction error with a strict cap. The concurrency test itself is not weakened.
+- **Current PR / CI:** hotfix PR not yet opened; exact-head CI pending.
+- **Evidence boundary:** Firestore emulator only; this does not claim production/staging concurrency verification.
 
 ## Exact next action
 
-Verify post-merge CI #763 for PR #169, then open the focused PR for protected-route role denial. Inspect exact-head CI, fix failures rather than weakening assertions, merge only when all required checks pass, verify post-merge CI, update this checkpoint and issue #162, then continue the auth/session journey matrix. Keep Android build/upload manual/on-demand.
+Open the focused hotfix PR, monitor exact-head backend/emulator CI, inspect and fix any remaining failures, merge only if all required checks pass, verify post-merge CI until green, update issue #162 and this checkpoint, then resume the pending auth/session route-refresh work. Keep Android build/upload manual/on-demand.
