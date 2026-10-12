@@ -695,11 +695,13 @@ describe('API endpoints (integration)', () => {
   it('campaign creation and status changes reject unresolved tenant context before writes or audit events', async () => {
     const routes = [
       {
+        method: 'post',
         path: '/api/giving/campaigns',
         service: giving.createCampaign,
         body: { name: 'Unscoped campaign', description: 'Must not be created', targetAmountPaise: 50000 },
       },
       {
+        method: 'patch',
         path: '/api/giving/campaigns/campaign-1/status',
         service: giving.updateCampaignStatus,
         body: { status: 'CLOSED' },
@@ -709,8 +711,11 @@ describe('API endpoints (integration)', () => {
     audit.record.mockClear();
     for (const route of routes) {
       route.service.mockClear();
-      await request(app.getHttpServer())
-        .post(route.path)
+      const httpRequest = request(app.getHttpServer());
+      const response = route.method === 'patch'
+        ? httpRequest.patch(route.path)
+        : httpRequest.post(route.path);
+      await response
         .set('Host', 'unknown.example.com')
         .set('x-test-user', 'user-finance-approver')
         .send(route.body)
