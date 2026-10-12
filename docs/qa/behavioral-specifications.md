@@ -1239,3 +1239,15 @@ Then each request is denied with HTTP 403 because tenant-scoped authorization ca
 And no tenant-scoped finance or history service is called
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — “finance reports and tenant-wide history deny access when tenant context is unresolved”.
+
+### Scenario: Finance mutations require tenant context before writing or auditing
+
+Given a finance approver is authenticated
+And the request host cannot be resolved to a tenant
+When the approver attempts to create a pledge, record a payment, approve or reject a payment, create or review an expense, or create or review an adjustment
+Then the pledge request is rejected with HTTP 400 because tenant context is required
+And finance-authorized payment, expense, and adjustment mutations are denied with HTTP 403
+And no giving write or approval service is called
+And no financial audit event is recorded
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “finance mutations reject unresolved tenant context before writes or audit events”.

@@ -688,6 +688,68 @@ describe('API endpoints (integration)', () => {
     }
   });
 
+  it('finance mutations reject unresolved tenant context before writes or audit events', async () => {
+    const routes = [
+      {
+        path: '/api/giving/pledges',
+        service: giving.createPledge,
+        body: { campaignId: 'campaign-public', pledgedAmountPaise: 5000 },
+        expectedStatus: 400,
+        expectedMessage: 'Tenant context is required',
+      },
+      {
+        path: '/api/giving/pledges/pledge-1/payments',
+        service: giving.recordPayment,
+        body: { amountPaise: 5000, method: 'UPI' },
+        expectedStatus: 403,
+      },
+      { path: '/api/giving/payments/payment-1/approve', service: giving.approvePayment, body: {}, expectedStatus: 403 },
+      { path: '/api/giving/payments/payment-1/reject', service: giving.rejectPayment, body: { reason: 'Test rejection' }, expectedStatus: 403 },
+      {
+        path: '/api/giving/expenses',
+        service: giving.createExpense,
+        body: { category: 'MAINTENANCE', description: 'Test expense', amountPaise: 5000 },
+        expectedStatus: 403,
+      },
+      { path: '/api/giving/expenses/expense-1/approve', service: giving.approveExpense, body: {}, expectedStatus: 403 },
+      { path: '/api/giving/expenses/expense-1/reject', service: giving.rejectExpense, body: { reason: 'Test rejection' }, expectedStatus: 403 },
+      {
+        path: '/api/giving/payments/payment-1/adjustments',
+        service: giving.createAdjustment,
+        body: { kind: 'REFUND', amountPaise: 1000, reason: 'Test adjustment' },
+        expectedStatus: 403,
+      },
+      { path: '/api/giving/adjustments/adjustment-1/approve', service: giving.approveAdjustment, body: {}, expectedStatus: 403 },
+      { path: '/api/giving/adjustments/adjustment-1/reject', service: giving.rejectAdjustment, body: { reason: 'Test rejection' }, expectedStatus: 403 },
+    ];
+
+    audit.record.mockClear();
+    for (const route of routes) {
+      route.service.mockClear();
+      const response = await request(app.getHttpServer())
+        .post(route.path)
+        .set('Host', 'unknown.example.com')
+        .set('x-test-user', 'user-finance-approver')
+        .send(route.body)
+        .expect(route.expectedStatus);
+
+      if (route.expectedMessage) {
+        expect(response.body).toMatchObject({
+          statusCode: route.expectedStatus,
+          message: route.expectedMessage,
+        });
+      } else {
+        expect(response.body).toMatchObject({
+          statusCode: 403,
+          message: 'Tenant authorization context is required',
+          error: 'Forbidden',
+        });
+      }
+      expect(route.service).not.toHaveBeenCalled();
+    }
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
   it('GET /api/giving/payments denies tenant administrators at the HTTP authorization boundary', async () => {
     await request(app.getHttpServer())
       .get('/api/giving/payments')
