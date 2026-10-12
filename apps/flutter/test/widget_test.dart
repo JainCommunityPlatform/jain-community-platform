@@ -127,6 +127,16 @@ class FakeSessionService extends AuthSessionService {
   Future<AppSession> loadCurrentSession() async => value;
 }
 
+class CallbackSessionService extends AuthSessionService {
+  CallbackSessionService(this.loader)
+      : super(ApiClient(baseUrl: Uri.parse('https://example.test/')));
+
+  final Future<AppSession> Function() loader;
+
+  @override
+  Future<AppSession> loadCurrentSession() => loader();
+}
+
 Future<void> _pumpRouter(WidgetTester tester) async {
   await tester.pump();
   await tester.pumpAndSettle();
@@ -469,6 +479,64 @@ void main() {
       appRouter.router.dispose();
       controller.dispose();
     }
+  });
+
+  testWidgets('refreshing a revoked finance role redirects away from finance',
+      (tester) async {
+    final auth = MutableFakeAuth();
+    var activeSession = const AppSession(
+      isAuthenticated: true,
+      userId: 'user-1',
+      roles: ['FINANCE_OPERATOR'],
+    );
+    final controller = AppSessionController(
+      auth: auth,
+      sessionService: CallbackSessionService(() async => activeSession),
+      initialSession: activeSession,
+    );
+    await controller.initialize();
+
+    final api = _apiClient();
+    final appRouter = AppRouter(
+      tenantSelection: TenantSelectionController(temple),
+      tenantRepository: TenantRepository(api),
+      sessionController: controller,
+      profileRepository: ProfileRepository(api),
+      api: api,
+    );
+    final router = GoRouter(
+      initialLocation: AppRoutes.finance,
+      refreshListenable: controller,
+      redirect: appRouter.redirect,
+      routes: [
+        GoRoute(path: AppRoutes.login, builder: (_, __) => const Scaffold(body: Text('login'))),
+        GoRoute(path: AppRoutes.member, builder: (_, __) => const Scaffold(body: Text('member'))),
+        GoRoute(path: AppRoutes.finance, builder: (_, __) => const Scaffold(body: Text('finance'))),
+      ],
+    );
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await _pumpRouter(tester);
+    expect(router.state.uri.path, AppRoutes.finance);
+    expect(find.text('finance'), findsOneWidget);
+
+    activeSession = const AppSession(
+      isAuthenticated: true,
+      userId: 'user-1',
+      roles: ['CONTENT_MANAGER'],
+    );
+    await controller.refreshCurrentSession();
+    await _pumpRouter(tester);
+
+    expect(router.state.uri.path, AppRoutes.member);
+    expect(find.text('member'), findsOneWidget);
+    expect(find.text('finance'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    router.dispose();
+    appRouter.router.dispose();
+    controller.dispose();
+    await auth.dispose();
   });
 
   testWidgets('inventory console requires an inventory or admin role',
