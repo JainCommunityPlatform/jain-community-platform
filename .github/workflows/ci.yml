@@ -133,7 +133,7 @@ jobs:
 
   android:
     name: Android - Build and Verify AAB
-    if: ${{ github.event_name != 'push' && (github.event_name != 'workflow_dispatch' || inputs.scope == 'full' || inputs.scope == 'android') }}
+    if: ${{ github.event_name == 'workflow_dispatch' && (inputs.scope == 'full' || inputs.scope == 'android') }}
     needs: [frontend]
     runs-on: ubuntu-26.04
     steps:
