@@ -1538,6 +1538,50 @@ describe('FirestoreService against the Firestore emulator', () => {
     expect(await service.listDonationReceiptsForTenant(tenantB)).toHaveLength(0);
   });
 
+  it('rejects cross-tenant campaign, pledge and payment references when creating finance records', async () => {
+    const suffix = `emulator-cross-tenant-references-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tenantA = `${tenantId}-reference-owner-${suffix}`;
+    const tenantB = `${tenantId}-reference-attacker-${suffix}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const campaign = await service.createGivingCampaign({
+      tenantId: tenantA, actorUserId: `campaign-admin-${suffix}`, name: 'Tenant-owned campaign',
+    });
+    await service.updateGivingCampaignStatus(tenantA, campaign.id, 'ACTIVE');
+    const pledge = await service.createDonationPledge({
+      tenantId: tenantA, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 100000, idempotencyKey: `pledge-${suffix}`,
+    });
+    const payment = await service.recordDonationPayment({
+      tenantId: tenantA, pledgeId: pledge.id, actorUserId: `cashier-${suffix}`,
+      amountPaise: 50000, method: 'UPI', idempotencyKey: `payment-${suffix}`,
+    });
+    await service.approveDonationPayment(tenantA, payment.id, `reviewer-${suffix}`);
+
+    await expect(service.createDonationPledge({
+      tenantId: tenantB, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 10000, idempotencyKey: `foreign-campaign-pledge-${suffix}`,
+    })).rejects.toThrow('CAMPAIGN_NOT_FOUND');
+
+    await expect(service.recordDonationPayment({
+      tenantId: tenantB, pledgeId: pledge.id, actorUserId: `foreign-cashier-${suffix}`,
+      amountPaise: 10000, method: 'UPI', idempotencyKey: `foreign-pledge-payment-${suffix}`,
+    })).rejects.toThrow('PLEDGE_NOT_FOUND');
+
+    await expect(service.createDonationAdjustment({
+      tenantId: tenantB, paymentId: payment.id, actorUserId: `foreign-adjustment-maker-${suffix}`,
+      amountPaise: 5000, kind: 'REFUND', reason: 'Cross-tenant reference test',
+      idempotencyKey: `foreign-payment-adjustment-${suffix}`,
+    })).rejects.toThrow('PAYMENT_NOT_FOUND');
+
+    expect(await service.listDonationPledgesForTenant(tenantB)).toHaveLength(0);
+    expect(await service.listDonationPaymentsForTenant(tenantB)).toHaveLength(0);
+    expect(await service.listDonationAdjustmentsForTenant(tenantB)).toHaveLength(0);
+    expect((await service.listDonationPledgesForTenant(tenantA)).map((item) => item.id)).toEqual([pledge.id]);
+    expect((await service.listDonationPaymentsForTenant(tenantA)).find((item) => item.id === payment.id))
+      .toMatchObject({ tenantId: tenantA, status: 'VERIFIED', pendingAdjustmentAmountPaise: 0, adjustedAmountPaise: 0 });
+    expect(await service.listDonationAdjustmentsForTenant(tenantA)).toHaveLength(0);
+  });
+
   it('deduplicates concurrent same-key pledge, payment, expense and adjustment writes in persisted Firestore data', async () => {
     const suffix = `emulator-concurrent-idempotency-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const isolatedTenantId = `${tenantId}-concurrent-idempotency-${suffix}`;
