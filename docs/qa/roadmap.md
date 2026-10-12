@@ -131,3 +131,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Evidence boundary:** mocked session-service failure and Flutter router; real Firebase token expiry and API authentication failure remain open.
 - **Next action:** finish post-merge CI #773, open the focused PR, inspect exact-head CI, fix real failures, merge only when required checks pass, verify post-merge CI, and continue auth/session restoration and offline/error cases.
 - **Release policy:** Android build/upload remains manual/on-demand.
+
+## Execution checkpoint — initial session restoration failure
+
+- **Current item:** P0 auth/session UI — a cached authenticated session must not retain protected access when the startup session lookup fails.
+- **Regression:** `apps/flutter/test/widget_test.dart` — “does not restore protected access when initial session loading fails”.
+- **Assertions:** controller enters error state, clears the cached session, redirects admin route to login, and removes protected content.
+- **Evidence boundary:** mocked auth/session service and router only; real Firebase/API/device verification remains open.
+- **Next action:** run exact-head CI, fix real failures, merge only when required checks pass, verify post-merge default-branch CI, update issue #162/checkpoint, then continue the P0 backlog. Android build/upload stays manual/on-demand.
