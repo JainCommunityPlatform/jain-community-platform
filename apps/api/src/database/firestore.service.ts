@@ -1017,7 +1017,8 @@ export class FirestoreService implements OnModuleInit {
     const donorRef = db.collection('tenantDonors').doc(donorId);
     const notificationId = randomUUID();
     const notificationRef = db.collection('notifications').doc(notificationId);
-    return db.runTransaction(async (transaction) => {
+    try {
+      return await db.runTransaction(async (transaction) => {
       const [campaignSnapshot, pledgeSnapshot, donorSnapshot] = await Promise.all([
         transaction.get(campaignRef),
         transaction.get(pledgeRef),
@@ -1083,7 +1084,26 @@ export class FirestoreService implements OnModuleInit {
         updatedAt: now,
       });
       return this.toDonationPledge(id, data);
-    });
+      });
+    } catch (error) {
+      // Concurrent requests with the same idempotency key can race on the
+      // deterministic pledge document. If another transaction committed the
+      // matching pledge while this transaction was aborted/closed, return the
+      // committed result instead of surfacing a transient contention error.
+      const existingSnapshot = await pledgeRef.get();
+      if (existingSnapshot.exists) {
+        const existing = existingSnapshot.data() ?? {};
+        const matchesInput =
+          existing.tenantId === input.tenantId &&
+          existing.donorUserId === input.donorUserId &&
+          existing.campaignId === input.campaignId &&
+          existing.pledgedAmountPaise === input.pledgedAmountPaise;
+        if (matchesInput) {
+          return this.toDonationPledge(existingSnapshot.id, existing);
+        }
+      }
+      throw error;
+    }
   }
 
   async listDonationPledgesForTenant(tenantId: string) {
