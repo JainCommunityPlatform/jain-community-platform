@@ -116,7 +116,7 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 
 ## Execution checkpoint — session role refresh updates route access
 
-- **Previous completed item:** [PR #172](https://github.com/JainCommunityPlatform/jain-community-platform/pull/172) merged as `4000fd9fa1d6e2184657b48a5465239aac115899`; exact-head [CI #770](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38295541409) passed all required checks. Post-merge [CI #771](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/3829579) is being verified.
+- **Previous completed item:** [PR #172](https://github.com/JainCommunityPlatform/jain-community-platform/pull/172) merged as `4000fd9fa1d6e2184657b48a5465239aac115899`; exact-head [CI #770](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38295541409) passed all required checks. Post-merge [CI #771](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38296014960) is being verified.
 - **Current item:** P0 auth/session UI — refreshed membership roles must immediately remove access to a protected finance screen.
 - **Assertions:** finance role initially permits the route; refreshing the session to a non-finance role redirects to member home and removes finance content.
 - **Evidence boundary:** mocked session refresh and Flutter router; persisted membership revocation and production API/session propagation remain open.
