@@ -1664,4 +1664,67 @@ describe('FirestoreService against the Firestore emulator', () => {
   }, 15000);
 
 
+
+  it('revoking the last finance role deletes only that tenant membership and preserves shared identity', async () => {
+    const suffix = `emulator-finance-final-role-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tenantA = `${tenantId}-finance-final-a-${suffix}`;
+    const tenantB = `${tenantId}-finance-final-b-${suffix}`;
+    const authSubject = `finance-final-user-${suffix}`;
+    const email = `${authSubject}@example.test`;
+    const user = await service.upsertUser({
+      subject: authSubject,
+      email,
+      displayName: 'Final finance role user',
+    });
+
+    await service.createMembership({
+      userId: user.id,
+      tenantId: tenantA,
+      role: 'FINANCE_VIEWER',
+      roles: ['FINANCE_VIEWER'],
+    });
+    await service.createMembership({
+      userId: user.id,
+      tenantId: tenantB,
+      role: 'EVENT_MANAGER',
+      roles: ['EVENT_MANAGER'],
+    });
+
+    const memberships = new MembershipService(service);
+    const revoked = await memberships.revokeFinancialRole(
+      user.id,
+      tenantA,
+      'FINANCE_VIEWER',
+    );
+
+    expect(revoked).toMatchObject({
+      userId: user.id,
+      tenantId: tenantA,
+      roles: [],
+      previousRoles: ['FINANCE_VIEWER'],
+      membershipDeleted: true,
+    });
+    expect(await service.getMembership(user.id, tenantA)).toBeNull();
+    expect(await service.listMemberships(tenantA)).toHaveLength(0);
+    expect(await service.getMembership(user.id, tenantB)).toMatchObject({
+      userId: user.id,
+      tenantId: tenantB,
+      role: 'EVENT_MANAGER',
+      roles: ['EVENT_MANAGER'],
+    });
+    expect(await service.listMemberships(tenantB)).toMatchObject([
+      expect.objectContaining({
+        userId: user.id,
+        tenantId: tenantB,
+        role: 'EVENT_MANAGER',
+      }),
+    ]);
+    expect(await service.getUser(user.id)).toMatchObject({
+      id: user.id,
+      email,
+      displayName: 'Final finance role user',
+    });
+  }, 15000);
+
+
 });

@@ -1147,3 +1147,15 @@ And revocation does not delete the membership while a non-financial role remains
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “preserves non-financial roles and isolates persisted finance-role grant and revocation by tenant”. This exercises the `MembershipService` grant/revocation workflow against persisted Firestore emulator data.
 
+## Final finance-role revocation — persisted Firestore isolation
+
+### Scenario: Removing the last finance role does not delete shared identity or other tenant access
+
+Given the same user has a finance-only membership in one tenant and an event-manager membership in another tenant
+When a platform administrator revokes the user's final financial role in the first tenant
+Then the first tenant membership is deleted
+And the other tenant's event-manager membership remains persisted
+And the user's global profile remains available with its identity fields intact
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “revoking the last finance role deletes only that tenant membership and preserves shared identity”. This verifies the role-revocation workflow against Firestore emulator persistence.
+
