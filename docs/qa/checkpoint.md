@@ -12,12 +12,13 @@ Repository: [JainCommunityPlatform/jain-community-platform](https://github.com/J
 
 ## Current item
 
-- **In progress:** P0 auth/session UI — startup session restoration failure must discard cached protected access.
-- **Branch:** `qa/session-initial-restore-failure`.
-- **Test:** `apps/flutter/test/widget_test.dart` — “does not restore protected access when initial session loading fails”. It starts with a cached authenticated admin session, simulates a signed-in Firebase user while session lookup fails, and asserts error/signed-out state, login redirect, and no admin content.
-- **Current PR / CI:** not yet opened; exact-head CI pending.
-- **Evidence boundary:** mocked Firebase auth/session service and Flutter router only; production Firebase/API/device behavior remains unverified.
+- **PR:** [#175 — initial session restoration failure](https://github.com/JainCommunityPlatform/jain-community-platform/pull/175), branch `qa/session-initial-restore-failure`.
+- **Tested code head:** `1d5f84fc05bd038a2783a98ca0a9566d19e16ed0` ([commit](https://github.com/JainCommunityPlatform/jain-community-platform/commit/1d5f84fc05bd038a2783a98ca0a9566d19e16ed0)).
+- **Exact-head CI:** [run #777](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38303203058) passed on that code head: Flutter analyze/tests (including the new regression), repository validation, backend lint/unit/integration/Firestore-emulator/build, and merge gate passed. Android AAB was skipped by policy. The earlier [run #776](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38303088743) failed Flutter analysis because the new test used a named argument for positional `FakeAuth`; the test constructor call was corrected without changing assertions.
+- **Current PR state:** open and reported mergeable after run #777. The merge operation could not be executed through the connected GitHub tool in this checkpoint; do not treat the PR as merged.
+- **Evidence boundary:** mocked Firebase auth/session service and Flutter router only; production Firebase token validity, live API behavior, and device behavior remain unverified.
+- **Post-merge evidence:** not available until the PR is merged. The commit-run lookup currently exposes PR-triggered runs only, so an empty result for a merge commit is unknown, not green.
 
 ## Exact next action
 
-Open a focused PR for the initial restoration-failure regression, monitor exact-head CI, fix failures without weakening assertions, and merge only when required checks are green. Then verify post-merge default-branch CI using a source that exposes push-triggered runs, update this checkpoint and issue #162 with evidence, and continue with the next P0 gap. Keep Android build/upload manual/on-demand.
+Recheck the current PR head and required checks (this checkpoint-only follow-up itself needs exact-head CI), merge only when the current head is green and mergeable, then verify the post-merge default-branch run through an Actions/status source that exposes push-triggered runs. Update this checkpoint and issue #162 with the merge SHA and post-merge evidence; then continue with the next highest-priority uncovered P0 gap. Keep Android build/upload manual/on-demand.
