@@ -1341,3 +1341,13 @@ Then each request is denied with HTTP 403 for tenant access
 And neither the membership update nor removal service is called
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — “denies cross-tenant membership mutations before changing another tenant”. The API E2E test uses mocked identity/membership and tenant-member services; persisted membership isolation remains open.
+
+## Scenario: Authenticated users without the required role cannot open protected screens
+
+Given a user is authenticated
+And the user's active session does not grant the required role for a protected route
+When the user navigates directly to the tenant-admin, website-admin, finance, platform-admin, or inventory route
+Then the router redirects the user to the member home screen
+And the protected screen is not rendered
+
+Executable regression: `apps/flutter/test/widget_test.dart` — “redirects authenticated users without each required role to member home”. This widget test verifies client-side route gating only; API authorization remains independently required and is covered by backend HTTP tests.
