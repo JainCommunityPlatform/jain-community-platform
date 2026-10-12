@@ -1251,3 +1251,15 @@ And no giving write or approval service is called
 And no financial audit event is recorded
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — “finance mutations reject unresolved tenant context before writes or audit events”.
+
+### Scenario: Financial record IDs cannot bypass tenant isolation
+
+Given a payment, expense, and adjustment belong to tenant A
+And a finance approver is operating in tenant B
+When the approver attempts to approve or reject those tenant A records by ID
+Then each operation is rejected as not found for tenant B
+And the original payment, expense, and adjustment remain unchanged
+And no receipt or tenant A financial state is exposed to tenant B
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “prevents cross-tenant approval or rejection of payments, expenses and adjustments”.
+
