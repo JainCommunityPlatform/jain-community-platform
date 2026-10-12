@@ -1263,3 +1263,13 @@ And no receipt or tenant A financial state is exposed to tenant B
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “prevents cross-tenant approval or rejection of payments, expenses and adjustments”.
 
+### Scenario: New finance records cannot reference another tenant's records
+
+Given a campaign, pledge, and payment belong to tenant A
+When tenant B tries to create a pledge against tenant A's campaign, a payment against tenant A's pledge, or an adjustment against tenant A's payment
+Then each request is rejected as not found within tenant B
+And no pledge, payment, or adjustment is persisted for tenant B
+And tenant A's payment and adjustment balances remain unchanged
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “rejects cross-tenant campaign, pledge and payment references when creating finance records”.
+
