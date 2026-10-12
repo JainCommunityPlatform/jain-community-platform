@@ -1171,3 +1171,14 @@ And exactly one pledge is persisted for the tenant
 And no payment or receipt is created as a side effect
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “deduplicates concurrent pledge creation with the same idempotency key”. This exercises concurrent requests against Firestore emulator persistence.
+
+## Finance-team unknown-tenant boundary — HTTP integration coverage
+
+### Scenario: Unknown tenants cannot be used to list, grant, or revoke financial roles
+
+Given a platform administrator names a tenant that does not exist
+When they request the finance-team roster, grant a financial role, or revoke a role for that tenant
+Then each endpoint responds with HTTP 404
+And the membership listing, grant, or revocation service is not called
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — unknown-tenant cases for finance-team GET, POST and DELETE routes. This verifies tenant existence checks precede membership operations at the HTTP boundary.

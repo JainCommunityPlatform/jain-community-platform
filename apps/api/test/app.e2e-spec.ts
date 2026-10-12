@@ -1221,4 +1221,45 @@ describe('API endpoints (integration)', () => {
     }));
   });
 
+
+  it('GET /api/platform/tenants/:tenantId/finance-team returns 404 for an unknown tenant before listing', async () => {
+    membership.listTenantMemberships.mockClear();
+    firestore.getTenantById.mockClear();
+
+    await request(app.getHttpServer())
+      .get('/api/platform/tenants/tenant-does-not-exist/finance-team')
+      .set('x-test-user', 'user-platform-admin')
+      .expect(404);
+
+    expect(firestore.getTenantById).toHaveBeenCalledWith('tenant-does-not-exist');
+    expect(membership.listTenantMemberships).not.toHaveBeenCalled();
+  });
+
+  it('POST /api/platform/tenants/:tenantId/finance-team returns 404 for an unknown tenant before granting', async () => {
+    membership.grantFinancialRoleByEmail.mockClear();
+    firestore.getTenantById.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/platform/tenants/tenant-does-not-exist/finance-team')
+      .set('x-test-user', 'user-platform-admin')
+      .send({ email: 'finance@example.test', role: 'FINANCE_OPERATOR' })
+      .expect(404);
+
+    expect(firestore.getTenantById).toHaveBeenCalledWith('tenant-does-not-exist');
+    expect(membership.grantFinancialRoleByEmail).not.toHaveBeenCalled();
+  });
+
+  it('DELETE /api/platform/tenants/:tenantId/finance-team/:userId/:role returns 404 for an unknown tenant before revoking', async () => {
+    membership.revokeFinancialRole.mockClear();
+    firestore.getTenantById.mockClear();
+
+    await request(app.getHttpServer())
+      .delete('/api/platform/tenants/tenant-does-not-exist/finance-team/finance-target/FINANCE_OPERATOR')
+      .set('x-test-user', 'user-platform-admin')
+      .expect(404);
+
+    expect(firestore.getTenantById).toHaveBeenCalledWith('tenant-does-not-exist');
+    expect(membership.revokeFinancialRole).not.toHaveBeenCalled();
+  });
+
 });
