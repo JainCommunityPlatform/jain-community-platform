@@ -1447,6 +1447,70 @@ describe('API endpoints (integration)', () => {
     expect(membership.grantFinancialRoleByEmail).not.toHaveBeenCalled();
   });
 
+  it('revoking a finance role removes protected access on the next HTTP request', async () => {
+    const tenantId = '00000000-0000-0000-0000-000000000001';
+    const originalResolve = membership.resolve.getMockImplementation();
+    let financeRoleRevoked = false;
+
+    membership.resolve.mockImplementation(async (userId: string, resolvedTenantId: string) => {
+      if (userId === 'finance-target' && resolvedTenantId === tenantId) {
+        return {
+          userId,
+          tenantId: resolvedTenantId,
+          role: financeRoleRevoked ? 'CONTENT_MANAGER' : 'FINANCE_OPERATOR',
+        };
+      }
+      return originalResolve ? originalResolve(userId, resolvedTenantId) : null;
+    });
+
+    try {
+      giving.listTenantExpenses.mockClear();
+      firestore.getTenantById.mockResolvedValueOnce({
+        id: tenantId,
+        name: 'Revocation Test Tenant',
+      });
+      membership.revokeFinancialRole.mockImplementationOnce(async () => {
+        financeRoleRevoked = true;
+        return {
+          id: 'finance-target-membership',
+          userId: 'finance-target',
+          tenantId,
+          roles: ['CONTENT_MANAGER'],
+          previousRoles: ['CONTENT_MANAGER', 'FINANCE_OPERATOR'],
+          membershipDeleted: false,
+        };
+      });
+
+      await request(app.getHttpServer())
+        .get('/api/giving/expenses')
+        .set('Host', 'badebabakharadi.com')
+        .set('x-test-user', 'finance-target')
+        .expect(200);
+      expect(giving.listTenantExpenses).toHaveBeenCalledTimes(1);
+
+      await request(app.getHttpServer())
+        .delete(`/api/platform/tenants/${tenantId}/finance-team/finance-target/FINANCE_OPERATOR`)
+        .set('x-test-user', 'user-platform-admin')
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .get('/api/giving/expenses')
+        .set('Host', 'badebabakharadi.com')
+        .set('x-test-user', 'finance-target')
+        .expect(403)
+        .expect((response) => {
+          expect(response.body.message).toBe('Permission denied');
+        });
+
+      // The rejected request must stop at authorization, before tenant data is read.
+      expect(giving.listTenantExpenses).toHaveBeenCalledTimes(1);
+    } finally {
+      if (originalResolve) {
+        membership.resolve.mockImplementation(originalResolve);
+      }
+    }
+  });
+
   it('DELETE /api/platform/tenants/:tenantId/finance-team/:userId/:role returns 404 for an unknown tenant before revoking', async () => {
     membership.revokeFinancialRole.mockClear();
     firestore.getTenantById.mockClear();
