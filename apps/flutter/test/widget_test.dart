@@ -599,6 +599,57 @@ void main() {
     await auth.dispose();
   });
 
+  testWidgets('does not restore protected access when initial session loading fails',
+      (tester) async {
+    final auth = FakeAuth(signedIn: true);
+    const cachedSession = AppSession(
+      isAuthenticated: true,
+      userId: 'user-1',
+      role: 'TENANT_ADMIN',
+    );
+    final controller = AppSessionController(
+      auth: auth,
+      sessionService: CallbackSessionService(() async {
+        throw StateError('Session service unavailable');
+      }),
+      initialSession: cachedSession,
+    );
+    await controller.initialize();
+
+    final api = _apiClient();
+    final appRouter = AppRouter(
+      tenantSelection: TenantSelectionController(temple),
+      tenantRepository: TenantRepository(api),
+      sessionController: controller,
+      profileRepository: ProfileRepository(api),
+      api: api,
+    );
+    final router = GoRouter(
+      initialLocation: AppRoutes.admin,
+      refreshListenable: controller,
+      redirect: appRouter.redirect,
+      routes: [
+        GoRoute(path: AppRoutes.login, builder: (_, __) => const Scaffold(body: Text('login'))),
+        GoRoute(path: AppRoutes.member, builder: (_, __) => const Scaffold(body: Text('member'))),
+        GoRoute(path: AppRoutes.admin, builder: (_, __) => const Scaffold(body: Text('admin'))),
+      ],
+    );
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await _pumpRouter(tester);
+
+    expect(controller.status, AppSessionStatus.error);
+    expect(controller.session, AppSession.signedOut);
+    expect(router.state.uri.path, AppRoutes.login);
+    expect(find.text('login'), findsOneWidget);
+    expect(find.text('admin'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    router.dispose();
+    appRouter.router.dispose();
+    controller.dispose();
+  });
+
   testWidgets('inventory console requires an inventory or admin role',
       (tester) async {
     final (appRouter, _, controller) = await _router(
