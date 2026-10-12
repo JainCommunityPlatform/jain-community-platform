@@ -1496,8 +1496,11 @@ describe('FirestoreService against the Firestore emulator', () => {
       .rejects.toThrow('PAYMENT_NOT_FOUND');
     await expect(service.rejectDonationPayment(tenantB, payment.id, `attacker-rejecter-${suffix}`, 'Unauthorized rejection'))
       .rejects.toThrow('PAYMENT_NOT_FOUND');
-    expect((await service.listDonationPaymentsForTenant(tenantA)).find((item) => item.id === payment.id))
-      .toMatchObject({ status: 'PENDING_APPROVAL', approvedBy: undefined, rejectionReason: undefined });
+    const paymentAfterCrossTenantAttempts = (await service.listDonationPaymentsForTenant(tenantA))
+      .find((item) => item.id === payment.id);
+    expect(paymentAfterCrossTenantAttempts?.status).toBe('PENDING_APPROVAL');
+    expect(paymentAfterCrossTenantAttempts?.approvedBy).toBeUndefined();
+    expect(paymentAfterCrossTenantAttempts?.rejectionReason).toBeUndefined();
     expect(await service.listDonationReceiptsForTenant(tenantB)).toHaveLength(0);
 
     await service.approveDonationPayment(tenantA, payment.id, `legitimate-reviewer-${suffix}`);
@@ -1509,8 +1512,11 @@ describe('FirestoreService against the Firestore emulator', () => {
       .rejects.toThrow('EXPENSE_NOT_FOUND');
     await expect(service.rejectDonationExpense(tenantB, expense.id, `attacker-rejecter-${suffix}`, 'Unauthorized rejection'))
       .rejects.toThrow('EXPENSE_NOT_FOUND');
-    expect((await service.listDonationExpensesForTenant(tenantA)).find((item) => item.id === expense.id))
-      .toMatchObject({ status: 'PENDING_APPROVAL', approvedBy: undefined, rejectionReason: undefined });
+    const expenseAfterCrossTenantAttempts = (await service.listDonationExpensesForTenant(tenantA))
+      .find((item) => item.id === expense.id);
+    expect(expenseAfterCrossTenantAttempts?.status).toBe('PENDING_APPROVAL');
+    expect(expenseAfterCrossTenantAttempts?.approvedBy).toBeUndefined();
+    expect(expenseAfterCrossTenantAttempts?.rejectionReason).toBeUndefined();
 
     const adjustment = await service.createDonationAdjustment({
       tenantId: tenantA, paymentId: payment.id, actorUserId: `adjustment-maker-${suffix}`,
@@ -1521,8 +1527,11 @@ describe('FirestoreService against the Firestore emulator', () => {
       .rejects.toThrow('ADJUSTMENT_NOT_FOUND');
     await expect(service.rejectDonationAdjustment(tenantB, adjustment.id, `attacker-rejecter-${suffix}`, 'Unauthorized rejection'))
       .rejects.toThrow('ADJUSTMENT_NOT_FOUND');
-    expect((await service.listDonationAdjustmentsForTenant(tenantA)).find((item) => item.id === adjustment.id))
-      .toMatchObject({ status: 'PENDING_APPROVAL', approvedBy: undefined, rejectionReason: undefined });
+    const adjustmentAfterCrossTenantAttempts = (await service.listDonationAdjustmentsForTenant(tenantA))
+      .find((item) => item.id === adjustment.id);
+    expect(adjustmentAfterCrossTenantAttempts?.status).toBe('PENDING_APPROVAL');
+    expect(adjustmentAfterCrossTenantAttempts?.approvedBy).toBeUndefined();
+    expect(adjustmentAfterCrossTenantAttempts?.rejectionReason).toBeUndefined();
     expect((await service.listDonationPaymentsForTenant(tenantA)).find((item) => item.id === payment.id))
       .toMatchObject({ status: 'VERIFIED', pendingAdjustmentAmountPaise: 5000, adjustedAmountPaise: 0 });
     expect(await service.listDonationReceiptsForTenant(tenantA)).toHaveLength(1);
