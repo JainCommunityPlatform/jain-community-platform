@@ -913,3 +913,19 @@ And the CA auditor cannot create or approve an expense
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — “keeps legacy tenant-finance and CA-auditor permissions separated at the HTTP boundary”. This exercises the NestJS HTTP authorization pipeline with mocked services; persisted behavior is covered separately by Firestore-emulator tests.
 
+## Public giving campaign tenant boundary
+
+### Scenario: Public campaign listing is scoped to the resolved tenant and exposes only public fields
+
+Given a request uses a hostname mapped to a known tenant
+When a visitor lists public giving campaigns
+Then the campaign query is scoped to that tenant ID
+And the response includes only public campaign fields
+And internal creator identity and tenant implementation details are not exposed
+
+Given a request uses an unknown hostname
+When a visitor lists public giving campaigns
+Then the API rejects the request because tenant context is missing
+And no campaign query is executed
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “GET /api/giving/campaigns returns only the public campaign projection for the resolved tenant” and “GET /api/giving/campaigns rejects an unresolved tenant before reading campaigns”. These tests exercise the HTTP pipeline with a mocked giving service; persisted tenant filtering is tested separately in Firestore-emulator coverage.
