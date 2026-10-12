@@ -1199,3 +1199,20 @@ And no finance-role-revoked audit event is written
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — rejected finance-team grant and revoke routes. This verifies that controller audit writes happen only after successful membership mutations.
 
+## Donor giving history — HTTP identity and tenant boundary
+
+### Scenario: Donors can read only their own pledge and receipt history in the resolved tenant
+
+Given an authenticated donor requests their giving history from a tenant-specific host
+When the API serves the donor's pledges or receipts
+Then the giving service receives the resolved tenant ID and authenticated donor ID
+And the API returns the donor-scoped records without using caller-supplied identity
+
+### Scenario: Donor history is not read without tenant context
+
+Given an authenticated donor requests pledge or receipt history for an unresolved host
+When the API resolves the tenant context
+Then each endpoint responds with HTTP 400
+And neither donor-history service method is called
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — donor history routes `GET /api/giving/my-pledges` and `GET /api/giving/my-receipts`. Persisted donor and tenant query isolation is additionally covered by `apps/api/src/database/firestore.service.firestore-emulator-spec.ts`.
