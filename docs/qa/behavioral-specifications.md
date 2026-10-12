@@ -1228,3 +1228,14 @@ And neither donor B's records nor donor A's tenant B records are returned
 And querying an unrelated donor returns no receipts
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “isolates persisted donor pledge and receipt history by both tenant and donor”. This validates persisted Firestore query isolation using the emulator, not production Firebase.
+
+
+### Scenario: Finance reports and tenant-wide history require tenant context
+
+Given a finance approver is authenticated
+And the request host cannot be resolved to a tenant
+When the approver requests a finance summary, reconciliation report, tenant receipts, pledges, payments, expenses, or adjustments
+Then each request responds with HTTP 400 and “Tenant context is required”
+And no tenant-scoped finance or history service is called
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “finance reports and tenant-wide history reject unresolved tenant context before reading data”.
