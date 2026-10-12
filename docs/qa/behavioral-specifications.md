@@ -1055,3 +1055,15 @@ When a membership is deleted from one tenant
 Then the other tenant's membership remains persisted and readable
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “isolates persisted tenant memberships across list, lookup, and deletion”. This exercises persisted Firestore behavior against the emulator, including a shared user identity across two tenant IDs.
+
+
+## Tenant membership role-update persistence isolation — Firestore emulator
+
+### Scenario: Changing a member's roles affects only the selected tenant
+Given the same user has independent memberships in two tenants
+When an administrator updates the role set for that user in one tenant
+Then the selected membership persists the new preferred role and role list
+And the membership in the other tenant retains its original role and role list
+And each tenant's membership listing continues to return only its own updated state
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “updates persisted roles only for the selected tenant membership”. This verifies Firestore persistence against the emulator.

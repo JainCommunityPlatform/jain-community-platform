@@ -1522,4 +1522,39 @@ describe('FirestoreService against the Firestore emulator', () => {
     expect(await service.listMemberships(tenantB)).toHaveLength(1);
   }, 15000);
 
+
+  it('updates persisted roles only for the selected tenant membership', async () => {
+    const suffix = `emulator-membership-role-isolation-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tenantA = `${tenantId}-role-a-${suffix}`;
+    const tenantB = `${tenantId}-role-b-${suffix}`;
+    const sharedUser = `shared-role-user-${suffix}`;
+
+    await service.upsertUser({ subject: sharedUser });
+    await service.createMembership({
+      userId: sharedUser, tenantId: tenantA, role: 'TEMPLE_ADMIN',
+    });
+    await service.createMembership({
+      userId: sharedUser, tenantId: tenantB, role: 'EVENT_MANAGER',
+    });
+
+    const updated = await service.updateMembershipRoles(
+      sharedUser, tenantA, ['DONOR', 'EVENT_MANAGER'], 'DONOR',
+    );
+    expect(updated).toMatchObject({
+      userId: sharedUser, tenantId: tenantA, role: 'DONOR',
+      roles: ['DONOR', 'EVENT_MANAGER'],
+    });
+
+    expect(await service.getMembership(sharedUser, tenantB)).toMatchObject({
+      userId: sharedUser, tenantId: tenantB, role: 'EVENT_MANAGER',
+      roles: ['EVENT_MANAGER'],
+    });
+    expect(await service.listMemberships(tenantA)).toMatchObject([
+      expect.objectContaining({ userId: sharedUser, tenantId: tenantA, role: 'DONOR' }),
+    ]);
+    expect(await service.listMemberships(tenantB)).toMatchObject([
+      expect.objectContaining({ userId: sharedUser, tenantId: tenantB, role: 'EVENT_MANAGER' }),
+    ]);
+  }, 15000);
+
 });
