@@ -1361,3 +1361,13 @@ And the router refreshes without a manual navigation action
 And the protected screen is replaced by the login screen
 
 Executable regression: `apps/flutter/test/widget_test.dart` — “redirects an open protected route to login when Firebase signs out”. This widget test covers client session/router behavior; API token expiry and real Firebase/device behavior remain separate evidence layers.
+
+## Scenario: Refreshed membership roles immediately update protected-route access
+
+Given an authenticated user with the finance-operator role is viewing the finance screen
+When the application refreshes the current session and the backend no longer grants a finance role
+Then the router re-evaluates the refreshed session
+And redirects the user to member home
+And the finance screen is no longer rendered
+
+Executable regression: `apps/flutter/test/widget_test.dart` — “refreshing a revoked finance role redirects away from finance”. This tests a mocked session refresh and client route gating; persisted membership revocation and production API/session propagation remain open.
