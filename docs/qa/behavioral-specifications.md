@@ -1283,3 +1283,14 @@ And the campaign is not listed for tenant B
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “prevents a tenant from changing another tenant campaign status by ID”.
 
+### Scenario: Campaign mutations require tenant authorization context
+
+Given a finance approver is authenticated
+And the request host cannot be resolved to a tenant
+When the approver attempts to create a campaign or change a campaign status
+Then each request is denied with HTTP 403
+And no campaign write service is called
+And no financial audit event is recorded
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “campaign creation and status changes reject unresolved tenant context before writes or audit events”.
+
