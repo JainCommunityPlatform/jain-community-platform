@@ -999,7 +999,7 @@ export class FirestoreService implements OnModuleInit {
     campaignId: string;
     pledgedAmountPaise: number;
     idempotencyKey: string;
-  }) {
+  }, retryAttempt = 0) {
     if (!Number.isSafeInteger(input.pledgedAmountPaise) || input.pledgedAmountPaise < 1) {
       throw new Error('Pledge amount must be a positive safe integer in paise');
     }
@@ -1101,6 +1101,15 @@ export class FirestoreService implements OnModuleInit {
         if (matchesInput) {
           return this.toDonationPledge(existingSnapshot.id, existing);
         }
+      }
+
+      // The emulator can surface a closed-transaction error for a concurrent
+      // deterministic-key create before the winning commit becomes visible.
+      // Retry only that specific transient failure, with a strict attempt cap.
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('Transaction is invalid or closed') && retryAttempt < 2) {
+        await new Promise<void>((resolve) => setTimeout(resolve, 50 * (retryAttempt + 1)));
+        return this.createDonationPledge(input, retryAttempt + 1);
       }
       throw error;
     }
