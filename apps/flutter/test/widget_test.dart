@@ -305,6 +305,61 @@ void main() {
     controller.dispose();
   });
 
+  testWidgets('redirects an open protected route to login when Firebase signs out',
+      (tester) async {
+    final auth = FakeFirebaseAuthProvider();
+    const session = AppSession(
+      isAuthenticated: true,
+      userId: 'user-1',
+      role: 'TENANT_ADMIN',
+    );
+    final controller = AppSessionController(
+      auth: auth,
+      sessionService: FakeAuthSessionService(() async => session),
+      initialSession: session,
+    );
+    await controller.initialize();
+
+    final api = _apiClient();
+    final selection = TenantSelectionController(temple);
+    final appRouter = AppRouter(
+      tenantSelection: selection,
+      tenantRepository: TenantRepository(api),
+      sessionController: controller,
+      profileRepository: ProfileRepository(api),
+      api: api,
+    );
+    final router = GoRouter(
+      initialLocation: AppRoutes.admin,
+      refreshListenable: controller,
+      redirect: appRouter.redirect,
+      routes: [
+        GoRoute(path: AppRoutes.login, builder: (_, __) => const Scaffold(body: Text('login'))),
+        GoRoute(path: AppRoutes.member, builder: (_, __) => const Scaffold(body: Text('member'))),
+        GoRoute(path: AppRoutes.admin, builder: (_, __) => const Scaffold(body: Text('admin'))),
+      ],
+    );
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await _pumpRouter(tester);
+    expect(router.state.uri.path, AppRoutes.admin);
+    expect(find.text('admin'), findsOneWidget);
+
+    auth.emit(null);
+    await tester.pump();
+    await _pumpRouter(tester);
+
+    expect(router.state.uri.path, AppRoutes.login);
+    expect(find.text('login'), findsOneWidget);
+    expect(find.text('admin'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    router.dispose();
+    appRouter.router.dispose();
+    controller.dispose();
+    await auth.dispose();
+  });
+
   testWidgets('allows an authenticated tenant admin to open admin',
       (tester) async {
     final (appRouter, _, controller) = await _router(
