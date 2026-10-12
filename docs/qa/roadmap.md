@@ -52,3 +52,12 @@ Report progress as:
 - **Next:** one concrete highest-priority item.
 
 Do not count a documentation row as a completed test. The inventory and roadmap are control mechanisms; completion comes from executable tests and evidence.
+
+
+## Execution checkpoint — 12 October 2026
+
+- **Completed in this work item:** strengthened the Firestore-emulator donation lifecycle regression to verify persisted approved payment states, receipt allocation, donor-facing pledge/receipt history, and balanced reconciliation for a unique isolated tenant fixture.
+- **Evidence boundary:** this is an emulator-backed regression, not production Firebase, staging, or device verification. Exact PR CI evidence is pending until GitHub Actions completes.
+- **Current priority:** P0-B, donation-to-receipt lifecycle. The new assertions extend existing partial-payment coverage; they do not close the entire donation E2E gap.
+- **Next action:** inspect the exact PR-head emulator job and all required checks; fix genuine failures, merge only if green/mergeable, then verify default-branch CI. Continue with P0-C authorization route matrix and P0-A inventory completeness as sequencing permits.
+- **Release policy:** Android build/upload remains manual/on-demand; this change must not trigger a release.
