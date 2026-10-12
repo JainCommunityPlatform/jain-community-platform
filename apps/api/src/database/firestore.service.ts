@@ -1019,71 +1019,71 @@ export class FirestoreService implements OnModuleInit {
     const notificationRef = db.collection('notifications').doc(notificationId);
     try {
       return await db.runTransaction(async (transaction) => {
-      const [campaignSnapshot, pledgeSnapshot, donorSnapshot] = await Promise.all([
-        transaction.get(campaignRef),
-        transaction.get(pledgeRef),
-        transaction.get(donorRef),
-      ]);
-      if (pledgeSnapshot.exists) {
-        const existing = pledgeSnapshot.data() ?? {};
-        if (
-          existing.tenantId !== input.tenantId ||
-          existing.donorUserId !== input.donorUserId ||
-          existing.campaignId !== input.campaignId ||
-          existing.pledgedAmountPaise !== input.pledgedAmountPaise
-        ) {
-          throw new Error('IDEMPOTENCY_CONFLICT');
+        const [campaignSnapshot, pledgeSnapshot, donorSnapshot] = await Promise.all([
+          transaction.get(campaignRef),
+          transaction.get(pledgeRef),
+          transaction.get(donorRef),
+        ]);
+        if (pledgeSnapshot.exists) {
+          const existing = pledgeSnapshot.data() ?? {};
+          if (
+            existing.tenantId !== input.tenantId ||
+            existing.donorUserId !== input.donorUserId ||
+            existing.campaignId !== input.campaignId ||
+            existing.pledgedAmountPaise !== input.pledgedAmountPaise
+          ) {
+            throw new Error('IDEMPOTENCY_CONFLICT');
+          }
+          return this.toDonationPledge(pledgeSnapshot.id, existing);
         }
-        return this.toDonationPledge(pledgeSnapshot.id, existing);
-      }
-      if (donorSnapshot.exists && donorSnapshot.data()?.status === 'INACTIVE') {
-        throw new Error('DONOR_INACTIVE');
-      }
-      if (
-        !campaignSnapshot.exists ||
-        campaignSnapshot.data()?.tenantId !== input.tenantId ||
-        campaignSnapshot.data()?.status !== 'ACTIVE'
-      ) {
-        throw new Error('CAMPAIGN_NOT_FOUND');
-      }
-      const now = Timestamp.now();
-      if (!donorSnapshot.exists) {
-        transaction.create(donorRef, {
+        if (donorSnapshot.exists && donorSnapshot.data()?.status === 'INACTIVE') {
+          throw new Error('DONOR_INACTIVE');
+        }
+        if (
+          !campaignSnapshot.exists ||
+          campaignSnapshot.data()?.tenantId !== input.tenantId ||
+          campaignSnapshot.data()?.status !== 'ACTIVE'
+        ) {
+          throw new Error('CAMPAIGN_NOT_FOUND');
+        }
+        const now = Timestamp.now();
+        if (!donorSnapshot.exists) {
+          transaction.create(donorRef, {
+            tenantId: input.tenantId,
+            userId: input.donorUserId,
+            status: 'ACTIVE',
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+        const data = {
+          tenantId: input.tenantId,
+          campaignId: input.campaignId,
+          donorId,
+          donorUserId: input.donorUserId,
+          pledgedAmountPaise: input.pledgedAmountPaise,
+          paidAmountPaise: 0,
+          currency: 'INR',
+          status: 'PLEDGED',
+          createdAt: now,
+          updatedAt: now,
+        };
+        transaction.create(pledgeRef, data);
+        transaction.create(notificationRef, {
+          id: notificationId,
           tenantId: input.tenantId,
           userId: input.donorUserId,
-          status: 'ACTIVE',
+          type: 'PLEDGE_CREATED',
+          title: 'Pledge recorded',
+          body: 'Your pledge for ' + String(campaignSnapshot.data()?.name ?? 'this campaign') + ' has been recorded.',
+          entityType: 'DonationPledge',
+          entityId: id,
+          metadata: { campaignId: input.campaignId, pledgedAmountPaise: input.pledgedAmountPaise },
+          readAt: null,
           createdAt: now,
           updatedAt: now,
         });
-      }
-      const data = {
-        tenantId: input.tenantId,
-        campaignId: input.campaignId,
-        donorId,
-        donorUserId: input.donorUserId,
-        pledgedAmountPaise: input.pledgedAmountPaise,
-        paidAmountPaise: 0,
-        currency: 'INR',
-        status: 'PLEDGED',
-        createdAt: now,
-        updatedAt: now,
-      };
-      transaction.create(pledgeRef, data);
-      transaction.create(notificationRef, {
-        id: notificationId,
-        tenantId: input.tenantId,
-        userId: input.donorUserId,
-        type: 'PLEDGE_CREATED',
-        title: 'Pledge recorded',
-        body: 'Your pledge for ' + String(campaignSnapshot.data()?.name ?? 'this campaign') + ' has been recorded.',
-        entityType: 'DonationPledge',
-        entityId: id,
-        metadata: { campaignId: input.campaignId, pledgedAmountPaise: input.pledgedAmountPaise },
-        readAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
-      return this.toDonationPledge(id, data);
+        return this.toDonationPledge(id, data);
       });
     } catch (error) {
       // Concurrent requests with the same idempotency key can race on the
