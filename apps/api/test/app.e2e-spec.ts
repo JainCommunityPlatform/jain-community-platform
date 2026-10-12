@@ -313,6 +313,15 @@ describe('API endpoints (integration)', () => {
     expect(tenantMembers.create).toHaveBeenCalledWith('00000000-0000-4000-8000-000000000099', 'CONTENT_MANAGER');
   });
 
+  it('POST /api/tenant/members rejects unsupported privileged roles before member creation', async () => {
+    tenantMembers.create.mockClear();
+    await request(app.getHttpServer()).post('/api/tenant/members')
+      .set('Host', 'badebabakharadi.com').set('x-test-user', 'user-a')
+      .send({ userId: '00000000-0000-4000-8000-000000000099', role: 'SUPER_ADMIN' })
+      .expect(400);
+    expect(tenantMembers.create).not.toHaveBeenCalled();
+  });
+
   it('GET /api/tenant/members rejects malformed user IDs before member lookup', async () => {
     tenantMembers.get.mockClear();
     await request(app.getHttpServer()).get('/api/tenant/members/not-a-uuid').set('Host', 'badebabakharadi.com').set('x-test-user', 'user-a').expect(400);
