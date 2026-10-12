@@ -322,6 +322,15 @@ describe('API endpoints (integration)', () => {
     expect(tenantMembers.create).not.toHaveBeenCalled();
   });
 
+  it('POST /api/tenant/members rejects malformed user IDs before member creation', async () => {
+    tenantMembers.create.mockClear();
+    await request(app.getHttpServer()).post('/api/tenant/members')
+      .set('Host', 'badebabakharadi.com').set('x-test-user', 'user-a')
+      .send({ userId: 'not-a-uuid', role: 'CONTENT_MANAGER' })
+      .expect(400);
+    expect(tenantMembers.create).not.toHaveBeenCalled();
+  });
+
   it('GET /api/tenant/members rejects malformed user IDs before member lookup', async () => {
     tenantMembers.get.mockClear();
     await request(app.getHttpServer()).get('/api/tenant/members/not-a-uuid').set('Host', 'badebabakharadi.com').set('x-test-user', 'user-a').expect(400);
