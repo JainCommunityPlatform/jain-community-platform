@@ -1,0 +1,54 @@
+# JCP QA Roadmap
+
+Last reviewed: 12 October 2026  
+Programme tracker: [QA Control Tower issue #162](https://github.com/JainCommunityPlatform/jain-community-platform/issues/162)  
+Detailed inventory: [Coverage Inventory](coverage-inventory.md)  
+Scenario source: [Behavioural Specifications](behavioral-specifications.md)
+
+## Objective
+
+Close JCP's test gaps in risk order while keeping the work visible and incremental. A green CI run means the checks that ran passed; it does not by itself prove that every user journey, real Firebase integration, device UI, or release is verified.
+
+## Delivery milestones
+
+| Milestone | Scope | Exit criteria | Priority |
+|---|---|---|---|
+| M0 — Coverage baseline | Inventory Flutter screens, API controllers/routes, data mutations, roles, tenants, existing tests, CI triggers and evidence boundaries | Every feature area has an inventory row; test files/commands linked; unknowns explicitly recorded; no guessed coverage percentage | P0 |
+| M1 — Identity and tenant boundaries | Login/session lifecycle, membership resolution, role grant/revocation, route-level allow/deny and cross-tenant denial | Critical protected routes have positive and negative assertions; denied requests prove no protected mutation/financial side effect; test evidence linked to exact CI run | P0 |
+| M2 — Donation and financial integrity | Campaign → pledge → pending payment → independent approval/rejection → receipt → donor history → finance reports/reconciliation | Critical lifecycle and retry/replay/partial-payment/overpayment cases verify persisted outcomes; independent maker-checker and tenant boundaries asserted; emulator and staging limitations stated | P0 |
+| M3 — Website and media workflows | Editor fields, upload/progress/errors, save/publish, refresh/reopen, invalid media, retries and tenant separation | UI assertions and API/persistence assertions cover success and failure; existing published content remains intact on failure; emulator/staging/device evidence recorded where needed | P1 |
+| M4 — Member, directory, events and notifications | Profile/contact linking, member administration, public pages, event workflows, notification preferences and delivery failures | Role-specific journey coverage with empty/loading/error states; no cross-user or cross-tenant leakage; external provider tests use controlled test configuration | P1 |
+| M5 — UI quality and accessibility | Responsive layouts, text scaling, keyboard/focus/semantics, localization completeness, visual regression baseline | Screen inventory reviewed; automated checks added where reliable; remaining manual device checks documented | P1 |
+| M6 — Release confidence | Repeatable staging smoke suite, build/commit traceability, release checklist and CI failure classification | Required CI checks green on exact commit; critical staging/device smoke results recorded; build artifact/version linked; Android release remains explicit/on-demand | P1 |
+
+## Execution policy
+
+Work one risk-focused PR at a time unless independent work can safely be parallelized.
+
+1. Pick the next highest-priority uncovered row in the [inventory](coverage-inventory.md).
+2. Write or refine the behavioural scenario and acceptance assertions first.
+3. Add the smallest coherent set of tests; avoid unrelated production changes.
+4. Run the narrow test, then the relevant full suite and CI.
+5. If CI fails, inspect logs and classify the cause as product defect, test defect, environment/configuration defect, or nondeterminism. Fix the cause; do not weaken assertions just to obtain green.
+6. Re-run against the updated PR head SHA. Merge only when required checks pass and the PR is mergeable.
+7. Verify the post-merge default-branch CI run; link the run and update the inventory state.
+8. Move to the next row. If a real environment is unavailable, mark the work as blocked at that evidence layer rather than calling it complete.
+
+## Release gates
+
+- **Code gate:** required CI checks pass on the exact candidate commit.
+- **Security gate:** P0 authorization, tenant isolation, and financial invariants have automated negative as well as positive assertions.
+- **Integration gate:** critical persisted workflows pass in the configured emulator/test environment.
+- **Environment gate:** authentication, storage, notification and device-specific smoke checks are recorded where applicable.
+- **Release gate:** exact artifact/version, commit, smoke evidence and destination are recorded.
+- **Android gate:** build/upload is manual or explicitly dispatched; it must not be coupled to every merge.
+
+## Status reporting
+
+Report progress as:
+- **Done (evidence linked):** exact test(s), commit and CI/environment result.
+- **In progress:** what is implemented and what evidence remains.
+- **Blocked:** the missing environment/access/dependency and the next unblocking action.
+- **Next:** one concrete highest-priority item.
+
+Do not count a documentation row as a completed test. The inventory and roadmap are control mechanisms; completion comes from executable tests and evidence.
