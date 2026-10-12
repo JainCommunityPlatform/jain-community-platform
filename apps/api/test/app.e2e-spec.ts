@@ -310,6 +310,27 @@ describe('API endpoints (integration)', () => {
     expect(tenantMembers.get).not.toHaveBeenCalled();
   });
 
+  it('GET /api/tenant/members/:userId returns the requested member for a tenant reader', async () => {
+    tenantMembers.get.mockClear();
+    await request(app.getHttpServer()).get('/api/tenant/members/00000000-0000-4000-8000-000000000099')
+      .set('Host', 'badebabakharadi.com').set('x-test-user', 'user-viewer')
+      .expect(200)
+      .expect((response) => expect(response.body).toMatchObject({
+        userId: '00000000-0000-4000-8000-000000000099',
+        role: 'CONTENT_MANAGER',
+      }));
+    expect(tenantMembers.get).toHaveBeenCalledWith('00000000-0000-4000-8000-000000000099');
+  });
+
+  it('GET /api/tenant/members/:userId rejects cross-tenant membership context before member lookup', async () => {
+    tenantMembers.get.mockClear();
+    await request(app.getHttpServer()).get('/api/tenant/members/00000000-0000-4000-8000-000000000099')
+      .set('Host', 'badebabakharadi.com').set('x-test-user', 'user-cross-tenant')
+      .expect(403)
+      .expect((response) => expect(response.body.message).toBe('Tenant access denied'));
+    expect(tenantMembers.get).not.toHaveBeenCalled();
+  });
+
   it('PATCH /api/tenant/members/:userId denies finance viewers before role changes', async () => {
     tenantMembers.update.mockClear();
     await request(app.getHttpServer()).patch('/api/tenant/members/00000000-0000-4000-8000-000000000099')
