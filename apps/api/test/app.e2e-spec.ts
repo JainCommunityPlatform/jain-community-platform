@@ -1171,4 +1171,54 @@ describe('API endpoints (integration)', () => {
     }));
   });
 
+  it('DELETE /api/platform/tenants/:tenantId/finance-team/:userId/:role denies non-platform users before revocation', async () => {
+    membership.revokeFinancialRole.mockClear();
+
+    await request(app.getHttpServer())
+      .delete('/api/platform/tenants/tenant-finance-a/finance-team/finance-target/FINANCE_OPERATOR')
+      .set('x-test-user', 'user-a')
+      .expect(403);
+
+    expect(membership.revokeFinancialRole).not.toHaveBeenCalled();
+  });
+
+  it('DELETE /api/platform/tenants/:tenantId/finance-team/:userId/:role revokes and audits one financial role', async () => {
+    firestore.getTenantById.mockClear();
+    firestore.recordAudit.mockClear();
+    membership.revokeFinancialRole.mockClear();
+
+    await request(app.getHttpServer())
+      .delete('/api/platform/tenants/tenant-finance-a/finance-team/finance-target/FINANCE_OPERATOR')
+      .set('x-test-user', 'user-platform-admin')
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toEqual({
+          userId: 'finance-target',
+          tenantId: 'tenant-finance-a',
+          roles: [],
+          membershipDeleted: false,
+        });
+      });
+
+    expect(membership.revokeFinancialRole).toHaveBeenCalledWith(
+      'finance-target',
+      'tenant-finance-a',
+      'FINANCE_OPERATOR',
+    );
+    expect(firestore.recordAudit).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-finance-a',
+      userId: 'user-platform-admin',
+      action: 'TENANT_FINANCE_ROLE_REVOKED',
+      entity: 'TenantMembership',
+      entityId: 'finance-target-membership',
+      metadata: expect.objectContaining({
+        targetUserId: 'finance-target',
+        role: 'FINANCE_OPERATOR',
+        previousRoles: ['CONTENT_MANAGER', 'FINANCE_OPERATOR'],
+        remainingRoles: ['CONTENT_MANAGER'],
+        membershipDeleted: false,
+      }),
+    }));
+  });
+
 });
