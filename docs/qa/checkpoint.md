@@ -12,13 +12,13 @@ Repository: [JainCommunityPlatform/jain-community-platform](https://github.com/J
 
 ## Current item
 
-- **In progress:** P0 tenant-boundary route matrix — deny cross-tenant tenant-member updates and removals before mutation.
-- **Branch:** `qa/cross-tenant-membership-mutation-denial`.
-- **Test:** `apps/api/test/app.e2e-spec.ts` — “denies cross-tenant membership mutations before changing another tenant”. Covers PATCH and DELETE member endpoints and asserts the service is not called.
-- **Previous item:** [PR #168](https://github.com/JainCommunityPlatform/jain-community-platform/pull/168) merged as `bcc180f696a406cff2b56d1a06ee6015e47b6dfb`; exact PR-head [CI #760](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38292189804) passed all required checks; post-merge [CI #761](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38292520082) pending final verification.
+- **In progress:** P0 auth/session UI — verify direct navigation to protected screens is denied when the authenticated session lacks the required role.
+- **Branch:** `qa/auth-role-redirect-denials`.
+- **Test:** `apps/flutter/test/widget_test.dart` — “redirects authenticated users without each required role to member home”. Covers tenant admin, website admin, finance, platform admin, and inventory routes.
+- **Previous item:** [PR #169](https://github.com/JainCommunityPlatform/jain-community-platform/pull/169) merged as `1c5a85038d3182452cc3d54ce54ad5d260d4c958`; exact PR-head [CI #762](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38292799818) passed all required checks; post-merge [CI #763](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38293137101) pending final verification.
 - **Current PR / CI:** not yet opened; exact-head CI pending.
-- **Evidence boundary:** API E2E uses mocked identity/membership and tenant-member services; persisted Firestore isolation and production identity propagation remain unverified.
+- **Evidence boundary:** Flutter widget/router behavior only; live session role refresh and backend authorization are separate evidence layers.
 
 ## Exact next action
 
-Verify post-merge CI #761 for PR #168, then open the focused PR for cross-tenant membership mutation denial. Inspect exact-head CI, fix failures rather than weakening assertions, merge only when all required checks pass, verify post-merge CI, update this checkpoint and issue #162, then continue the next P0 route-matrix gap. Keep Android build/upload manual/on-demand.
+Verify post-merge CI #763 for PR #169, then open the focused PR for protected-route role denial. Inspect exact-head CI, fix failures rather than weakening assertions, merge only when all required checks pass, verify post-merge CI, update this checkpoint and issue #162, then continue the auth/session journey matrix. Keep Android build/upload manual/on-demand.
