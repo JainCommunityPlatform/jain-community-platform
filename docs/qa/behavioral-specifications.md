@@ -1015,3 +1015,19 @@ Then the API responds with HTTP 400
 And the membership removal service is not invoked
 
 Executable regressions: `apps/api/test/app.e2e-spec.ts` — “PATCH /api/tenant/members/:userId rejects malformed IDs before role changes” and “DELETE /api/tenant/members/:userId rejects malformed IDs before membership removal”. These exercise NestJS route parsing and assert the service boundary is not reached; they do not claim Firestore persistence verification.
+
+
+## Tenant member detail read boundary
+
+### Scenario: A tenant reader can retrieve a member detail
+Given a finance viewer has read permission for the active tenant
+When they request a member detail using a valid user ID
+Then the API returns that member's summary
+
+### Scenario: A user with membership in another tenant cannot retrieve member details
+Given the authenticated user's membership belongs to a different tenant
+When they request a member detail under the active tenant hostname
+Then the API returns HTTP 403 with tenant access denied
+And the member lookup service is not invoked
+
+Executable regressions: `apps/api/test/app.e2e-spec.ts` — “GET /api/tenant/members/:userId returns the requested member for a tenant reader” and “GET /api/tenant/members/:userId rejects cross-tenant membership context before member lookup”. These exercise the NestJS HTTP guard and membership-context pipeline with test identity/membership providers; they do not claim Firestore persistence verification.
