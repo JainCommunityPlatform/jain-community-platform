@@ -1372,6 +1372,17 @@ And the finance screen is no longer rendered
 
 Executable regression: `apps/flutter/test/widget_test.dart` — “refreshing a revoked finance role redirects away from finance”. This tests a mocked session refresh and client route gating; persisted membership revocation and production API/session propagation remain open.
 
+## Scenario: Initial session restoration failure does not preserve cached protected access
+
+Given the app has a cached authenticated administrator session
+And Firebase reports a signed-in user during startup
+When the initial JCP session lookup fails
+Then the controller clears the cached authenticated session and records an error
+And the router redirects away from the protected admin screen to login
+And protected admin content is not rendered
+
+Executable regression: `apps/flutter/test/widget_test.dart` — “does not restore protected access when initial session loading fails”. This tests a mocked session-service failure and client router; Firebase token validity and production API availability remain separate evidence layers.
+
 ## Scenario: Session refresh failure closes protected routes
 
 Given an authenticated administrator is viewing a protected screen
