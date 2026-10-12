@@ -1474,6 +1474,23 @@ describe('FirestoreService against the Firestore emulator', () => {
     });
   });
 
+  it('prevents a tenant from changing another tenant campaign status by ID', async () => {
+    const suffix = `emulator-cross-tenant-campaign-status-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tenantA = `${tenantId}-campaign-owner-${suffix}`;
+    const tenantB = `${tenantId}-campaign-attacker-${suffix}`;
+    const campaign = await service.createGivingCampaign({
+      tenantId: tenantA, actorUserId: `campaign-admin-${suffix}`, name: 'Tenant-owned campaign',
+    });
+    await service.updateGivingCampaignStatus(tenantA, campaign.id, 'ACTIVE');
+
+    await expect(service.updateGivingCampaignStatus(tenantB, campaign.id, 'CLOSED')).resolves.toBeNull();
+
+    expect(await service.listGivingCampaigns(tenantA, true)).toMatchObject([
+      { id: campaign.id, tenantId: tenantA, status: 'ACTIVE' },
+    ]);
+    expect(await service.listGivingCampaigns(tenantB, true)).toHaveLength(0);
+  });
+
   it('prevents cross-tenant approval or rejection of payments, expenses and adjustments', async () => {
     const suffix = `emulator-cross-tenant-mutations-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const tenantA = `${tenantId}-mutation-owner-${suffix}`;
