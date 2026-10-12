@@ -194,7 +194,7 @@ describe('FirestoreService against the Firestore emulator', () => {
     const persistedPayments = (await service.listDonationPaymentsForTenant(isolatedTenantId))
       .filter((payment) => payment.pledgeId === pledge.id);
     expect(persistedPayments).toHaveLength(2);
-    expect(persistedPayments.every((payment) => payment.status === 'APPROVED')).toBe(true);
+    expect(persistedPayments.every((payment) => payment.status === 'VERIFIED')).toBe(true);
     expect(persistedPayments.every((payment) => Boolean(payment.receiptNumber))).toBe(true);
 
     const reconciliation = await service.getDonationReconciliationReport(isolatedTenantId);
