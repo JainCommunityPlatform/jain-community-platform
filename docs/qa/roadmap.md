@@ -113,3 +113,12 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Evidence boundary:** widget/router test with a fake Firebase auth stream; token expiry and real Firebase/device behavior remain open.
 - **Next action:** finish post-merge CI #768, open the focused PR, inspect exact-head CI, fix real failures, merge only when required checks pass, verify post-merge CI, and continue the auth/session matrix.
 - **Release policy:** Android build/upload remains manual/on-demand.
+
+## Execution checkpoint — session role refresh updates route access
+
+- **Previous completed item:** [PR #172](https://github.com/JainCommunityPlatform/jain-community-platform/pull/172) merged as `4000fd9fa1d6e2184657b48a5465239aac115899`; exact-head [CI #770](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38295541409) passed all required checks. Post-merge [CI #771](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/3829579) is being verified.
+- **Current item:** P0 auth/session UI — refreshed membership roles must immediately remove access to a protected finance screen.
+- **Assertions:** finance role initially permits the route; refreshing the session to a non-finance role redirects to member home and removes finance content.
+- **Evidence boundary:** mocked session refresh and Flutter router; persisted membership revocation and production API/session propagation remain open.
+- **Next action:** finish post-merge CI #771, open the focused PR, inspect exact-head CI, fix real failures, merge only when required checks pass, verify post-merge CI, and continue auth/session expiry and restoration gaps.
+- **Release policy:** Android build/upload remains manual/on-demand.
