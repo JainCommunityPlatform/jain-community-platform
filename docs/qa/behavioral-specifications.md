@@ -83,6 +83,18 @@ And no tenant media or configuration is changed
 - Closed/draft campaigns follow the documented lifecycle rules and cannot be used to bypass campaign policy.
 - Tenant finance users can see permitted tenant pledges; other roles cannot access finance-only endpoints.
 
+### Scenario: Public campaign discovery exposes active campaigns for only the resolved tenant
+
+Given a tenant has draft, active and closed giving campaigns
+And another tenant has an active campaign
+When a visitor requests the public campaign list for the first tenant
+Then only its active campaign is returned
+And draft and closed campaigns are not discoverable publicly
+And the other tenant's active campaign is not exposed
+And an authorized tenant-scoped listing can still retrieve that tenant's campaigns across lifecycle states
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “exposes only active campaigns publicly and scopes campaign visibility to the tenant”. The test runs against the Firestore emulator and checks persisted campaign status and tenant boundaries.
+
 ## Feature: Payment, receipt and financial controls
 
 - Recording cash, UPI, bank transfer or cheque creates a pending payment; it does not immediately count as received funds.

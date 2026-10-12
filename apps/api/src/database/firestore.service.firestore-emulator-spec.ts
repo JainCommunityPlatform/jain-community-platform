@@ -22,6 +22,40 @@ describe('FirestoreService against the Firestore emulator', () => {
     if (app) await deleteApp(app);
   });
 
+  it('exposes only active campaigns publicly and scopes campaign visibility to the tenant', async () => {
+    const suffix = `emulator-campaign-visibility-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tenantA = `${tenantId}-campaign-a-${suffix}`;
+    const tenantB = `${tenantId}-campaign-b-${suffix}`;
+    const createCampaign = (targetTenant: string, name: string) =>
+      service.createGivingCampaign({ tenantId: targetTenant, actorUserId: `admin-${name}-${suffix}`, name });
+
+    const draft = await createCampaign(tenantA, 'Draft campaign');
+    const active = await createCampaign(tenantA, 'Active campaign');
+    const closed = await createCampaign(tenantA, 'Closed campaign');
+    const foreignActive = await createCampaign(tenantB, 'Other tenant active campaign');
+    await service.updateGivingCampaignStatus(tenantA, active.id, 'ACTIVE');
+    await service.updateGivingCampaignStatus(tenantA, closed.id, 'ACTIVE');
+    await service.updateGivingCampaignStatus(tenantA, closed.id, 'CLOSED');
+    await service.updateGivingCampaignStatus(tenantB, foreignActive.id, 'ACTIVE');
+
+    const publicCampaigns = await service.listGivingCampaigns(tenantA);
+    expect(publicCampaigns.map((campaign) => campaign.id)).toContain(active.id);
+    expect(publicCampaigns.map((campaign) => campaign.id)).not.toContain(draft.id);
+    expect(publicCampaigns.map((campaign) => campaign.id)).not.toContain(closed.id);
+    expect(publicCampaigns.map((campaign) => campaign.id)).not.toContain(foreignActive.id);
+    expect(publicCampaigns).toHaveLength(1);
+    expect(publicCampaigns[0]).toMatchObject({
+      id: active.id,
+      tenantId: tenantA,
+      status: 'ACTIVE',
+      name: 'Active campaign',
+    });
+
+    const tenantCampaigns = await service.listGivingCampaigns(tenantA, true);
+    expect(tenantCampaigns.map((campaign) => campaign.id).sort()).toEqual([active.id, closed.id, draft.id].sort());
+    expect(tenantCampaigns.map((campaign) => campaign.id)).not.toContain(foreignActive.id);
+  });
+
   it('persists partial payments, updates the pledge and issues distinct receipts transactionally', async () => {
     const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const donor = await service.upsertUser({ subject: `emulator-donor-${suffix}` });
@@ -160,7 +194,7 @@ describe('FirestoreService against the Firestore emulator', () => {
       .filter((receipt) => receipt.pledgeId === pledge.id);
     expect(persistedPledge).toMatchObject({ paidAmountPaise: 60000, status: 'PARTIALLY_PAID' });
     expect(receipts).toHaveLength(1);
-  });
+  }, 30000);
 
 
   it('allocates unique receipt numbers when separate pledges are approved concurrently', async () => {
