@@ -661,6 +661,33 @@ describe('API endpoints (integration)', () => {
     expect(giving.listMyReceipts).not.toHaveBeenCalled();
   });
 
+  it('finance reports and tenant-wide history reject unresolved tenant context before reading data', async () => {
+    const routes = [
+      { path: '/api/giving/reports/summary', method: 'get', service: giving.getFinanceReport },
+      { path: '/api/giving/reports/reconciliation', method: 'get', service: giving.getReconciliationReport },
+      { path: '/api/giving/receipts', method: 'get', service: giving.listTenantReceipts },
+      { path: '/api/giving/pledges', method: 'get', service: giving.listTenantPledges },
+      { path: '/api/giving/payments', method: 'get', service: giving.listTenantPayments },
+      { path: '/api/giving/expenses', method: 'get', service: giving.listTenantExpenses },
+      { path: '/api/giving/adjustments', method: 'get', service: giving.listTenantAdjustments },
+    ];
+
+    for (const route of routes) {
+      route.service.mockClear();
+      await request(app.getHttpServer())
+        .get(route.path)
+        .set('Host', 'unknown.example.com')
+        .set('x-test-user', 'user-finance-approver')
+        .expect(403)
+        .expect({
+          statusCode: 403,
+          message: 'Tenant authorization context is required',
+          error: 'Forbidden',
+        });
+      expect(route.service).not.toHaveBeenCalled();
+    }
+  });
+
   it('GET /api/giving/payments denies tenant administrators at the HTTP authorization boundary', async () => {
     await request(app.getHttpServer())
       .get('/api/giving/payments')
