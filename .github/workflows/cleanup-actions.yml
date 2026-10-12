@@ -1,0 +1,168 @@
+name: Cleanup Actions Runs
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Monthly on day 1 at 14:30 UTC; use Actions > Cleanup Actions Runs > Run workflow for on-demand cleanup.
+    - cron: '30 14 1 * *'
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: actions-run-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Retain recent CI history and known build artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate retention plan and clean up old runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Retention policy: keep 10 successful and 5 unsuccessful completed
+          # non-PR runs per workflow. Never delete PR runs or in-progress runs.
+          MAX_SUCCESSFUL_RUNS=10
+          MAX_OTHER_COMPLETED_RUNS=5
+
+          # Only these explicitly known artifact families may be pruned.
+          # Unrecognized artifacts are never deleted by this workflow.
+          MAX_COVERAGE_ARTIFACTS=10
+          MAX_ANDROID_ARTIFACTS=5
+
+          declare -A KNOWN_RUN=()
+          declare -A PR_RUN=()
+          declare -A KEEP_RUN=()
+          declare -A KEEP_ARTIFACT=()
+          declare -A SUCCESSFUL_RUN_COUNT=()
+          declare -A OTHER_RUN_COUNT=()
+          declare -A ARTIFACT_COUNT=()
+
+          mapfile -t RUNS < <(
+            gh api --paginate \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "/repos/${REPOSITORY}/actions/runs?per_page=100" \
+              --jq '.workflow_runs[] | [.id, .name, .status, (.conclusion // ""), .created_at, ((.pull_requests // []) | length)] | @tsv' \
+              | sort -t $'\t' -k5,5r
+          )
+
+          mapfile -t ARTIFACTS < <(
+            gh api --paginate \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "/repos/${REPOSITORY}/actions/artifacts?per_page=100" \
+              --jq '.artifacts[] | [.id, (.workflow_run.id // 0), .name, (.expired | tostring), .created_at] | @tsv' \
+              | sort -t $'\t' -k5,5r
+          )
+
+          for run in "${RUNS[@]}"; do
+            IFS=$'\t' read -r run_id workflow_name status conclusion created_at pr_count <<< "$run"
+            KNOWN_RUN["$run_id"]=1
+            if [[ "${pr_count:-0}" != "0" ]]; then
+              PR_RUN["$run_id"]=1
+              KEEP_RUN["$run_id"]=1
+            fi
+          done
+
+          for run in "${RUNS[@]}"; do
+            IFS=$'\t' read -r run_id workflow_name status conclusion created_at pr_count <<< "$run"
+            [[ "$run_id" == "$CURRENT_RUN_ID" ]] && { KEEP_RUN["$run_id"]=1; continue; }
+            [[ "${pr_count:-0}" != "0" ]] && continue
+            [[ "$status" == "completed" ]] || { KEEP_RUN["$run_id"]=1; continue; }
+
+            if [[ "$conclusion" == "success" ]]; then
+              count=${SUCCESSFUL_RUN_COUNT["$workflow_name"]:-0}
+              if [[ "$count" -lt "$MAX_SUCCESSFUL_RUNS" ]]; then
+                KEEP_RUN["$run_id"]=1
+                SUCCESSFUL_RUN_COUNT["$workflow_name"]=$((count + 1))
+              fi
+            else
+              count=${OTHER_RUN_COUNT["$workflow_name"]:-0}
+              if [[ "$count" -lt "$MAX_OTHER_COMPLETED_RUNS" ]]; then
+                KEEP_RUN["$run_id"]=1
+                OTHER_RUN_COUNT["$workflow_name"]=$((count + 1))
+              fi
+            fi
+          done
+
+          for artifact in "${ARTIFACTS[@]}"; do
+            IFS=$'\t' read -r artifact_id artifact_run_id artifact_name artifact_expired artifact_created_at <<< "$artifact"
+            [[ "$artifact_expired" == "true" ]] && continue
+
+            family=""
+            case "$artifact_name" in
+              backend-coverage|flutter-coverage) family="coverage" ;;
+              myjinalay-pr-aab-*) family="android" ;;
+              *) continue ;;
+            esac
+
+            if [[ "$artifact_run_id" == "0" || -z "${KNOWN_RUN[$artifact_run_id]:-}" ]]; then
+              echo "::error::Recognized artifact $artifact_id ($artifact_name) cannot be mapped to a known run. No deletion will occur."
+              exit 1
+            fi
+
+            if [[ "$family" == "coverage" ]]; then
+              count_key="coverage:$artifact_name"
+              limit="$MAX_COVERAGE_ARTIFACTS"
+            else
+              count_key="android"
+              limit="$MAX_ANDROID_ARTIFACTS"
+            fi
+            count=${ARTIFACT_COUNT["$count_key"]:-0}
+            if [[ "$count" -lt "$limit" ]]; then
+              KEEP_ARTIFACT["$artifact_id"]=1
+              KEEP_RUN["$artifact_run_id"]=1
+              ARTIFACT_COUNT["$count_key"]=$((count + 1))
+            fi
+          done
+
+          for retained_run_id in "${!KEEP_RUN[@]}"; do
+            if [[ -z "${KNOWN_RUN[$retained_run_id]:-}" ]]; then
+              echo "::error::Protected run $retained_run_id is missing from the snapshot. No deletion will occur."
+              exit 1
+            fi
+          done
+
+          echo "Validation passed. PR runs and in-progress runs are protected."
+          echo "Keeping up to $MAX_SUCCESSFUL_RUNS successful and $MAX_OTHER_COMPLETED_RUNS other completed non-PR runs per workflow."
+          echo "Keeping up to $MAX_COVERAGE_ARTIFACTS artifacts for each known coverage name and $MAX_ANDROID_ARTIFACTS MyJinalay AAB artifacts."
+          echo "Unrecognized artifact families will not be deleted."
+
+          for artifact in "${ARTIFACTS[@]}"; do
+            IFS=$'\t' read -r artifact_id artifact_run_id artifact_name artifact_expired artifact_created_at <<< "$artifact"
+            [[ "$artifact_expired" == "true" ]] && continue
+            case "$artifact_name" in
+              backend-coverage|flutter-coverage|myjinalay-pr-aab-*) ;;
+              *) continue ;;
+            esac
+            [[ -n "${KEEP_ARTIFACT[$artifact_id]:-}" ]] && continue
+            echo "Deleting allowlisted stale artifact id=$artifact_id name=$artifact_name created=$artifact_created_at"
+            gh api --method DELETE \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "/repos/${REPOSITORY}/actions/artifacts/${artifact_id}"
+          done
+
+          for run in "${RUNS[@]}"; do
+            IFS=$'\t' read -r run_id workflow_name status conclusion created_at pr_count <<< "$run"
+            [[ "$run_id" == "$CURRENT_RUN_ID" ]] && continue
+            [[ "${pr_count:-0}" != "0" ]] && continue
+            [[ "$status" == "completed" ]] || continue
+            [[ -n "${KEEP_RUN[$run_id]:-}" ]] && continue
+            echo "Deleting stale completed non-PR run id=$run_id workflow=$workflow_name conclusion=$conclusion created=$created_at"
+            gh api --method DELETE \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "/repos/${REPOSITORY}/actions/runs/${run_id}"
+          done
+
+          echo "Cleanup complete."
