@@ -86,3 +86,12 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Evidence boundary:** mocked identity/membership and tenant-member service; persisted Firestore isolation is still open.
 - **Next action:** finish post-merge CI #761, open the focused PR, inspect exact-head CI, fix genuine failures, merge only when all required checks pass, verify post-merge CI, and continue the route matrix.
 - **Release policy:** Android build/upload remains manual/on-demand.
+
+## Execution checkpoint — protected-route role denial
+
+- **Previous completed item:** [PR #169](https://github.com/JainCommunityPlatform/jain-community-platform/pull/169) merged as `1c5a85038d3182452cc3d54ce54ad5d260d4c958`; exact PR-head [CI #762](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38292799818) passed all required checks. Post-merge [CI #763](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38293137101) is being verified.
+- **Current item:** P0 auth/session UI — verify authenticated users without the required role are redirected away from admin, website-admin, finance, platform-admin and inventory screens.
+- **Assertions:** each direct route attempt resolves to member home and the protected page is not rendered.
+- **Evidence boundary:** Flutter widget/router behavior only; backend authorization remains separately required and production session/role-refresh behavior is still open.
+- **Next action:** finish post-merge CI #763, open the focused PR, inspect exact-head CI, fix real failures, merge only when required checks pass, verify post-merge CI, then continue auth/session journey gaps.
+- **Release policy:** Android build/upload remains manual/on-demand.
