@@ -1,12 +1,6 @@
 name: Android Pipeline
 
 on:
-  workflow_run:
-    workflows:
-      - CI
-    types: [completed]
-    branches:
-      - master
   workflow_dispatch:
     inputs:
       validation:
