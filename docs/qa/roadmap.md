@@ -104,3 +104,12 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Evidence boundary:** emulator failure is unrelated to the Flutter route test but blocks a healthy default-branch CI baseline; production concurrency behavior is not claimed.
 - **Next action:** open a focused hotfix PR, require exact-head emulator CI to pass (repeat if needed to detect flakiness), merge only after all required checks pass, verify post-merge CI, then resume the auth/session PR queue.
 - **Release policy:** Android build/upload remains manual/on-demand.
+
+## Execution checkpoint — sign-out refreshes protected route
+
+- **Previous completed item:** [PR #171](https://github.com/JainCommunityPlatform/jain-community-platform/pull/171) merged as `dc008919f598cc42d69b143e9b28d57c40098775`; exact-head [CI #767](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38294696101) passed after fixing the TypeScript return contract and the concurrent pledge transaction race. Post-merge [CI #768](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38295038490) is being verified.
+- **Current item:** P0 auth/session UI — ensure a Firebase signed-out event refreshes the router and removes access to a currently open protected admin screen.
+- **Assertions:** route begins at admin while authenticated, then automatically redirects to login after auth state becomes signed out; admin content is no longer rendered.
+- **Evidence boundary:** widget/router test with a fake Firebase auth stream; token expiry and real Firebase/device behavior remain open.
+- **Next action:** finish post-merge CI #768, open the focused PR, inspect exact-head CI, fix real failures, merge only when required checks pass, verify post-merge CI, and continue the auth/session matrix.
+- **Release policy:** Android build/upload remains manual/on-demand.
