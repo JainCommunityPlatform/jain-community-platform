@@ -899,3 +899,17 @@ And a retry does not create duplicate financial records
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “deduplicates concurrent same-key pledge, payment, expense and adjustment writes in persisted Firestore data”. This is a Firestore emulator contention test; production/staging behavior still requires environment verification.
 
+## Finance-role compatibility and auditor boundary
+
+### Scenario: Legacy tenant-finance role retains write access without approval, while CA auditor remains read-only
+
+Given a tenant has a member with the legacy `TENANT_FINANCE` role and a separate `CA_AUDITOR`
+When the tenant-finance member records an expense
+Then the expense is created as pending approval
+And the tenant-finance member cannot approve that expense
+When the CA auditor opens the finance summary
+Then the report is readable
+And the CA auditor cannot create or approve an expense
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “keeps legacy tenant-finance and CA-auditor permissions separated at the HTTP boundary”. This exercises the NestJS HTTP authorization pipeline with mocked services; persisted behavior is covered separately by Firestore-emulator tests.
+
