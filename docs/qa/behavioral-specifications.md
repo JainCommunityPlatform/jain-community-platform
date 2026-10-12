@@ -1235,7 +1235,7 @@ Executable regression: `apps/api/src/database/firestore.service.firestore-emulat
 Given a finance approver is authenticated
 And the request host cannot be resolved to a tenant
 When the approver requests a finance summary, reconciliation report, tenant receipts, pledges, payments, expenses, or adjustments
-Then each request responds with HTTP 400 and “Tenant context is required”
+Then each request is denied with HTTP 403 because tenant-scoped authorization cannot be established
 And no tenant-scoped finance or history service is called
 
-Executable regression: `apps/api/test/app.e2e-spec.ts` — “finance reports and tenant-wide history reject unresolved tenant context before reading data”.
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “finance reports and tenant-wide history deny access when tenant context is unresolved”.
