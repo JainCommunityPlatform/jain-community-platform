@@ -289,6 +289,15 @@ describe('API endpoints (integration)', () => {
     expect(tenantMembers.list).toHaveBeenCalledTimes(1);
   });
 
+  it('GET /api/tenant/members rejects cross-tenant membership context before listing members', async () => {
+    tenantMembers.list.mockClear();
+    await request(app.getHttpServer()).get('/api/tenant/members')
+      .set('Host', 'badebabakharadi.com').set('x-test-user', 'user-cross-tenant')
+      .expect(403)
+      .expect((response) => expect(response.body.message).toBe('Tenant access denied'));
+    expect(tenantMembers.list).not.toHaveBeenCalled();
+  });
+
   it('POST /api/tenant/members denies finance viewers before member creation', async () => {
     tenantMembers.create.mockClear();
     await request(app.getHttpServer()).post('/api/tenant/members').set('Host', 'badebabakharadi.com').set('x-test-user', 'user-viewer')

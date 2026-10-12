@@ -1017,6 +1017,17 @@ And the membership removal service is not invoked
 Executable regressions: `apps/api/test/app.e2e-spec.ts` — “PATCH /api/tenant/members/:userId rejects malformed IDs before role changes” and “DELETE /api/tenant/members/:userId rejects malformed IDs before membership removal”. These exercise NestJS route parsing and assert the service boundary is not reached; they do not claim Firestore persistence verification.
 
 
+## Tenant member list isolation
+
+### Scenario: A member from another tenant cannot enumerate the active tenant's members
+
+Given the authenticated user's membership belongs to a different tenant
+When they request the member list under the active tenant hostname
+Then the API returns HTTP 403 with tenant access denied
+And the member listing service is not invoked
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “GET /api/tenant/members rejects cross-tenant membership context before listing members”. This exercises the HTTP guard and membership-context pipeline with test identity/membership providers; it does not claim Firestore persistence verification.
+
 ## Tenant member detail read boundary
 
 ### Scenario: A tenant reader can retrieve a member detail
