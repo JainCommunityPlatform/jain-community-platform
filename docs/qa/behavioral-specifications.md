@@ -1245,7 +1245,8 @@ Executable regression: `apps/api/test/app.e2e-spec.ts` — “finance reports an
 Given a finance approver is authenticated
 And the request host cannot be resolved to a tenant
 When the approver attempts to create a pledge, record a payment, approve or reject a payment, create or review an expense, or create or review an adjustment
-Then each request is denied with HTTP 403
+Then the pledge request is rejected with HTTP 400 because tenant context is required
+And finance-authorized payment, expense, and adjustment mutations are denied with HTTP 403
 And no giving write or approval service is called
 And no financial audit event is recorded
 
