@@ -37,6 +37,8 @@ describe('API endpoints (integration)', () => {
     approvePayment: jest.Mock;
     rejectPayment: jest.Mock;
     listTenantReceipts: jest.Mock;
+    listMyReceipts: jest.Mock;
+    listMyPledges: jest.Mock;
     getFinanceReport: jest.Mock;
     getReconciliationReport: jest.Mock;
     listTenantPledges: jest.Mock;
@@ -213,6 +215,19 @@ describe('API endpoints (integration)', () => {
       approvePayment: jest.fn().mockResolvedValue({ id: 'payment-1', status: 'VERIFIED', amountPaise: 10000 }),
       rejectPayment: jest.fn().mockResolvedValue({ id: 'payment-1', status: 'REJECTED', amountPaise: 10000 }),
       listTenantReceipts: jest.fn().mockResolvedValue([]),
+      listMyReceipts: jest.fn().mockResolvedValue([{
+        id: 'receipt-donor-a',
+        paymentId: 'payment-donor-a',
+        receiptNumber: 'JCP-2026-000001',
+        amountPaise: 5000,
+      }]),
+      listMyPledges: jest.fn().mockResolvedValue([{
+        id: 'pledge-donor-a',
+        campaignId: 'campaign-public',
+        pledgedAmountPaise: 5000,
+        paidAmountPaise: 0,
+        status: 'PLEDGED',
+      }]),
       getFinanceReport: jest.fn().mockResolvedValue({ totals: { receivedAmountPaise: 0 } }),
       getReconciliationReport: jest.fn().mockResolvedValue({ receipts: { isBalanced: true } }),
       listTenantPledges: jest.fn().mockResolvedValue([]),
@@ -592,6 +607,58 @@ describe('API endpoints (integration)', () => {
         error: 'Bad Request',
       });
     expect(giving.listPublicCampaigns).not.toHaveBeenCalled();
+  });
+
+  it('GET /api/giving/my-pledges and my-receipts scope history to the authenticated donor and resolved tenant', async () => {
+    giving.listMyPledges.mockClear();
+    giving.listMyReceipts.mockClear();
+
+    await request(app.getHttpServer())
+      .get('/api/giving/my-pledges')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'donor-a')
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toEqual([expect.objectContaining({
+          id: 'pledge-donor-a',
+          campaignId: 'campaign-public',
+          pledgedAmountPaise: 5000,
+        })]);
+      });
+
+    await request(app.getHttpServer())
+      .get('/api/giving/my-receipts')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'donor-a')
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toEqual([expect.objectContaining({
+          id: 'receipt-donor-a',
+          paymentId: 'payment-donor-a',
+          receiptNumber: 'JCP-2026-000001',
+        })]);
+      });
+
+    const tenantId = '00000000-0000-0000-0000-000000000001';
+    expect(giving.listMyPledges).toHaveBeenCalledWith(tenantId, 'donor-a');
+    expect(giving.listMyReceipts).toHaveBeenCalledWith(tenantId, 'donor-a');
+  });
+
+  it('GET /api/giving/my-pledges and my-receipts reject missing tenant context before reading donor history', async () => {
+    giving.listMyPledges.mockClear();
+    giving.listMyReceipts.mockClear();
+
+    for (const path of ['/api/giving/my-pledges', '/api/giving/my-receipts']) {
+      await request(app.getHttpServer())
+        .get(path)
+        .set('Host', 'unknown.example.com')
+        .set('x-test-user', 'donor-a')
+        .expect(400)
+        .expect((response) => expect(response.body.message).toBe('Tenant context is required'));
+    }
+
+    expect(giving.listMyPledges).not.toHaveBeenCalled();
+    expect(giving.listMyReceipts).not.toHaveBeenCalled();
   });
 
   it('GET /api/giving/payments denies tenant administrators at the HTTP authorization boundary', async () => {
