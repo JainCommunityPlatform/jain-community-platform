@@ -941,3 +941,24 @@ Then the API rejects the request because tenant context is missing
 And no campaign query is executed
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — “GET /api/giving/campaigns returns only the public campaign projection for the resolved tenant” and “GET /api/giving/campaigns rejects an unresolved tenant before reading campaigns”. These tests exercise the HTTP pipeline with a mocked giving service; persisted tenant filtering is tested separately in Firestore-emulator coverage.
+
+
+## Notification delivery and recipient privacy — executable Firestore coverage
+
+### Scenario: Notification preferences, inbox state and channel delivery records stay scoped to tenant and recipient
+
+Given the same user has different notification preferences in two tenants and another user in the first tenant
+When notification preferences are read or updated
+Then each tenant/user pair retains its own email, WhatsApp and push settings
+
+Given a tenant has notifications for two recipients and a notification with the same user ID exists in another tenant
+When a recipient lists notifications with a bounded page size
+Then only that recipient's notifications in the selected tenant are returned, newest first, and the requested limit is clamped safely
+When the recipient marks a notification as read
+Then only the matching tenant and user can change it, and repeated reads preserve the original read timestamp
+
+Given email, WhatsApp and push delivery attempts are recorded for a notification
+When delivery history is listed or an attempt is retried
+Then only the selected tenant's delivery records are returned, terminal attempts increment the attempt counter, non-terminal transitions preserve it, and provider metadata is retained unless replaced
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “keeps notification preferences, delivery history and read state isolated by tenant and user”. This tests Firestore persistence against the emulator, not production delivery providers.
