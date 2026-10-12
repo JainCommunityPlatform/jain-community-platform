@@ -84,6 +84,40 @@ class FakeAuth implements FirebaseAuthProvider {
   Future<void> signOut() async {}
 }
 
+class MutableFakeAuth implements FirebaseAuthProvider {
+  final StreamController<FirebaseAuthUser?> _controller =
+      StreamController<FirebaseAuthUser?>.broadcast();
+  bool _signedIn = true;
+
+  @override
+  bool get isSignedIn => _signedIn;
+
+  @override
+  Stream<FirebaseAuthUser?> authStateChanges() => _controller.stream;
+
+  @override
+  Future<String?> getIdToken() async => 'test-token';
+
+  @override
+  Future<void> signInWithGoogle() async {
+    _signedIn = true;
+    _controller.add(const FirebaseAuthUser(uid: 'user-1'));
+  }
+
+  @override
+  Future<void> signOut() async {
+    _signedIn = false;
+    _controller.add(null);
+  }
+
+  void emit(FirebaseAuthUser? user) {
+    _signedIn = user != null;
+    _controller.add(user);
+  }
+
+  Future<void> dispose() => _controller.close();
+}
+
 class FakeSessionService extends AuthSessionService {
   FakeSessionService(this.value) : super(ApiClient(baseUrl: Uri.parse('https://example.test/')));
 
@@ -307,7 +341,7 @@ void main() {
 
   testWidgets('redirects an open protected route to login when Firebase signs out',
       (tester) async {
-    final auth = FakeFirebaseAuthProvider();
+    final auth = MutableFakeAuth();
     const session = AppSession(
       isAuthenticated: true,
       userId: 'user-1',
@@ -315,7 +349,7 @@ void main() {
     );
     final controller = AppSessionController(
       auth: auth,
-      sessionService: FakeAuthSessionService(() async => session),
+      sessionService: FakeSessionService(session),
       initialSession: session,
     );
     await controller.initialize();
