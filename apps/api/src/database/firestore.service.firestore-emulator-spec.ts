@@ -1474,6 +1474,61 @@ describe('FirestoreService against the Firestore emulator', () => {
     });
   });
 
+  it('prevents cross-tenant approval or rejection of payments, expenses and adjustments', async () => {
+    const suffix = `emulator-cross-tenant-mutations-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tenantA = `${tenantId}-mutation-owner-${suffix}`;
+    const tenantB = `${tenantId}-mutation-attacker-${suffix}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const campaign = await service.createGivingCampaign({
+      tenantId: tenantA, actorUserId: `campaign-admin-${suffix}`, name: 'Cross-tenant mutation campaign',
+    });
+    await service.updateGivingCampaignStatus(tenantA, campaign.id, 'ACTIVE');
+    const pledge = await service.createDonationPledge({
+      tenantId: tenantA, donorUserId: donor.id, campaignId: campaign.id,
+      pledgedAmountPaise: 100000, idempotencyKey: `pledge-${suffix}`,
+    });
+    const payment = await service.recordDonationPayment({
+      tenantId: tenantA, pledgeId: pledge.id, actorUserId: `cashier-${suffix}`,
+      amountPaise: 50000, method: 'UPI', idempotencyKey: `payment-${suffix}`,
+    });
+
+    await expect(service.approveDonationPayment(tenantB, payment.id, `attacker-approver-${suffix}`))
+      .rejects.toThrow('PAYMENT_NOT_FOUND');
+    await expect(service.rejectDonationPayment(tenantB, payment.id, `attacker-rejecter-${suffix}`, 'Unauthorized rejection'))
+      .rejects.toThrow('PAYMENT_NOT_FOUND');
+    expect((await service.listDonationPaymentsForTenant(tenantA)).find((item) => item.id === payment.id))
+      .toMatchObject({ status: 'PENDING_APPROVAL', approvedBy: undefined, rejectionReason: undefined });
+    expect(await service.listDonationReceiptsForTenant(tenantB)).toHaveLength(0);
+
+    await service.approveDonationPayment(tenantA, payment.id, `legitimate-reviewer-${suffix}`);
+    const expense = await service.createDonationExpense({
+      tenantId: tenantA, actorUserId: `expense-maker-${suffix}`, category: 'Maintenance',
+      description: 'Cross-tenant approval test', amountPaise: 10000, idempotencyKey: `expense-${suffix}`,
+    });
+    await expect(service.approveDonationExpense(tenantB, expense.id, `attacker-approver-${suffix}`))
+      .rejects.toThrow('EXPENSE_NOT_FOUND');
+    await expect(service.rejectDonationExpense(tenantB, expense.id, `attacker-rejecter-${suffix}`, 'Unauthorized rejection'))
+      .rejects.toThrow('EXPENSE_NOT_FOUND');
+    expect((await service.listDonationExpensesForTenant(tenantA)).find((item) => item.id === expense.id))
+      .toMatchObject({ status: 'PENDING_APPROVAL', approvedBy: undefined, rejectionReason: undefined });
+
+    const adjustment = await service.createDonationAdjustment({
+      tenantId: tenantA, paymentId: payment.id, actorUserId: `adjustment-maker-${suffix}`,
+      amountPaise: 5000, kind: 'REFUND', reason: 'Cross-tenant approval test',
+      idempotencyKey: `adjustment-${suffix}`,
+    });
+    await expect(service.approveDonationAdjustment(tenantB, adjustment.id, `attacker-approver-${suffix}`))
+      .rejects.toThrow('ADJUSTMENT_NOT_FOUND');
+    await expect(service.rejectDonationAdjustment(tenantB, adjustment.id, `attacker-rejecter-${suffix}`, 'Unauthorized rejection'))
+      .rejects.toThrow('ADJUSTMENT_NOT_FOUND');
+    expect((await service.listDonationAdjustmentsForTenant(tenantA)).find((item) => item.id === adjustment.id))
+      .toMatchObject({ status: 'PENDING_APPROVAL', approvedBy: undefined, rejectionReason: undefined });
+    expect((await service.listDonationPaymentsForTenant(tenantA)).find((item) => item.id === payment.id))
+      .toMatchObject({ status: 'VERIFIED', pendingAdjustmentAmountPaise: 5000, adjustedAmountPaise: 0 });
+    expect(await service.listDonationReceiptsForTenant(tenantA)).toHaveLength(1);
+    expect(await service.listDonationReceiptsForTenant(tenantB)).toHaveLength(0);
+  });
+
   it('deduplicates concurrent same-key pledge, payment, expense and adjustment writes in persisted Firestore data', async () => {
     const suffix = `emulator-concurrent-idempotency-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const isolatedTenantId = `${tenantId}-concurrent-idempotency-${suffix}`;
