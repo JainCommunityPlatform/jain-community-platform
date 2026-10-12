@@ -333,6 +333,55 @@ void main() {
     controller.dispose();
   });
 
+  testWidgets('redirects authenticated users without each required role to member home',
+      (tester) async {
+    final scenarios = [
+      (path: AppRoutes.admin, roles: <String>['CONTENT_MANAGER']),
+      (path: AppRoutes.adminSite, roles: <String>['CONTENT_MANAGER']),
+      (path: AppRoutes.finance, roles: <String>['CONTENT_MANAGER']),
+      (path: AppRoutes.platformAdmin, roles: <String>['TENANT_ADMIN']),
+      (path: AppRoutes.inventory, roles: <String>['FINANCE_VIEWER']),
+    ];
+
+    for (final scenario in scenarios) {
+      final (appRouter, _, controller) = await _router(
+        session: AppSession(
+          isAuthenticated: true,
+          userId: 'user-1',
+          roles: scenario.roles,
+        ),
+      );
+      final router = GoRouter(
+        initialLocation: scenario.path,
+        redirect: appRouter.redirect,
+        routes: [
+          GoRoute(path: AppRoutes.login, builder: (_, __) => const Scaffold(body: Text('login'))),
+          GoRoute(path: AppRoutes.member, builder: (_, __) => const Scaffold(body: Text('member'))),
+          GoRoute(path: AppRoutes.admin, builder: (_, __) => const Scaffold(body: Text('admin'))),
+          GoRoute(path: AppRoutes.adminSite, builder: (_, __) => const Scaffold(body: Text('admin site'))),
+          GoRoute(path: AppRoutes.finance, builder: (_, __) => const Scaffold(body: Text('finance'))),
+          GoRoute(path: AppRoutes.platformAdmin, builder: (_, __) => const Scaffold(body: Text('platform admin'))),
+          GoRoute(path: AppRoutes.inventory, builder: (_, __) => const Scaffold(body: Text('inventory'))),
+        ],
+      );
+
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await _pumpRouter(tester);
+
+      expect(
+        router.state.uri.path,
+        AppRoutes.member,
+        reason: '${scenario.path} must not be available to roles ${scenario.roles}',
+      );
+      expect(find.text('member'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      router.dispose();
+      appRouter.router.dispose();
+      controller.dispose();
+    }
+  });
+
   testWidgets('inventory console requires an inventory or admin role',
       (tester) async {
     final (appRouter, _, controller) = await _router(
