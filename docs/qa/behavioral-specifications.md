@@ -1119,3 +1119,19 @@ And the membership grant service is not invoked
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — the platform finance-team listing and grant routes. This exercises NestJS routing, `AuthorizationGuard`, DTO validation, service invocation boundaries and audit payloads; Firestore itself is represented by test providers.
 
+## Platform finance-team revocation — HTTP integration coverage
+
+### Scenario: Only a platform administrator can revoke a tenant finance role
+
+Given a user does not have the platform finance-team management permission
+When the user attempts to revoke a financial role from a tenant member
+Then the API responds with HTTP 403
+And the membership revocation service is not invoked
+
+Given a platform administrator revokes one assigned financial role from a member
+When the role-revocation endpoint is called
+Then the response contains only the remaining financial roles and membership status
+And a tenant-scoped audit event records the actor, target, revoked role, prior roles, and remaining roles
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — the platform finance-team DELETE route. This exercises HTTP authorization, service invocation boundaries, result projection, and revocation audit metadata with Firestore represented by test providers.
+
