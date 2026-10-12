@@ -1135,3 +1135,15 @@ And a tenant-scoped audit event records the actor, target, revoked role, prior r
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — the platform finance-team DELETE route. This exercises HTTP authorization, service invocation boundaries, result projection, and revocation audit metadata with Firestore represented by test providers.
 
+## Finance-team role persistence and tenant isolation — Firestore emulator
+
+### Scenario: Granting and revoking a finance role preserves other tenant roles
+
+Given one user has a content-management role in one tenant and an event-management role in another tenant
+When a platform administrator grants the first tenant a finance-operator role and then revokes it
+Then the first tenant's persisted membership retains its content-management role throughout
+And the second tenant's event-management role remains unchanged
+And revocation does not delete the membership while a non-financial role remains
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “preserves non-financial roles and isolates persisted finance-role grant and revocation by tenant”. This exercises the `MembershipService` grant/revocation workflow against persisted Firestore emulator data.
+

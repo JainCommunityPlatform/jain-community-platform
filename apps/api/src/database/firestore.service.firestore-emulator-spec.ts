@@ -2,6 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { deleteApp, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { FirestoreService } from './firestore.service';
+import { MembershipService } from '../authorization/membership.service';
 
 describe('FirestoreService against the Firestore emulator', () => {
   const tenantId = 'emulator-tenant-giving-flow';
@@ -1583,5 +1584,84 @@ describe('FirestoreService against the Firestore emulator', () => {
       expect.objectContaining({ userId: user.id, tenantId: tenantB, role: 'EVENT_MANAGER' }),
     ]);
   }, 15000);
+
+
+  it('preserves non-financial roles and isolates persisted finance-role grant and revocation by tenant', async () => {
+    const suffix = `emulator-finance-role-isolation-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tenantA = `${tenantId}-finance-role-a-${suffix}`;
+    const tenantB = `${tenantId}-finance-role-b-${suffix}`;
+    const email = `finance-role-user-${suffix}@example.test`;
+    const user = await service.upsertUser({
+      subject: `finance-role-user-${suffix}`,
+      email,
+      displayName: 'Finance role isolation user',
+    });
+
+    await service.createMembership({
+      userId: user.id,
+      tenantId: tenantA,
+      role: 'CONTENT_MANAGER',
+      roles: ['CONTENT_MANAGER'],
+    });
+    await service.createMembership({
+      userId: user.id,
+      tenantId: tenantB,
+      role: 'EVENT_MANAGER',
+      roles: ['EVENT_MANAGER'],
+    });
+
+    const memberships = new MembershipService(service);
+    const granted = await memberships.grantFinancialRoleByEmail(
+      email,
+      tenantA,
+      'FINANCE_OPERATOR',
+      `platform-actor-${suffix}`,
+    );
+
+    expect(granted).toMatchObject({
+      userId: user.id,
+      tenantId: tenantA,
+      role: 'CONTENT_MANAGER',
+      roles: ['CONTENT_MANAGER', 'FINANCE_OPERATOR'],
+    });
+    expect(await service.getMembership(user.id, tenantA)).toMatchObject({
+      userId: user.id,
+      tenantId: tenantA,
+      role: 'CONTENT_MANAGER',
+      roles: ['CONTENT_MANAGER', 'FINANCE_OPERATOR'],
+    });
+    expect(await service.getMembership(user.id, tenantB)).toMatchObject({
+      userId: user.id,
+      tenantId: tenantB,
+      role: 'EVENT_MANAGER',
+      roles: ['EVENT_MANAGER'],
+    });
+
+    const revoked = await memberships.revokeFinancialRole(
+      user.id,
+      tenantA,
+      'FINANCE_OPERATOR',
+    );
+    expect(revoked).toMatchObject({
+      userId: user.id,
+      tenantId: tenantA,
+      roles: ['CONTENT_MANAGER'],
+      previousRoles: ['CONTENT_MANAGER', 'FINANCE_OPERATOR'],
+      membershipDeleted: false,
+    });
+    expect(await service.getMembership(user.id, tenantA)).toMatchObject({
+      userId: user.id,
+      tenantId: tenantA,
+      role: 'CONTENT_MANAGER',
+      roles: ['CONTENT_MANAGER'],
+    });
+    expect(await service.getMembership(user.id, tenantB)).toMatchObject({
+      userId: user.id,
+      tenantId: tenantB,
+      role: 'EVENT_MANAGER',
+      roles: ['EVENT_MANAGER'],
+    });
+  }, 15000);
+
 
 });
