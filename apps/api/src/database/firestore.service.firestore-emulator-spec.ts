@@ -22,6 +22,101 @@ describe('FirestoreService against the Firestore emulator', () => {
     if (app) await deleteApp(app);
   });
 
+  it('keeps notification preferences, delivery history and read state isolated by tenant and user', async () => {
+    const suffix = `emulator-notification-isolation-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tenantA = `${tenantId}-notification-a-${suffix}`;
+    const tenantB = `${tenantId}-notification-b-${suffix}`;
+    const userA = `notification-user-a-${suffix}`;
+    const userB = `notification-user-b-${suffix}`;
+    const notificationId = `notification-${suffix}`;
+
+    await service.updateNotificationPreferences({ tenantId: tenantA, userId: userA, email: true, whatsapp: false, push: true });
+    await service.updateNotificationPreferences({ tenantId: tenantB, userId: userA, email: false, whatsapp: true, push: false });
+    await service.updateNotificationPreferences({ tenantId: tenantA, userId: userB, email: false, whatsapp: false, push: false });
+
+    expect(await service.getNotificationPreferences(tenantA, userA)).toMatchObject({ tenantId: tenantA, userId: userA, email: true, whatsapp: false, push: true });
+    expect(await service.getNotificationPreferences(tenantB, userA)).toMatchObject({ tenantId: tenantB, userId: userA, email: false, whatsapp: true, push: false });
+    expect(await service.getNotificationPreferences(tenantA, userB)).toMatchObject({ tenantId: tenantA, userId: userB, email: false, whatsapp: false, push: false });
+
+    const now = new Date();
+    const notification = {
+      tenantId: tenantA, userId: userA, type: 'PAYMENT_VERIFIED',
+      title: 'Donation payment verified', body: 'Your receipt is ready.',
+      entityType: 'DONATION_PAYMENT', entityId: `payment-${suffix}`,
+      metadata: { receiptNumber: `JCP-${suffix}` }, readAt: null, createdAt: now, updatedAt: now,
+    };
+    await getFirestore().collection('notifications').doc(notificationId).set(notification);
+    const secondNotificationId = `notification-newer-${suffix}`;
+    await getFirestore().collection('notifications').doc(secondNotificationId).set({
+      ...notification, title: 'Receipt available', createdAt: new Date(now.getTime() + 1000),
+    });
+    await getFirestore().collection('notifications').doc(`notification-other-user-${suffix}`).set({
+      ...notification, userId: userB, title: 'Private notification for another user',
+    });
+    await getFirestore().collection('notifications').doc(`notification-other-tenant-${suffix}`).set({
+      ...notification, tenantId: tenantB, title: 'Private notification for another tenant',
+    });
+
+    expect(await service.listNotificationsForUser(tenantA, userA, 1)).toMatchObject([
+      { id: secondNotificationId, tenantId: tenantA, userId: userA, title: 'Receipt available' },
+    ]);
+    expect(await service.listNotificationsForUser(tenantA, userA, 1000)).toMatchObject([
+      { id: secondNotificationId, title: 'Receipt available' }, { id: notificationId, title: 'Donation payment verified' },
+    ]);
+    expect(await service.listNotificationsForUser(tenantB, userA)).toMatchObject([
+      { id: `notification-other-tenant-${suffix}`, tenantId: tenantB, userId: userA },
+    ]);
+    expect(await service.listNotificationsForUser(tenantA, userB)).toMatchObject([
+      { id: `notification-other-user-${suffix}`, tenantId: tenantA, userId: userB },
+    ]);
+    expect(await service.listNotificationsForUser(tenantA, `unrelated-${suffix}`)).toHaveLength(0);
+
+    await expect(service.markNotificationRead(tenantB, userA, notificationId)).resolves.toBeNull();
+    await expect(service.markNotificationRead(tenantA, userB, notificationId)).resolves.toBeNull();
+    const firstRead = await service.markNotificationRead(tenantA, userA, notificationId);
+    expect(firstRead).toMatchObject({ id: notificationId, tenantId: tenantA, userId: userA, readAt: expect.any(Date) });
+    const originalReadAt = firstRead?.readAt;
+    const repeatedRead = await service.markNotificationRead(tenantA, userA, notificationId);
+    expect(repeatedRead?.readAt).toEqual(originalReadAt);
+    expect(await service.markNotificationRead(tenantA, userA, `missing-${suffix}`)).toBeNull();
+
+    const deliveries = [
+      { id: `delivery-email-${suffix}`, channel: 'EMAIL' as const, status: 'SENT' as const, providerMessageId: `email-${suffix}` },
+      { id: `delivery-whatsapp-${suffix}`, channel: 'WHATSAPP' as const, status: 'FAILED' as const, errorCode: 'PROVIDER_TIMEOUT', errorMessage: 'Provider timed out' },
+      { id: `delivery-push-${suffix}`, channel: 'PUSH' as const, status: 'PENDING' as const },
+    ];
+    for (const delivery of deliveries) {
+      await service.recordNotificationDelivery({ ...delivery, tenantId: tenantA, notificationId, userId: userA });
+    }
+    await service.recordNotificationDelivery({
+      id: `delivery-other-tenant-${suffix}`, tenantId: tenantB, notificationId, userId: userA,
+      channel: 'EMAIL', status: 'SENT', providerMessageId: 'other-tenant-message',
+    });
+    const listedDeliveries = await service.listNotificationDeliveries(tenantA, notificationId);
+    expect(listedDeliveries).toMatchObject([
+      { id: deliveries[0].id, tenantId: tenantA, notificationId, userId: userA, channel: 'EMAIL', status: 'SENT', attempts: 1, providerMessageId: `email-${suffix}` },
+      { id: deliveries[1].id, tenantId: tenantA, notificationId, userId: userA, channel: 'WHATSAPP', status: 'FAILED', attempts: 1, errorCode: 'PROVIDER_TIMEOUT' },
+      { id: deliveries[2].id, tenantId: tenantA, notificationId, userId: userA, channel: 'PUSH', status: 'PENDING', attempts: 0 },
+    ]);
+    expect(listedDeliveries.map((item) => item.id)).not.toContain(`delivery-other-tenant-${suffix}`);
+
+    await service.recordNotificationDelivery({
+      id: deliveries[0].id, tenantId: tenantA, notificationId, userId: userA, channel: 'EMAIL', status: 'PROCESSING',
+    });
+    const retriedDeliveries = await service.listNotificationDeliveries(tenantA, notificationId);
+    expect(retriedDeliveries.find((item) => item.id === deliveries[0].id)).toMatchObject({
+      attempts: 1, status: 'PROCESSING', providerMessageId: `email-${suffix}`,
+    });
+    await service.recordNotificationDelivery({
+      id: deliveries[0].id, tenantId: tenantA, notificationId, userId: userA, channel: 'EMAIL',
+      status: 'FAILED', errorCode: 'SMTP_TEMPORARY',
+    });
+    const failedDeliveries = await service.listNotificationDeliveries(tenantA, notificationId);
+    expect(failedDeliveries.find((item) => item.id === deliveries[0].id)).toMatchObject({
+      attempts: 2, status: 'FAILED', providerMessageId: `email-${suffix}`, errorCode: 'SMTP_TEMPORARY',
+    });
+  });
+
   it('exposes only active campaigns publicly and scopes campaign visibility to the tenant', async () => {
     const suffix = `emulator-campaign-visibility-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const tenantA = `${tenantId}-campaign-a-${suffix}`;
