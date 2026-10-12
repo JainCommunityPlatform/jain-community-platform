@@ -45,6 +45,20 @@ export interface FirestoreUserActivity {
   metadata?: Record<string, unknown>;
 }
 
+export interface FirestoreDonationPledge {
+  id: string;
+  tenantId: string;
+  campaignId: string;
+  donorId: string;
+  donorUserId: string;
+  pledgedAmountPaise: number;
+  paidAmountPaise: number;
+  currency: 'INR';
+  status: 'PLEDGED' | 'PARTIALLY_PAID' | 'PAID' | 'CANCELLED';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface FirestoreMembership {
   id: string;
   userId: string;
@@ -999,7 +1013,7 @@ export class FirestoreService implements OnModuleInit {
     campaignId: string;
     pledgedAmountPaise: number;
     idempotencyKey: string;
-  }, retryAttempt = 0) {
+  }, retryAttempt = 0): Promise<FirestoreDonationPledge> {
     if (!Number.isSafeInteger(input.pledgedAmountPaise) || input.pledgedAmountPaise < 1) {
       throw new Error('Pledge amount must be a positive safe integer in paise');
     }
@@ -1806,7 +1820,7 @@ export class FirestoreService implements OnModuleInit {
     };
   }
 
-  private toDonationPledge(id: string, data: Record<string, unknown>) {
+  private toDonationPledge(id: string, data: Record<string, unknown>): FirestoreDonationPledge {
     return {
       id,
       tenantId: data.tenantId as string,
