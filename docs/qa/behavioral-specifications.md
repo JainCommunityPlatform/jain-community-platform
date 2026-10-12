@@ -1182,4 +1182,3 @@ Then each endpoint responds with HTTP 404
 And the membership listing, grant, or revocation service is not called
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — unknown-tenant cases for finance-team GET, POST and DELETE routes. This verifies tenant existence checks precede membership operations at the HTTP boundary.
-
