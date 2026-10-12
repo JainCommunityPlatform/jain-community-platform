@@ -601,7 +601,7 @@ void main() {
 
   testWidgets('does not restore protected access when initial session loading fails',
       (tester) async {
-    final auth = FakeAuth(signedIn: true);
+    final auth = FakeAuth(true);
     const cachedSession = AppSession(
       isAuthenticated: true,
       userId: 'user-1',
