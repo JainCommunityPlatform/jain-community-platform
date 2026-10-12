@@ -122,12 +122,19 @@ jobs:
               exit 1
             fi
 
-            count=${ARTIFACT_COUNT["$artifact_name"]:-0}
-            if [[ "$family" == "coverage" && "$count" -lt "$MAX_COVERAGE_ARTIFACTS" ]] ||
-               [[ "$family" == "android" && "$count" -lt "$MAX_ANDROID_ARTIFACTS" ]]; then
+            if [[ "$family" == "coverage" ]]; then
+              count_key="coverage:$artifact_name"
+              limit="$MAX_COVERAGE_ARTIFACTS"
+            else
+              # AAB names include a unique run number, so count the whole family.
+              count_key="android"
+              limit="$MAX_ANDROID_ARTIFACTS"
+            fi
+            count=${ARTIFACT_COUNT["$count_key"]:-0}
+            if [[ "$count" -lt "$limit" ]]; then
               KEEP_ARTIFACT["$artifact_id"]=1
               KEEP_RUN["$artifact_run_id"]=1
-              ARTIFACT_COUNT["$artifact_name"]=$((count + 1))
+              ARTIFACT_COUNT["$count_key"]=$((count + 1))
             fi
           done
 
