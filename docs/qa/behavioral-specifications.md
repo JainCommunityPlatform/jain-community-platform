@@ -980,3 +980,21 @@ When the HTTP endpoint validates the request
 Then the API returns 400 before invoking the membership service
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — tenant member list/create authorization and UUID validation tests. Service-level coverage for tenant scoping, financial-role separation, audit records, duplicate memberships and last-admin protection remains in `apps/api/src/tenant/tenant-member.service.spec.ts`.
+
+## Tenant member update and removal HTTP authorization — executable integration coverage
+
+### Scenario: Only tenant managers can change or remove memberships
+
+Given a finance viewer has tenant read access but not tenant management permission
+When the viewer attempts to change a member role or remove a member through the HTTP API
+Then each request returns 403 and the membership service is not invoked
+
+Given a tenant administrator updates a member to a supported non-financial role or removes a member
+When the administrator calls the protected endpoint
+Then the membership service receives the requested user and role, and the API returns success
+
+Given a tenant administrator submits an unsupported role
+When the update DTO is validated
+Then the API returns 400 before membership mutation
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — PATCH/DELETE authorization and invalid-role validation for tenant member management. The NestJS HTTP guards and DTO validation are exercised; identity and membership providers remain test fixtures.
