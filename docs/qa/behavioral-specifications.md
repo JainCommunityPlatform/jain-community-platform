@@ -1182,3 +1182,20 @@ Then each endpoint responds with HTTP 404
 And the membership listing, grant, or revocation service is not called
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — unknown-tenant cases for finance-team GET, POST and DELETE routes. This verifies tenant existence checks precede membership operations at the HTTP boundary.
+
+## Finance-team rejected mutations — HTTP and audit boundary
+
+### Scenario: Rejected role changes never create success audit events
+
+Given a role grant is rejected by the membership service because the target may not receive finance access
+When the platform finance-team grant endpoint handles that rejection
+Then the API preserves the HTTP 403 response
+And no finance-role-granted audit event is written
+
+Given a role revocation is rejected because the requested role is not assigned
+When the platform finance-team revoke endpoint handles that rejection
+Then the API preserves the HTTP 404 response
+And no finance-role-revoked audit event is written
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — rejected finance-team grant and revoke routes. This verifies that controller audit writes happen only after successful membership mutations.
+
