@@ -458,6 +458,49 @@ describe('API endpoints (integration)', () => {
     expect(tenantMembers.remove).toHaveBeenCalledWith('00000000-0000-4000-8000-000000000099');
   });
 
+  it('denies cross-tenant membership mutations before changing another tenant', async () => {
+    const memberId = '00000000-0000-4000-8000-000000000099';
+    const routes: Array<{
+      method: 'PATCH' | 'DELETE';
+      path: string;
+      service: jest.Mock;
+      body?: Record<string, unknown>;
+    }> = [
+      {
+        method: 'PATCH',
+        path: `/api/tenant/members/${memberId}`,
+        service: tenantMembers.update,
+        body: { role: 'EVENT_MANAGER' },
+      },
+      {
+        method: 'DELETE',
+        path: `/api/tenant/members/${memberId}`,
+        service: tenantMembers.remove,
+      },
+    ];
+
+    for (const route of routes) {
+      route.service.mockClear();
+      const httpRequest = request(app.getHttpServer());
+      const response = route.method === 'PATCH'
+        ? httpRequest.patch(route.path)
+        : httpRequest.delete(route.path);
+
+      await response
+        .set('Host', 'badebabakharadi.com')
+        .set('x-test-user', 'user-cross-tenant')
+        .send(route.body ?? {})
+        .expect(403)
+        .expect({
+          statusCode: 403,
+          message: 'Tenant access denied',
+          error: 'Forbidden',
+        });
+
+      expect(route.service).not.toHaveBeenCalled();
+    }
+  });
+
   it('PATCH /api/tenant/members/:userId rejects unsupported roles before updating membership', async () => {
     tenantMembers.update.mockClear();
     await request(app.getHttpServer()).patch('/api/tenant/members/00000000-0000-4000-8000-000000000099')
