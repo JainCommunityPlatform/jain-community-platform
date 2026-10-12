@@ -1309,3 +1309,14 @@ And donor pledge and receipt history reflects the same persisted records
 And the reconciliation report has no missing, orphaned, or amount-mismatched receipts and reports a balanced result
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “persists partial payments, updates the pledge and issues distinct receipts transactionally”. This test uses isolated Firestore emulator data; it does not prove production Firebase or device-level verification.
+
+## Scenario: Financial role revocation is effective on the next protected request
+
+Given a user has a finance-operator role in a tenant
+And the user can read tenant finance data
+When a platform administrator revokes that finance role
+And the user makes a new request to the same protected finance endpoint
+Then the request is denied by the HTTP authorization guard
+And the finance data service is not called for the denied request
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “revoking a finance role removes protected access on the next HTTP request”. This API E2E test models refreshed membership state at the mocked membership boundary; persisted role revocation and production identity propagation remain separate verification gaps.
