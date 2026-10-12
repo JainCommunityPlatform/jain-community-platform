@@ -1320,3 +1320,14 @@ Then the request is denied by the HTTP authorization guard
 And the finance data service is not called for the denied request
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — “revoking a finance role removes protected access on the next HTTP request”. This API E2E test models refreshed membership state at the mocked membership boundary; persisted role revocation and production identity propagation remain separate verification gaps.
+
+## Scenario: Cross-tenant finance mutations are denied without side effects
+
+Given a finance operator is a member of tenant A
+And the request resolves tenant B as the active tenant
+When the user attempts to create an expense, record a payment, create an adjustment, or approve a payment, expense, or adjustment
+Then every request is denied with HTTP 403 for tenant access
+And no finance persistence service is called
+And no financial audit event is recorded
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “denies cross-tenant financial writes before persistence and audit side effects”. The API E2E test uses mocked identity/membership and giving services; persisted multi-tenant Firestore verification remains open.
