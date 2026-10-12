@@ -681,7 +681,7 @@ describe('API endpoints (integration)', () => {
         .expect(403)
         .expect({
           statusCode: 403,
-          message: 'Permission denied',
+          message: 'Tenant authorization context is required',
           error: 'Forbidden',
         });
       expect(route.service).not.toHaveBeenCalled();
