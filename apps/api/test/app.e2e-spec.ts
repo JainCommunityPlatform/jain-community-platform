@@ -349,6 +349,21 @@ describe('API endpoints (integration)', () => {
     expect(tenantMembers.update).not.toHaveBeenCalled();
   });
 
+  it('PATCH /api/tenant/members/:userId rejects malformed IDs before role changes', async () => {
+    tenantMembers.update.mockClear();
+    await request(app.getHttpServer()).patch('/api/tenant/members/not-a-uuid')
+      .set('Host', 'badebabakharadi.com').set('x-test-user', 'user-a')
+      .send({ role: 'EVENT_MANAGER' }).expect(400);
+    expect(tenantMembers.update).not.toHaveBeenCalled();
+  });
+
+  it('DELETE /api/tenant/members/:userId rejects malformed IDs before membership removal', async () => {
+    tenantMembers.remove.mockClear();
+    await request(app.getHttpServer()).delete('/api/tenant/members/not-a-uuid')
+      .set('Host', 'badebabakharadi.com').set('x-test-user', 'user-a').expect(400);
+    expect(tenantMembers.remove).not.toHaveBeenCalled();
+  });
+
   it('GET /api/tenant/resolve resolves the persisted tenant', async () => {
     await request(app.getHttpServer())
       .get('/api/tenant/resolve')
