@@ -1,4 +1,4 @@
-import { ExecutionContext, INestApplication, ValidationPipe } from '@nestjs/common';
+import { ExecutionContext, ForbiddenException, INestApplication, NotFoundException, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
@@ -1260,6 +1260,55 @@ describe('API endpoints (integration)', () => {
 
     expect(firestore.getTenantById).toHaveBeenCalledWith('tenant-does-not-exist');
     expect(membership.revokeFinancialRole).not.toHaveBeenCalled();
+  });
+
+
+  it('does not write a grant audit event when financial-role assignment is rejected', async () => {
+    membership.grantFinancialRoleByEmail.mockClear();
+    firestore.recordAudit.mockClear();
+    membership.grantFinancialRoleByEmail.mockRejectedValueOnce(
+      new ForbiddenException('Tenant administrators cannot be assigned financial roles'),
+    );
+
+    await request(app.getHttpServer())
+      .post('/api/platform/tenants/tenant-finance-a/finance-team')
+      .set('x-test-user', 'user-platform-admin')
+      .send({ email: 'tenant-admin@example.test', role: 'FINANCE_OPERATOR' })
+      .expect(403)
+      .expect((response) => {
+        expect(response.body.message).toContain('Tenant administrators cannot be assigned financial roles');
+      });
+
+    expect(membership.grantFinancialRoleByEmail).toHaveBeenCalledWith(
+      'tenant-admin@example.test',
+      'tenant-finance-a',
+      'FINANCE_OPERATOR',
+      'user-platform-admin',
+    );
+    expect(firestore.recordAudit).not.toHaveBeenCalled();
+  });
+
+  it('does not write a revoke audit event when the requested financial role is not assigned', async () => {
+    membership.revokeFinancialRole.mockClear();
+    firestore.recordAudit.mockClear();
+    membership.revokeFinancialRole.mockRejectedValueOnce(
+      new NotFoundException('The requested financial role is not assigned'),
+    );
+
+    await request(app.getHttpServer())
+      .delete('/api/platform/tenants/tenant-finance-a/finance-team/finance-target/FINANCE_APPROVER')
+      .set('x-test-user', 'user-platform-admin')
+      .expect(404)
+      .expect((response) => {
+        expect(response.body.message).toContain('The requested financial role is not assigned');
+      });
+
+    expect(membership.revokeFinancialRole).toHaveBeenCalledWith(
+      'finance-target',
+      'tenant-finance-a',
+      'FINANCE_APPROVER',
+    );
+    expect(firestore.recordAudit).not.toHaveBeenCalled();
   });
 
 });
