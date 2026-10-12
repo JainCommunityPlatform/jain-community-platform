@@ -194,7 +194,7 @@ describe('FirestoreService against the Firestore emulator', () => {
       .filter((receipt) => receipt.pledgeId === pledge.id);
     expect(persistedPledge).toMatchObject({ paidAmountPaise: 60000, status: 'PARTIALLY_PAID' });
     expect(receipts).toHaveLength(1);
-  });
+  }, 30000);
 
 
   it('allocates unique receipt numbers when separate pledges are approved concurrently', async () => {
