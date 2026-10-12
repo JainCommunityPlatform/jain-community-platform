@@ -182,10 +182,10 @@ describe('API endpoints (integration)', () => {
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     tenantMembers = {
-      list: jest.fn().mockResolvedValue([{ id: 'membership-1', userId: '00000000-0000-0000-0000-000000000099', role: 'CONTENT_MANAGER', createdAt: new Date('2026-01-01T00:00:00.000Z') }]),
-      get: jest.fn().mockResolvedValue({ id: 'membership-1', userId: '00000000-0000-0000-0000-000000000099', role: 'CONTENT_MANAGER', createdAt: new Date('2026-01-01T00:00:00.000Z') }),
-      create: jest.fn().mockResolvedValue({ id: 'membership-created', userId: '00000000-0000-0000-0000-000000000099', role: 'CONTENT_MANAGER', createdAt: new Date('2026-01-01T00:00:00.000Z') }),
-      update: jest.fn().mockResolvedValue({ id: 'membership-1', userId: '00000000-0000-0000-0000-000000000099', role: 'EVENT_MANAGER', createdAt: new Date('2026-01-01T00:00:00.000Z') }),
+      list: jest.fn().mockResolvedValue([{ id: 'membership-1', userId: '00000000-0000-4000-8000-000000000099', role: 'CONTENT_MANAGER', createdAt: new Date('2026-01-01T00:00:00.000Z') }]),
+      get: jest.fn().mockResolvedValue({ id: 'membership-1', userId: '00000000-0000-4000-8000-000000000099', role: 'CONTENT_MANAGER', createdAt: new Date('2026-01-01T00:00:00.000Z') }),
+      create: jest.fn().mockResolvedValue({ id: 'membership-created', userId: '00000000-0000-4000-8000-000000000099', role: 'CONTENT_MANAGER', createdAt: new Date('2026-01-01T00:00:00.000Z') }),
+      update: jest.fn().mockResolvedValue({ id: 'membership-1', userId: '00000000-0000-4000-8000-000000000099', role: 'EVENT_MANAGER', createdAt: new Date('2026-01-01T00:00:00.000Z') }),
       remove: jest.fn().mockResolvedValue(undefined),
     };
 
@@ -278,7 +278,7 @@ describe('API endpoints (integration)', () => {
     await request(app.getHttpServer()).get('/api/tenant/members').set('Host', 'badebabakharadi.com').set('x-test-user', 'user-a')
       .expect(200).expect((response) => {
         expect(response.body).toHaveLength(1);
-        expect(response.body[0]).toMatchObject({ userId: '00000000-0000-0000-0000-000000000099', role: 'CONTENT_MANAGER' });
+        expect(response.body[0]).toMatchObject({ userId: '00000000-0000-4000-8000-000000000099', role: 'CONTENT_MANAGER' });
       });
     expect(tenantMembers.list).toHaveBeenCalledTimes(1);
   });
@@ -292,16 +292,16 @@ describe('API endpoints (integration)', () => {
   it('POST /api/tenant/members denies finance viewers before member creation', async () => {
     tenantMembers.create.mockClear();
     await request(app.getHttpServer()).post('/api/tenant/members').set('Host', 'badebabakharadi.com').set('x-test-user', 'user-viewer')
-      .send({ userId: '00000000-0000-0000-0000-000000000099', role: 'CONTENT_MANAGER' }).expect(403);
+      .send({ userId: '00000000-0000-4000-8000-000000000099', role: 'CONTENT_MANAGER' }).expect(403);
     expect(tenantMembers.create).not.toHaveBeenCalled();
   });
 
   it('POST /api/tenant/members allows a tenant administrator to assign a non-financial role', async () => {
     tenantMembers.create.mockClear();
     await request(app.getHttpServer()).post('/api/tenant/members').set('Host', 'badebabakharadi.com').set('x-test-user', 'user-a')
-      .send({ userId: '00000000-0000-0000-0000-000000000099', role: 'CONTENT_MANAGER' }).expect(201)
-      .expect((response) => expect(response.body).toMatchObject({ userId: '00000000-0000-0000-0000-000000000099', role: 'CONTENT_MANAGER' }));
-    expect(tenantMembers.create).toHaveBeenCalledWith('00000000-0000-0000-0000-000000000099', 'CONTENT_MANAGER');
+      .send({ userId: '00000000-0000-4000-8000-000000000099', role: 'CONTENT_MANAGER' }).expect(201)
+      .expect((response) => expect(response.body).toMatchObject({ userId: '00000000-0000-4000-8000-000000000099', role: 'CONTENT_MANAGER' }));
+    expect(tenantMembers.create).toHaveBeenCalledWith('00000000-0000-4000-8000-000000000099', 'CONTENT_MANAGER');
   });
 
   it('GET /api/tenant/members rejects malformed user IDs before member lookup', async () => {
