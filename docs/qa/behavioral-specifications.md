@@ -1351,3 +1351,13 @@ Then the router redirects the user to the member home screen
 And the protected screen is not rendered
 
 Executable regression: `apps/flutter/test/widget_test.dart` — “redirects authenticated users without each required role to member home”. This widget test verifies client-side route gating only; API authorization remains independently required and is covered by backend HTTP tests.
+
+## Scenario: Firebase sign-out refreshes the router and closes protected screens
+
+Given an authenticated tenant administrator is viewing a protected admin screen
+When Firebase emits a signed-out state
+Then the application session becomes signed out
+And the router refreshes without a manual navigation action
+And the protected screen is replaced by the login screen
+
+Executable regression: `apps/flutter/test/widget_test.dart` — “redirects an open protected route to login when Firebase signs out”. This widget test covers client session/router behavior; API token expiry and real Firebase/device behavior remain separate evidence layers.

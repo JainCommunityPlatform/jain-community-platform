@@ -84,6 +84,40 @@ class FakeAuth implements FirebaseAuthProvider {
   Future<void> signOut() async {}
 }
 
+class MutableFakeAuth implements FirebaseAuthProvider {
+  final StreamController<FirebaseAuthUser?> _controller =
+      StreamController<FirebaseAuthUser?>.broadcast();
+  bool _signedIn = true;
+
+  @override
+  bool get isSignedIn => _signedIn;
+
+  @override
+  Stream<FirebaseAuthUser?> authStateChanges() => _controller.stream;
+
+  @override
+  Future<String?> getIdToken() async => 'test-token';
+
+  @override
+  Future<void> signInWithGoogle() async {
+    _signedIn = true;
+    _controller.add(const FirebaseAuthUser(uid: 'user-1'));
+  }
+
+  @override
+  Future<void> signOut() async {
+    _signedIn = false;
+    _controller.add(null);
+  }
+
+  void emit(FirebaseAuthUser? user) {
+    _signedIn = user != null;
+    _controller.add(user);
+  }
+
+  Future<void> dispose() => _controller.close();
+}
+
 class FakeSessionService extends AuthSessionService {
   FakeSessionService(this.value) : super(ApiClient(baseUrl: Uri.parse('https://example.test/')));
 
@@ -303,6 +337,61 @@ void main() {
     expect(router.state.uri.path, '/login');
     router.dispose();
     controller.dispose();
+  });
+
+  testWidgets('redirects an open protected route to login when Firebase signs out',
+      (tester) async {
+    final auth = MutableFakeAuth();
+    const session = AppSession(
+      isAuthenticated: true,
+      userId: 'user-1',
+      role: 'TENANT_ADMIN',
+    );
+    final controller = AppSessionController(
+      auth: auth,
+      sessionService: FakeSessionService(session),
+      initialSession: session,
+    );
+    await controller.initialize();
+
+    final api = _apiClient();
+    final selection = TenantSelectionController(temple);
+    final appRouter = AppRouter(
+      tenantSelection: selection,
+      tenantRepository: TenantRepository(api),
+      sessionController: controller,
+      profileRepository: ProfileRepository(api),
+      api: api,
+    );
+    final router = GoRouter(
+      initialLocation: AppRoutes.admin,
+      refreshListenable: controller,
+      redirect: appRouter.redirect,
+      routes: [
+        GoRoute(path: AppRoutes.login, builder: (_, __) => const Scaffold(body: Text('login'))),
+        GoRoute(path: AppRoutes.member, builder: (_, __) => const Scaffold(body: Text('member'))),
+        GoRoute(path: AppRoutes.admin, builder: (_, __) => const Scaffold(body: Text('admin'))),
+      ],
+    );
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await _pumpRouter(tester);
+    expect(router.state.uri.path, AppRoutes.admin);
+    expect(find.text('admin'), findsOneWidget);
+
+    auth.emit(null);
+    await tester.pump();
+    await _pumpRouter(tester);
+
+    expect(router.state.uri.path, AppRoutes.login);
+    expect(find.text('login'), findsOneWidget);
+    expect(find.text('admin'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    router.dispose();
+    appRouter.router.dispose();
+    controller.dispose();
+    await auth.dispose();
   });
 
   testWidgets('allows an authenticated tenant admin to open admin',

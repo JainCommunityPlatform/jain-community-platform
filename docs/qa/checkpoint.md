@@ -12,13 +12,13 @@ Repository: [JainCommunityPlatform/jain-community-platform](https://github.com/J
 
 ## Current item
 
-- **In progress:** restore green default-branch CI after a Firestore emulator concurrency failure.
-- **Branch:** `qa/firestore-pledge-idempotency-race`.
-- **Failure evidence:** post-merge [CI #765](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38293792926) failed in `deduplicates concurrent pledge creation with the same idempotency key` with `3 INVALID_ARGUMENT: Transaction is invalid or closed` (41 passed, 1 failed).
-- **Fix:** re-read the deterministic pledge after a transaction error and return the matching committed pledge if found; retry only the specific closed-transaction error with a strict cap. The concurrency test itself is not weakened.
-- **Current PR / CI:** hotfix PR not yet opened; exact-head CI pending.
-- **Evidence boundary:** Firestore emulator only; this does not claim production/staging concurrency verification.
+- **In progress:** P0 auth/session UI — a Firebase signed-out event must refresh navigation and remove the protected screen.
+- **Branch:** `qa/session-signout-route-refresh-v2`.
+- **Test:** `apps/flutter/test/widget_test.dart` — “redirects an open protected route to login when Firebase signs out”. It checks that an authenticated admin route changes to login without manual navigation.
+- **Previous item:** [PR #171](https://github.com/JainCommunityPlatform/jain-community-platform/pull/171) merged as `dc008919f598cc42d69b143e9b28d57c40098775`; exact PR-head [CI #767](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38294696101) passed; post-merge [CI #768](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38295038490) pending final verification.
+- **Current PR / CI:** not yet opened; exact-head CI pending.
+- **Evidence boundary:** fake Firebase auth stream and Flutter router test; real Firebase, API token expiry, and device behavior remain unverified.
 
 ## Exact next action
 
-Open the focused hotfix PR, monitor exact-head backend/emulator CI, inspect and fix any remaining failures, merge only if all required checks pass, verify post-merge CI until green, update issue #162 and this checkpoint, then resume the pending auth/session route-refresh work. Keep Android build/upload manual/on-demand.
+Verify post-merge CI #768 for PR #171, then open the focused PR for sign-out route refresh. Inspect exact-head CI, fix failures rather than weakening assertions, merge only when all required checks pass, verify post-merge CI, update this checkpoint and issue #162, then continue the auth/session matrix. Keep Android build/upload manual/on-demand.
