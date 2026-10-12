@@ -122,3 +122,12 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Evidence boundary:** mocked session refresh and Flutter router; persisted membership revocation and production API/session propagation remain open.
 - **Next action:** finish post-merge CI #771, open the focused PR, inspect exact-head CI, fix real failures, merge only when required checks pass, verify post-merge CI, and continue auth/session expiry and restoration gaps.
 - **Release policy:** Android build/upload remains manual/on-demand.
+
+## Execution checkpoint — expired session refresh redirects to login
+
+- **Previous completed item:** [PR #173](https://github.com/JainCommunityPlatform/jain-community-platform/pull/173) merged as `9c8259cb2a9605b43404d519198d15b051eae070`; exact-head [CI #772](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38296287780) passed. Post-merge [CI #773](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38296615312) is being verified.
+- **Current item:** P0 auth/session UI — failed current-session refresh must clear the authenticated session and redirect away from protected content.
+- **Assertions:** session refresh failure sets controller error/signed-out state; router moves from admin to login and admin content disappears.
+- **Evidence boundary:** mocked session-service failure and Flutter router; real Firebase token expiry and API authentication failure remain open.
+- **Next action:** finish post-merge CI #773, open the focused PR, inspect exact-head CI, fix real failures, merge only when required checks pass, verify post-merge CI, and continue auth/session restoration and offline/error cases.
+- **Release policy:** Android build/upload remains manual/on-demand.

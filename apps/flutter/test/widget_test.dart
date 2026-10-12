@@ -539,6 +539,66 @@ void main() {
     await auth.dispose();
   });
 
+  testWidgets('redirects to login when a session refresh fails after expiry',
+      (tester) async {
+    final auth = MutableFakeAuth();
+    var sessionExpired = false;
+    const session = AppSession(
+      isAuthenticated: true,
+      userId: 'user-1',
+      role: 'TENANT_ADMIN',
+    );
+    final controller = AppSessionController(
+      auth: auth,
+      sessionService: CallbackSessionService(() async {
+        if (sessionExpired) throw StateError('Session expired');
+        return session;
+      }),
+      initialSession: session,
+    );
+    await controller.initialize();
+
+    final api = _apiClient();
+    final appRouter = AppRouter(
+      tenantSelection: TenantSelectionController(temple),
+      tenantRepository: TenantRepository(api),
+      sessionController: controller,
+      profileRepository: ProfileRepository(api),
+      api: api,
+    );
+    final router = GoRouter(
+      initialLocation: AppRoutes.admin,
+      refreshListenable: controller,
+      redirect: appRouter.redirect,
+      routes: [
+        GoRoute(path: AppRoutes.login, builder: (_, __) => const Scaffold(body: Text('login'))),
+        GoRoute(path: AppRoutes.member, builder: (_, __) => const Scaffold(body: Text('member'))),
+        GoRoute(path: AppRoutes.admin, builder: (_, __) => const Scaffold(body: Text('admin'))),
+      ],
+    );
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await _pumpRouter(tester);
+    expect(router.state.uri.path, AppRoutes.admin);
+    expect(find.text('admin'), findsOneWidget);
+
+    sessionExpired = true;
+    await controller.refreshCurrentSession();
+    await _pumpRouter(tester);
+
+    expect(controller.status, AppSessionStatus.error);
+    expect(controller.session, AppSession.signedOut);
+    expect(router.state.uri.path, AppRoutes.login);
+    expect(find.text('login'), findsOneWidget);
+    expect(find.text('admin'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    router.dispose();
+    appRouter.router.dispose();
+    controller.dispose();
+    await auth.dispose();
+  });
+
   testWidgets('inventory console requires an inventory or admin role',
       (tester) async {
     final (appRouter, _, controller) = await _router(

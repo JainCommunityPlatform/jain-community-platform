@@ -1371,3 +1371,13 @@ And redirects the user to member home
 And the finance screen is no longer rendered
 
 Executable regression: `apps/flutter/test/widget_test.dart` — “refreshing a revoked finance role redirects away from finance”. This tests a mocked session refresh and client route gating; persisted membership revocation and production API/session propagation remain open.
+
+## Scenario: Session refresh failure closes protected routes
+
+Given an authenticated administrator is viewing a protected screen
+When refreshing the current session fails because the session has expired or is no longer valid
+Then the controller records an error and clears the authenticated session
+And the router redirects to login
+And protected content is no longer rendered
+
+Executable regression: `apps/flutter/test/widget_test.dart` — “redirects to login when a session refresh fails after expiry”. This verifies client behavior with a mocked session service; real Firebase token expiry and API authentication failures remain open.
