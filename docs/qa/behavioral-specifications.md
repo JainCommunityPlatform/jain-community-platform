@@ -1,6 +1,10 @@
 # JCP Behavioural Specifications and QA Coverage
 
-Status: initial executable-specification backlog, 11 October 2026
+Status: living executable-specification backlog, reviewed 12 October 2026
+
+Programme tracker: [QA Control Tower issue #162](https://github.com/JainCommunityPlatform/jain-community-platform/issues/162)  
+Coverage inventory: [coverage-inventory.md](coverage-inventory.md)  
+Delivery milestones: [roadmap.md](roadmap.md)
 
 ## Rules of evidence
 
