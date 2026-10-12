@@ -887,6 +887,66 @@ describe('API endpoints (integration)', () => {
   });
 
 
+  it('denies cross-tenant financial writes before persistence and audit side effects', async () => {
+    const routes: Array<{
+      path: string;
+      service: jest.Mock;
+      body: Record<string, unknown>;
+    }> = [
+      {
+        path: '/api/giving/expenses',
+        service: giving.createExpense,
+        body: { category: 'MAINTENANCE', amountPaise: 10000, description: 'Cross-tenant attempt' },
+      },
+      {
+        path: '/api/giving/pledges/pledge-1/payments',
+        service: giving.recordPayment,
+        body: { amountPaise: 5000, method: 'UPI' },
+      },
+      {
+        path: '/api/giving/payments/payment-1/adjustments',
+        service: giving.createAdjustment,
+        body: { kind: 'REFUND', amountPaise: 1000, reason: 'Cross-tenant attempt' },
+      },
+      {
+        path: '/api/giving/payments/payment-1/approve',
+        service: giving.approvePayment,
+        body: {},
+      },
+      {
+        path: '/api/giving/expenses/expense-1/approve',
+        service: giving.approveExpense,
+        body: {},
+      },
+      {
+        path: '/api/giving/adjustments/adjustment-1/approve',
+        service: giving.approveAdjustment,
+        body: {},
+      },
+    ];
+
+    for (const [index, route] of routes.entries()) {
+      route.service.mockClear();
+      audit.record.mockClear();
+
+      await request(app.getHttpServer())
+        .post(route.path)
+        .set('Host', 'badebabakharadi.com')
+        .set('x-test-user', 'user-cross-tenant')
+        .set('idempotency-key', `cross-tenant-write-${index}`)
+        .send(route.body)
+        .expect(403)
+        .expect({
+          statusCode: 403,
+          message: 'Tenant access denied',
+          error: 'Forbidden',
+        });
+
+      expect(route.service).not.toHaveBeenCalled();
+      expect(audit.record).not.toHaveBeenCalled();
+    }
+  });
+
   it.each([
     ['GET', '/api/giving/receipts'],
     ['GET', '/api/giving/reports/summary'],

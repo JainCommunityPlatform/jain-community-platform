@@ -69,3 +69,12 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Evidence boundary:** mocked membership state at the API boundary; this does not establish Firestore role persistence or production identity/session propagation.
 - **Next action:** open the focused PR, inspect exact-head CI, fix real failures, merge only after all required checks are green, verify post-merge CI, then continue the P0 authorization route matrix.
 - **Release policy:** Android build/upload remains manual/on-demand.
+
+## Execution checkpoint — cross-tenant finance write denial
+
+- **Previous completed item:** [PR #167](https://github.com/JainCommunityPlatform/jain-community-platform/pull/167) merged as `2e3dc90d5bc0dfea77c1b270a3bca50ad4279869`; exact PR-head [CI #758](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38291613206) passed all required checks. Post-merge [CI #759](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38291897144) is being verified.
+- **Current item:** P0 authorization route matrix, cross-tenant financial mutations. Added a parameterized API E2E regression covering expense creation, payment recording, adjustment creation, and approval mutations.
+- **Assertions:** every request returns HTTP 403 for tenant mismatch, and neither the financial service nor audit writer is called.
+- **Evidence boundary:** mocked identity/membership and service layer; persisted cross-tenant Firestore behavior is still open.
+- **Next action:** finish PR #167 post-merge CI verification; open the focused PR for this gap, inspect exact-head CI, fix genuine failures, merge only when required checks pass, verify post-merge CI, and continue the route matrix.
+- **Release policy:** Android build/upload remains manual/on-demand.
