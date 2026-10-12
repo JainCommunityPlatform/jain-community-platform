@@ -61,3 +61,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Current priority:** P0-B, donation-to-receipt lifecycle. The new assertions extend existing partial-payment coverage; they do not close the entire donation E2E gap.
 - **Next action:** inspect the exact PR-head emulator job and all required checks; fix genuine failures, merge only if green/mergeable, then verify default-branch CI. Continue with P0-C authorization route matrix and P0-A inventory completeness as sequencing permits.
 - **Release policy:** Android build/upload remains manual/on-demand; this change must not trigger a release.
+
+## Execution checkpoint — finance-role revocation regression
+
+- **Previous completed item:** [PR #166](https://github.com/JainCommunityPlatform/jain-community-platform/pull/166) merged as `d62a1ac148c3d0a2b3da68a7c796974710711ee9`; post-merge [CI run #757](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38290855350) passed repository validation, backend lint/unit/integration/Firestore-emulator/build, Flutter analyze/tests, and merge gate. Android AAB job was skipped by design.
+- **Current item:** P0-C authorization lifecycle, finance-role revocation. Added an HTTP E2E regression to verify a role is removed from the effective membership and a subsequent protected finance request is denied before reading tenant data.
+- **Evidence boundary:** mocked membership state at the API boundary; this does not establish Firestore role persistence or production identity/session propagation.
+- **Next action:** open the focused PR, inspect exact-head CI, fix real failures, merge only after all required checks are green, verify post-merge CI, then continue the P0 authorization route matrix.
+- **Release policy:** Android build/upload remains manual/on-demand.

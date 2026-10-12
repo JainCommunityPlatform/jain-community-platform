@@ -12,12 +12,13 @@ Repository: [JainCommunityPlatform/jain-community-platform](https://github.com/J
 
 ## Current item
 
-- **In progress:** P0-B donation-to-receipt persisted reconciliation assertions, branch `qa/donation-lifecycle-reconciliation-evidence`.
-- **Change:** assert approved persisted payment states, receipt numbers, donor history, and balanced reconciliation using a unique tenant fixture; link the scenario in BDD and the inventory.
-- **PR / CI:** pending creation / pending exact-head evidence.
-- **Environment verification:** not performed; emulator evidence must not be presented as production or device verification.
-- **Blocker:** CI status/workflow evidence is not currently surfaced by the GitHub connector for the previous merge. Re-check the new PR's exact-head checks and inspect job logs if any fail.
+- **In progress:** P0-C authorization lifecycle — verify finance-role revocation is effective on the next protected HTTP request.
+- **Branch:** `qa/finance-role-revocation-boundary`.
+- **Test:** `apps/api/test/app.e2e-spec.ts` — “revoking a finance role removes protected access on the next HTTP request”. The test asserts the request after revocation is denied and finance persistence is not called.
+- **Previous merge evidence:** PR [#166](https://github.com/JainCommunityPlatform/jain-community-platform/pull/166), merge commit `d62a1ac148c3d0a2b3da68a7c796974710711ee9`, post-merge [CI #757](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38290855350) green; Android AAB job skipped by design.
+- **Current PR / CI:** PR not yet opened; exact-head CI pending.
+- **Evidence boundary:** mocked membership state at the HTTP boundary; Firestore persistence and production identity/session propagation remain unverified.
 
 ## Exact next action
 
-Create/inspect the focused PR, wait for the exact PR-head CI (including Firestore emulator tests), diagnose and fix real failures, merge only if all required checks pass and GitHub reports it mergeable, verify post-merge default-branch CI, then update this checkpoint with the actual PR/commit/run URLs. Continue with the next highest-risk unfinished P0 item; do not trigger Android build/upload.
+Open the focused PR, monitor the exact PR-head CI and inspect logs for failures, fix the underlying cause and rerun, merge only if all required checks pass and GitHub reports the PR mergeable, verify default-branch CI, then update this checkpoint and issue #162 with actual links. Continue with the next highest-priority P0 authorization route gap. Do not trigger Android build/upload.
