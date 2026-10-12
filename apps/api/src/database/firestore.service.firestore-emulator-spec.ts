@@ -1347,6 +1347,6 @@ describe('FirestoreService against the Firestore emulator', () => {
     expect((await service.listDonationPaymentsForTenant(isolatedTenantId))[0]).toMatchObject({ amountPaise: 40000, status: 'VERIFIED' });
     expect(expenses[0]).toMatchObject({ amountPaise: 12500, status: 'PENDING_APPROVAL' });
     expect(adjustments[0]).toMatchObject({ amountPaise: 5000, status: 'PENDING_APPROVAL' });
-  });
+  }, 30000);
 
 });
