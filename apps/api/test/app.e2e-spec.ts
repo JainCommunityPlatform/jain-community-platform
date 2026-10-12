@@ -678,11 +678,11 @@ describe('API endpoints (integration)', () => {
         .get(route.path)
         .set('Host', 'unknown.example.com')
         .set('x-test-user', 'user-finance-approver')
-        .expect(400)
+        .expect(403)
         .expect({
-          statusCode: 400,
-          message: 'Tenant context is required',
-          error: 'Bad Request',
+          statusCode: 403,
+          message: 'Permission denied',
+          error: 'Forbidden',
         });
       expect(route.service).not.toHaveBeenCalled();
     }
