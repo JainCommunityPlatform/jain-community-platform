@@ -1042,3 +1042,16 @@ Then the API returns HTTP 403 with tenant access denied
 And the member lookup service is not invoked
 
 Executable regressions: `apps/api/test/app.e2e-spec.ts` — “GET /api/tenant/members/:userId returns the requested member for a tenant reader” and “GET /api/tenant/members/:userId rejects cross-tenant membership context before member lookup”. These exercise the NestJS HTTP guard and membership-context pipeline with test identity/membership providers; they do not claim Firestore persistence verification.
+
+
+## Tenant membership persistence isolation — Firestore emulator
+
+### Scenario: Membership lookup, listing, and deletion stay within one tenant
+
+Given the same user has separate memberships in two tenants
+When each tenant lists or retrieves that user's membership
+Then each operation returns only the membership for the requested tenant
+When a membership is deleted from one tenant
+Then the other tenant's membership remains persisted and readable
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “isolates persisted tenant memberships across list, lookup, and deletion”. This exercises persisted Firestore behavior against the emulator, including a shared user identity across two tenant IDs.

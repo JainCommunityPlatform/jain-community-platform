@@ -1478,4 +1478,48 @@ describe('FirestoreService against the Firestore emulator', () => {
     expect(adjustments[0]).toMatchObject({ amountPaise: 5000, status: 'PENDING_APPROVAL' });
   }, 30000);
 
+
+  it('isolates persisted tenant memberships across list, lookup, and deletion', async () => {
+    const suffix = `emulator-membership-isolation-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tenantA = `${tenantId}-membership-a-${suffix}`;
+    const tenantB = `${tenantId}-membership-b-${suffix}`;
+    const sharedUser = `membership-shared-user-${suffix}`;
+    const tenantAOnlyUser = `membership-tenant-a-user-${suffix}`;
+
+    await service.upsertUser({ subject: sharedUser, email: `${sharedUser}@example.test`, displayName: 'Shared user' });
+    await service.upsertUser({ subject: tenantAOnlyUser, email: `${tenantAOnlyUser}@example.test`, displayName: 'Tenant A only' });
+
+    const membershipA = await service.createMembership({
+      userId: sharedUser, tenantId: tenantA, role: 'CONTENT_MANAGER',
+    });
+    const membershipB = await service.createMembership({
+      userId: sharedUser, tenantId: tenantB, role: 'EVENT_MANAGER',
+    });
+    await service.createMembership({
+      userId: tenantAOnlyUser, tenantId: tenantA, role: 'TENANT_ADMIN',
+    });
+
+    expect(membershipA.id).not.toBe(membershipB.id);
+    expect(await service.getMembership(sharedUser, tenantA)).toMatchObject({
+      userId: sharedUser, tenantId: tenantA, role: 'CONTENT_MANAGER',
+    });
+    expect(await service.getMembership(sharedUser, tenantB)).toMatchObject({
+      userId: sharedUser, tenantId: tenantB, role: 'EVENT_MANAGER',
+    });
+
+    const membersA = await service.listMemberships(tenantA);
+    const membersB = await service.listMemberships(tenantB);
+    expect(membersA.map((member) => member.userId).sort()).toEqual([sharedUser, tenantAOnlyUser].sort());
+    expect(membersA.every((member) => member.tenantId === tenantA)).toBe(true);
+    expect(membersB.map((member) => member.userId)).toEqual([sharedUser]);
+    expect(membersB.every((member) => member.tenantId === tenantB)).toBe(true);
+
+    await service.deleteMembership(sharedUser, tenantA);
+    expect(await service.getMembership(sharedUser, tenantA)).toBeNull();
+    expect(await service.getMembership(sharedUser, tenantB)).toMatchObject({
+      userId: sharedUser, tenantId: tenantB, role: 'EVENT_MANAGER',
+    });
+    expect(await service.listMemberships(tenantB)).toHaveLength(1);
+  }, 15000);
+
 });
