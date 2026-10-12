@@ -200,6 +200,54 @@ describe('FirestoreService against the Firestore emulator', () => {
     expect(donorReceipts.filter((receipt) => receipt.pledgeId === pledge.id).every((receipt) => receipt.donorUserId === donor.id)).toBe(true);
   });
 
+  it('isolates persisted donor pledge and receipt history by both tenant and donor', async () => {
+    const suffix = `emulator-donor-history-isolation-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tenantA = `${tenantId}-history-a-${suffix}`;
+    const tenantB = `${tenantId}-history-b-${suffix}`;
+    const donorA = await service.upsertUser({ subject: `history-donor-a-${suffix}` });
+    const donorB = await service.upsertUser({ subject: `history-donor-b-${suffix}` });
+
+    const createPaidPledge = async (targetTenant: string, donorUserId: string, label: string) => {
+      const campaign = await service.createGivingCampaign({
+        tenantId: targetTenant, actorUserId: `campaign-admin-${label}-${suffix}`, name: `History ${label}`,
+      });
+      await service.updateGivingCampaignStatus(targetTenant, campaign.id, 'ACTIVE');
+      const pledge = await service.createDonationPledge({
+        tenantId: targetTenant, donorUserId, campaignId: campaign.id,
+        pledgedAmountPaise: 25000, idempotencyKey: `pledge-${label}-${suffix}`,
+      });
+      const payment = await service.recordDonationPayment({
+        tenantId: targetTenant, pledgeId: pledge.id, actorUserId: `cashier-${label}-${suffix}`,
+        amountPaise: 25000, method: 'UPI', idempotencyKey: `payment-${label}-${suffix}`,
+      });
+      await service.approveDonationPayment(targetTenant, payment.id, `approver-${label}-${suffix}`);
+      return pledge;
+    };
+
+    const targetPledge = await createPaidPledge(tenantA, donorA.id, 'target');
+    const sameTenantOtherDonorPledge = await createPaidPledge(tenantA, donorB.id, 'other-donor');
+    const otherTenantSameDonorPledge = await createPaidPledge(tenantB, donorA.id, 'other-tenant');
+
+    const donorAPledgesInTenantA = await service.listDonationPledgesForDonor(tenantA, donorA.id);
+    const donorAReceiptsInTenantA = await service.listDonationReceiptsForDonor(tenantA, donorA.id);
+
+    expect(donorAPledgesInTenantA.map((item) => item.id)).toEqual([targetPledge.id]);
+    expect(donorAReceiptsInTenantA).toHaveLength(1);
+    expect(donorAReceiptsInTenantA[0]).toMatchObject({
+      tenantId: tenantA, donorUserId: donorA.id, pledgeId: targetPledge.id,
+    });
+    expect(donorAPledgesInTenantA.map((item) => item.id)).not.toContain(sameTenantOtherDonorPledge.id);
+    expect(donorAPledgesInTenantA.map((item) => item.id)).not.toContain(otherTenantSameDonorPledge.id);
+    expect(donorAReceiptsInTenantA.some((receipt) => receipt.pledgeId === sameTenantOtherDonorPledge.id)).toBe(false);
+    expect(donorAReceiptsInTenantA.some((receipt) => receipt.pledgeId === otherTenantSameDonorPledge.id)).toBe(false);
+
+    expect((await service.listDonationPledgesForDonor(tenantA, donorB.id)).map((item) => item.id))
+      .toEqual([sameTenantOtherDonorPledge.id]);
+    expect((await service.listDonationPledgesForDonor(tenantB, donorA.id)).map((item) => item.id))
+      .toEqual([otherTenantSameDonorPledge.id]);
+    expect(await service.listDonationReceiptsForDonor(tenantA, `unknown-donor-${suffix}`)).toHaveLength(0);
+  });
+
   it('rejects overpayment and replayed approval without changing the persisted balance or receipts', async () => {
     const suffix = `emulator-overpay-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const isolatedTenantId = `${tenantId}-${suffix}`;

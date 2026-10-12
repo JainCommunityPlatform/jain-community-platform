@@ -1216,3 +1216,15 @@ Then each endpoint responds with HTTP 400
 And neither donor-history service method is called
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — donor history routes `GET /api/giving/my-pledges` and `GET /api/giving/my-receipts`. Persisted donor and tenant query isolation is additionally covered by `apps/api/src/database/firestore.service.firestore-emulator-spec.ts`.
+
+
+### Scenario: Persisted donor history excludes other donors and tenants
+
+Given donor A and donor B have persisted pledges and receipts in tenant A
+And donor A also has a persisted pledge and receipt in tenant B
+When donor A requests pledge and receipt history for tenant A
+Then only donor A's tenant A pledge and receipt are returned
+And neither donor B's records nor donor A's tenant B records are returned
+And querying an unrelated donor returns no receipts
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “isolates persisted donor pledge and receipt history by both tenant and donor”. This validates persisted Firestore query isolation using the emulator, not production Firebase.
