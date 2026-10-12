@@ -18,6 +18,7 @@ import { ProfileService } from '../src/profile/profile.service';
 import { AuditService } from '../src/audit/audit.service';
 import { GivingService } from '../src/giving/giving.service';
 import { TenantMemberService } from '../src/tenant/tenant-member.service';
+import { FirestoreService } from '../src/database/firestore.service';
 
 describe('API endpoints (integration)', () => {
   let app: INestApplication;
@@ -43,6 +44,13 @@ describe('API endpoints (integration)', () => {
   };
   let audit: { record: jest.Mock };
   let tenantMembers: { list: jest.Mock; get: jest.Mock; create: jest.Mock; update: jest.Mock; remove: jest.Mock };
+  let membership: {
+    resolve: jest.Mock;
+    listTenantMemberships: jest.Mock;
+    grantFinancialRoleByEmail: jest.Mock;
+    revokeFinancialRole: jest.Mock;
+  };
+  let firestore: { getTenantById: jest.Mock; recordAudit: jest.Mock };
 
   beforeAll(async () => {
     const authenticationGuard = {
@@ -111,7 +119,7 @@ describe('API endpoints (integration)', () => {
       }),
     };
 
-    const membership = {
+    membership = {
       resolve: jest.fn(async (userId: string, tenantId: string) => {
         if (userId === 'user-none') return null;
         const role =
@@ -131,6 +139,46 @@ describe('API endpoints (integration)', () => {
             : {}),
         } as const;
       }),
+      listTenantMemberships: jest.fn().mockResolvedValue([
+        {
+          id: 'finance-user-membership',
+          userId: 'finance-user',
+          tenantId: 'tenant-finance-a',
+          role: 'FINANCE_VIEWER',
+          roles: ['FINANCE_VIEWER', 'CONTENT_MANAGER'],
+          user: { email: 'finance@example.test', displayName: 'Finance User', primaryPhone: '9999999999' },
+        },
+        {
+          id: 'content-user-membership',
+          userId: 'content-user',
+          tenantId: 'tenant-finance-a',
+          role: 'CONTENT_MANAGER',
+          roles: ['CONTENT_MANAGER'],
+          user: { email: 'content@example.test', displayName: 'Content User', primaryPhone: null },
+        },
+      ]),
+      grantFinancialRoleByEmail: jest.fn().mockResolvedValue({
+        id: 'finance-target-membership',
+        userId: 'finance-target',
+        tenantId: 'tenant-finance-a',
+        role: 'CONTENT_MANAGER',
+        roles: ['CONTENT_MANAGER', 'FINANCE_OPERATOR'],
+      }),
+      revokeFinancialRole: jest.fn().mockResolvedValue({
+        id: 'finance-target-membership',
+        userId: 'finance-target',
+        tenantId: 'tenant-finance-a',
+        role: 'CONTENT_MANAGER',
+        roles: ['CONTENT_MANAGER'],
+        previousRoles: ['CONTENT_MANAGER', 'FINANCE_OPERATOR'],
+        membershipDeleted: false,
+      }),
+    };
+    firestore = {
+      getTenantById: jest.fn(async (tenantId: string) =>
+        tenantId === 'tenant-finance-a' ? { id: tenantId, name: 'Finance Test Tenant' } : null,
+      ),
+      recordAudit: jest.fn().mockResolvedValue(undefined),
     };
 
     giving = {
@@ -206,6 +254,8 @@ describe('API endpoints (integration)', () => {
       .useValue(giving)
       .overrideProvider(TenantMemberService)
       .useValue(tenantMembers)
+      .overrideProvider(FirestoreService)
+      .useValue(firestore)
       .overrideProvider(AuditService)
       .useValue(audit)
       .compile();
@@ -1038,6 +1088,87 @@ describe('API endpoints (integration)', () => {
     expect(giving.rejectPayment).not.toHaveBeenCalled();
     expect(giving.rejectExpense).not.toHaveBeenCalled();
     expect(giving.rejectAdjustment).not.toHaveBeenCalled();
+  });
+
+  it('GET /api/platform/tenants/:tenantId/finance-team denies non-platform users before listing members', async () => {
+    membership.listTenantMemberships.mockClear();
+
+    await request(app.getHttpServer())
+      .get('/api/platform/tenants/tenant-finance-a/finance-team')
+      .set('x-test-user', 'user-a')
+      .expect(403);
+
+    expect(membership.listTenantMemberships).not.toHaveBeenCalled();
+  });
+
+  it('GET /api/platform/tenants/:tenantId/finance-team exposes only financial roles without phone details', async () => {
+    firestore.getTenantById.mockClear();
+    membership.listTenantMemberships.mockClear();
+
+    await request(app.getHttpServer())
+      .get('/api/platform/tenants/tenant-finance-a/finance-team')
+      .set('x-test-user', 'user-platform-admin')
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toEqual([{
+          userId: 'finance-user',
+          email: 'finance@example.test',
+          displayName: 'Finance User',
+          roles: ['FINANCE_VIEWER'],
+        }]);
+      });
+
+    expect(firestore.getTenantById).toHaveBeenCalledWith('tenant-finance-a');
+    expect(membership.listTenantMemberships).toHaveBeenCalledWith('tenant-finance-a');
+  });
+
+  it('POST /api/platform/tenants/:tenantId/finance-team validates grant payload before provisioning', async () => {
+    membership.grantFinancialRoleByEmail.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/platform/tenants/tenant-finance-a/finance-team')
+      .set('x-test-user', 'user-platform-admin')
+      .send({ email: 'not-an-email', role: 'SUPER_USER' })
+      .expect(400);
+
+    expect(membership.grantFinancialRoleByEmail).not.toHaveBeenCalled();
+  });
+
+  it('POST /api/platform/tenants/:tenantId/finance-team grants and audits a financial role', async () => {
+    firestore.getTenantById.mockClear();
+    firestore.recordAudit.mockClear();
+    membership.grantFinancialRoleByEmail.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/platform/tenants/tenant-finance-a/finance-team')
+      .set('x-test-user', 'user-platform-admin')
+      .send({ email: 'finance@example.test', role: 'FINANCE_OPERATOR' })
+      .expect(201)
+      .expect((response) => {
+        expect(response.body).toEqual({
+          userId: 'finance-target',
+          tenantId: 'tenant-finance-a',
+          roles: ['FINANCE_OPERATOR'],
+        });
+      });
+
+    expect(membership.grantFinancialRoleByEmail).toHaveBeenCalledWith(
+      'finance@example.test',
+      'tenant-finance-a',
+      'FINANCE_OPERATOR',
+      'user-platform-admin',
+    );
+    expect(firestore.recordAudit).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-finance-a',
+      userId: 'user-platform-admin',
+      action: 'TENANT_FINANCE_ROLE_GRANTED',
+      entity: 'TenantMembership',
+      entityId: 'finance-target-membership',
+      metadata: expect.objectContaining({
+        targetUserId: 'finance-target',
+        role: 'FINANCE_OPERATOR',
+      }),
+    }));
   });
 
 });

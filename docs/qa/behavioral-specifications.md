@@ -1090,3 +1090,32 @@ Then the API rejects the request with HTTP 400
 And the membership creation service is not called
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — “POST /api/tenant/members rejects unsupported privileged roles before member creation”. This verifies the HTTP validation boundary and prevents invalid role input from reaching the service.
+
+## Platform finance-team administration — HTTP integration coverage
+
+### Scenario: Only a platform administrator can read a tenant finance-team roster
+
+Given a user has ordinary tenant membership but no platform-administrator role
+When that user requests the selected tenant's finance-team roster
+Then the API responds with HTTP 403
+And the membership listing service is not called
+
+Given a platform administrator requests the roster for an existing tenant
+When the finance-team membership service returns mixed financial and non-financial roles
+Then the API returns only financial role assignments
+And the response omits personal phone details
+
+### Scenario: Finance-team role grants validate input and record an audit event
+
+Given a platform administrator grants a supported financial role to an existing identity
+When the role-grant endpoint is called with a valid email and role
+Then the membership service receives the requested tenant, role, and actor
+And a tenant-scoped audit event records the actor, target user, and granted role
+
+Given a grant payload contains an invalid email or unsupported role
+When the endpoint validates the request
+Then the API responds with HTTP 400
+And the membership grant service is not invoked
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — the platform finance-team listing and grant routes. This exercises NestJS routing, `AuthorizationGuard`, DTO validation, service invocation boundaries and audit payloads; Firestore itself is represented by test providers.
+
