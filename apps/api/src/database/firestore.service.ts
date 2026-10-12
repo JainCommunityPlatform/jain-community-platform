@@ -45,6 +45,20 @@ export interface FirestoreUserActivity {
   metadata?: Record<string, unknown>;
 }
 
+export interface FirestoreDonationPledge {
+  id: string;
+  tenantId: string;
+  campaignId: string;
+  donorId: string;
+  donorUserId: string;
+  pledgedAmountPaise: number;
+  paidAmountPaise: number;
+  currency: 'INR';
+  status: 'PLEDGED' | 'PARTIALLY_PAID' | 'PAID' | 'CANCELLED';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface FirestoreMembership {
   id: string;
   userId: string;
@@ -999,7 +1013,7 @@ export class FirestoreService implements OnModuleInit {
     campaignId: string;
     pledgedAmountPaise: number;
     idempotencyKey: string;
-  }) {
+  }, retryAttempt = 0): Promise<FirestoreDonationPledge> {
     if (!Number.isSafeInteger(input.pledgedAmountPaise) || input.pledgedAmountPaise < 1) {
       throw new Error('Pledge amount must be a positive safe integer in paise');
     }
@@ -1017,73 +1031,102 @@ export class FirestoreService implements OnModuleInit {
     const donorRef = db.collection('tenantDonors').doc(donorId);
     const notificationId = randomUUID();
     const notificationRef = db.collection('notifications').doc(notificationId);
-    return db.runTransaction(async (transaction) => {
-      const [campaignSnapshot, pledgeSnapshot, donorSnapshot] = await Promise.all([
-        transaction.get(campaignRef),
-        transaction.get(pledgeRef),
-        transaction.get(donorRef),
-      ]);
-      if (pledgeSnapshot.exists) {
-        const existing = pledgeSnapshot.data() ?? {};
-        if (
-          existing.tenantId !== input.tenantId ||
-          existing.donorUserId !== input.donorUserId ||
-          existing.campaignId !== input.campaignId ||
-          existing.pledgedAmountPaise !== input.pledgedAmountPaise
-        ) {
-          throw new Error('IDEMPOTENCY_CONFLICT');
+    try {
+      return await db.runTransaction(async (transaction) => {
+        const [campaignSnapshot, pledgeSnapshot, donorSnapshot] = await Promise.all([
+          transaction.get(campaignRef),
+          transaction.get(pledgeRef),
+          transaction.get(donorRef),
+        ]);
+        if (pledgeSnapshot.exists) {
+          const existing = pledgeSnapshot.data() ?? {};
+          if (
+            existing.tenantId !== input.tenantId ||
+            existing.donorUserId !== input.donorUserId ||
+            existing.campaignId !== input.campaignId ||
+            existing.pledgedAmountPaise !== input.pledgedAmountPaise
+          ) {
+            throw new Error('IDEMPOTENCY_CONFLICT');
+          }
+          return this.toDonationPledge(pledgeSnapshot.id, existing);
         }
-        return this.toDonationPledge(pledgeSnapshot.id, existing);
-      }
-      if (donorSnapshot.exists && donorSnapshot.data()?.status === 'INACTIVE') {
-        throw new Error('DONOR_INACTIVE');
-      }
-      if (
-        !campaignSnapshot.exists ||
-        campaignSnapshot.data()?.tenantId !== input.tenantId ||
-        campaignSnapshot.data()?.status !== 'ACTIVE'
-      ) {
-        throw new Error('CAMPAIGN_NOT_FOUND');
-      }
-      const now = Timestamp.now();
-      if (!donorSnapshot.exists) {
-        transaction.create(donorRef, {
+        if (donorSnapshot.exists && donorSnapshot.data()?.status === 'INACTIVE') {
+          throw new Error('DONOR_INACTIVE');
+        }
+        if (
+          !campaignSnapshot.exists ||
+          campaignSnapshot.data()?.tenantId !== input.tenantId ||
+          campaignSnapshot.data()?.status !== 'ACTIVE'
+        ) {
+          throw new Error('CAMPAIGN_NOT_FOUND');
+        }
+        const now = Timestamp.now();
+        if (!donorSnapshot.exists) {
+          transaction.create(donorRef, {
+            tenantId: input.tenantId,
+            userId: input.donorUserId,
+            status: 'ACTIVE',
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+        const data = {
+          tenantId: input.tenantId,
+          campaignId: input.campaignId,
+          donorId,
+          donorUserId: input.donorUserId,
+          pledgedAmountPaise: input.pledgedAmountPaise,
+          paidAmountPaise: 0,
+          currency: 'INR',
+          status: 'PLEDGED',
+          createdAt: now,
+          updatedAt: now,
+        };
+        transaction.create(pledgeRef, data);
+        transaction.create(notificationRef, {
+          id: notificationId,
           tenantId: input.tenantId,
           userId: input.donorUserId,
-          status: 'ACTIVE',
+          type: 'PLEDGE_CREATED',
+          title: 'Pledge recorded',
+          body: 'Your pledge for ' + String(campaignSnapshot.data()?.name ?? 'this campaign') + ' has been recorded.',
+          entityType: 'DonationPledge',
+          entityId: id,
+          metadata: { campaignId: input.campaignId, pledgedAmountPaise: input.pledgedAmountPaise },
+          readAt: null,
           createdAt: now,
           updatedAt: now,
         });
-      }
-      const data = {
-        tenantId: input.tenantId,
-        campaignId: input.campaignId,
-        donorId,
-        donorUserId: input.donorUserId,
-        pledgedAmountPaise: input.pledgedAmountPaise,
-        paidAmountPaise: 0,
-        currency: 'INR',
-        status: 'PLEDGED',
-        createdAt: now,
-        updatedAt: now,
-      };
-      transaction.create(pledgeRef, data);
-      transaction.create(notificationRef, {
-        id: notificationId,
-        tenantId: input.tenantId,
-        userId: input.donorUserId,
-        type: 'PLEDGE_CREATED',
-        title: 'Pledge recorded',
-        body: 'Your pledge for ' + String(campaignSnapshot.data()?.name ?? 'this campaign') + ' has been recorded.',
-        entityType: 'DonationPledge',
-        entityId: id,
-        metadata: { campaignId: input.campaignId, pledgedAmountPaise: input.pledgedAmountPaise },
-        readAt: null,
-        createdAt: now,
-        updatedAt: now,
+        return this.toDonationPledge(id, data);
       });
-      return this.toDonationPledge(id, data);
-    });
+    } catch (error) {
+      // Concurrent requests with the same idempotency key can race on the
+      // deterministic pledge document. If another transaction committed the
+      // matching pledge while this transaction was aborted/closed, return the
+      // committed result instead of surfacing a transient contention error.
+      const existingSnapshot = await pledgeRef.get();
+      if (existingSnapshot.exists) {
+        const existing = existingSnapshot.data() ?? {};
+        const matchesInput =
+          existing.tenantId === input.tenantId &&
+          existing.donorUserId === input.donorUserId &&
+          existing.campaignId === input.campaignId &&
+          existing.pledgedAmountPaise === input.pledgedAmountPaise;
+        if (matchesInput) {
+          return this.toDonationPledge(existingSnapshot.id, existing);
+        }
+      }
+
+      // The emulator can surface a closed-transaction error for a concurrent
+      // deterministic-key create before the winning commit becomes visible.
+      // Retry only that specific transient failure, with a strict attempt cap.
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('Transaction is invalid or closed') && retryAttempt < 2) {
+        await new Promise<void>((resolve) => setTimeout(resolve, 50 * (retryAttempt + 1)));
+        return this.createDonationPledge(input, retryAttempt + 1);
+      }
+      throw error;
+    }
   }
 
   async listDonationPledgesForTenant(tenantId: string) {
@@ -1777,7 +1820,7 @@ export class FirestoreService implements OnModuleInit {
     };
   }
 
-  private toDonationPledge(id: string, data: Record<string, unknown>) {
+  private toDonationPledge(id: string, data: Record<string, unknown>): FirestoreDonationPledge {
     return {
       id,
       tenantId: data.tenantId as string,
