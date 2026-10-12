@@ -12,13 +12,13 @@ Repository: [JainCommunityPlatform/jain-community-platform](https://github.com/J
 
 ## Current item
 
-- **In progress:** P0-C authorization lifecycle — verify finance-role revocation is effective on the next protected HTTP request.
-- **Branch:** `qa/finance-role-revocation-boundary`.
-- **Test:** `apps/api/test/app.e2e-spec.ts` — “revoking a finance role removes protected access on the next HTTP request”. The test asserts the request after revocation is denied and finance persistence is not called.
-- **Previous merge evidence:** PR [#166](https://github.com/JainCommunityPlatform/jain-community-platform/pull/166), merge commit `d62a1ac148c3d0a2b3da68a7c796974710711ee9`, post-merge [CI #757](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38290855350) green; Android AAB job skipped by design.
-- **Current PR / CI:** PR not yet opened; exact-head CI pending.
-- **Evidence boundary:** mocked membership state at the HTTP boundary; Firestore persistence and production identity/session propagation remain unverified.
+- **In progress:** P0 authorization route matrix — deny cross-tenant financial mutations before any data or audit side effect.
+- **Branch:** `qa/cross-tenant-finance-write-denial`.
+- **Test:** `apps/api/test/app.e2e-spec.ts` — “denies cross-tenant financial writes before persistence and audit side effects”. Covers expense creation, payment recording, adjustment creation, and approval routes.
+- **Previous item:** [PR #167](https://github.com/JainCommunityPlatform/jain-community-platform/pull/167) merged as `2e3dc90d5bc0dfea77c1b270a3bca50ad4279869`; exact PR-head [CI #758](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38291613206) passed all required checks; post-merge [CI #759](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38291897144) pending final verification.
+- **Current PR / CI:** not yet opened; exact-head CI pending.
+- **Evidence boundary:** API E2E uses mocked identity, membership and giving services; persisted cross-tenant Firestore behavior and production identity propagation remain unverified.
 
 ## Exact next action
 
-Open the focused PR, monitor the exact PR-head CI and inspect logs for failures, fix the underlying cause and rerun, merge only if all required checks pass and GitHub reports the PR mergeable, verify default-branch CI, then update this checkpoint and issue #162 with actual links. Continue with the next highest-priority P0 authorization route gap. Do not trigger Android build/upload.
+Verify post-merge CI #759 for PR #167, then open the focused PR for cross-tenant finance write denial. Inspect exact-head CI, fix failures rather than weakening assertions, merge only when all required checks pass, verify post-merge CI, update this checkpoint and issue #162, then continue the next P0 route-matrix gap. Keep Android build/upload manual/on-demand.
