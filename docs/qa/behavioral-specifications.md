@@ -998,3 +998,20 @@ When the update DTO is validated
 Then the API returns 400 before membership mutation
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — PATCH/DELETE authorization and invalid-role validation for tenant member management. The NestJS HTTP guards and DTO validation are exercised; identity and membership providers remain test fixtures.
+
+
+## Tenant membership mutation path validation
+
+### Scenario: Reject malformed member IDs before changing roles
+Given a tenant administrator is authenticated
+When they submit a PATCH request to a member route with a malformed user ID
+Then the API responds with HTTP 400
+And the membership update service is not invoked
+
+### Scenario: Reject malformed member IDs before removal
+Given a tenant administrator is authenticated
+When they submit a DELETE request to a member route with a malformed user ID
+Then the API responds with HTTP 400
+And the membership removal service is not invoked
+
+Executable regressions: `apps/api/test/app.e2e-spec.ts` — “PATCH /api/tenant/members/:userId rejects malformed IDs before role changes” and “DELETE /api/tenant/members/:userId rejects malformed IDs before membership removal”. These exercise NestJS route parsing and assert the service boundary is not reached; they do not claim Firestore persistence verification.
