@@ -43,6 +43,8 @@ describe('API endpoints (integration)', () => {
     getReconciliationReport: jest.Mock;
     listTenantPledges: jest.Mock;
     listPublicCampaigns: jest.Mock;
+    createCampaign: jest.Mock;
+    updateCampaignStatus: jest.Mock;
   };
   let audit: { record: jest.Mock };
   let tenantMembers: { list: jest.Mock; get: jest.Mock; create: jest.Mock; update: jest.Mock; remove: jest.Mock };
@@ -184,6 +186,8 @@ describe('API endpoints (integration)', () => {
     };
 
     giving = {
+      createCampaign: jest.fn().mockResolvedValue({ id: 'campaign-created', name: 'Test campaign', status: 'DRAFT' }),
+      updateCampaignStatus: jest.fn().mockResolvedValue({ id: 'campaign-1', status: 'CLOSED' }),
       createPledge: jest.fn().mockResolvedValue({ id: 'pledge-created', status: 'PLEDGED', pledgedAmountPaise: 5000 }),
       recordPayment: jest.fn().mockResolvedValue({ id: 'payment-created', status: 'PENDING_APPROVAL', amountPaise: 5000 }),
       listTenantExpenses: jest.fn().mockResolvedValue([
@@ -686,6 +690,39 @@ describe('API endpoints (integration)', () => {
         });
       expect(route.service).not.toHaveBeenCalled();
     }
+  });
+
+  it('campaign creation and status changes reject unresolved tenant context before writes or audit events', async () => {
+    const routes = [
+      {
+        path: '/api/giving/campaigns',
+        service: giving.createCampaign,
+        body: { name: 'Unscoped campaign', description: 'Must not be created', targetAmountPaise: 50000 },
+      },
+      {
+        path: '/api/giving/campaigns/campaign-1/status',
+        service: giving.updateCampaignStatus,
+        body: { status: 'CLOSED' },
+      },
+    ];
+
+    audit.record.mockClear();
+    for (const route of routes) {
+      route.service.mockClear();
+      await request(app.getHttpServer())
+        .post(route.path)
+        .set('Host', 'unknown.example.com')
+        .set('x-test-user', 'user-finance-approver')
+        .send(route.body)
+        .expect(403)
+        .expect({
+          statusCode: 403,
+          message: 'Tenant authorization context is required',
+          error: 'Forbidden',
+        });
+      expect(route.service).not.toHaveBeenCalled();
+    }
+    expect(audit.record).not.toHaveBeenCalled();
   });
 
   it('finance mutations reject unresolved tenant context before writes or audit events', async () => {
