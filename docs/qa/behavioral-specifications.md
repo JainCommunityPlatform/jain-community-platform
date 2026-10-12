@@ -1079,3 +1079,14 @@ And the other tenant's membership remains readable
 And the shared user profile remains persisted and available
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “preserves the shared user record when one tenant membership is deleted”. This verifies persisted Firestore behavior against the emulator.
+
+
+## Tenant member creation rejects unsupported privileged roles — HTTP e2e
+
+### Scenario: A tenant administrator cannot assign a platform-level role through tenant membership creation
+Given a tenant administrator can create ordinary tenant memberships
+When they submit a member creation request with an unsupported platform-level role
+Then the API rejects the request with HTTP 400
+And the membership creation service is not called
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “POST /api/tenant/members rejects unsupported privileged roles before member creation”. This verifies the HTTP validation boundary and prevents invalid role input from reaching the service.
