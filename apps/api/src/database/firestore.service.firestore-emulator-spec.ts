@@ -188,6 +188,23 @@ describe('FirestoreService against the Firestore emulator', () => {
     expect(new Set(receipts.map((receipt) => receipt.paymentId)).size).toBe(2);
     expect(new Set(receipts.map((receipt) => receipt.receiptNumber)).size).toBe(2);
 
+    // Reconcile from persisted payment, pledge and receipt records rather than
+    // treating the successful approval responses as proof of financial integrity.
+    const persistedPayments = (await service.listDonationPaymentsForTenant(tenantId))
+      .filter((payment) => payment.pledgeId === pledge.id);
+    expect(persistedPayments).toHaveLength(2);
+    expect(persistedPayments.every((payment) => payment.status === 'APPROVED')).toBe(true);
+    expect(persistedPayments.every((payment) => Boolean(payment.receiptNumber))).toBe(true);
+
+    const reconciliation = await service.getDonationReconciliationReport(tenantId);
+    expect(reconciliation.receipts).toMatchObject({
+      issuedReceiptCount: 2,
+      missingReceiptPaymentIds: [],
+      orphanReceiptPaymentIds: [],
+      amountMismatchPaymentIds: [],
+      isBalanced: true,
+    });
+
     // Verify the donor-facing history APIs expose the same persisted workflow,
     // not just tenant-wide finance queries.
     const donorPledges = await service.listDonationPledgesForDonor(tenantId, donor.id);
