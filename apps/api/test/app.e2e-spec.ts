@@ -116,6 +116,7 @@ describe('API endpoints (integration)', () => {
           userId === 'user-finance-operator' ? 'FINANCE_OPERATOR' :
           userId === 'user-finance-approver' ? 'FINANCE_APPROVER' :
           userId === 'user-tenant-finance' ? 'TENANT_FINANCE' :
+          userId === 'user-ca-auditor' ? 'CA_AUDITOR' :
           userId === 'user-cross-tenant' ? 'FINANCE_OPERATOR' :
           userId === 'user-platform-admin' ? 'FINANCE_APPROVER' : 'TENANT_ADMIN';
         return {
@@ -619,6 +620,51 @@ describe('API endpoints (integration)', () => {
       .expect(400)
       .expect((response) => expect(response.body.message).toContain('Idempotency-Key'));
     expect(giving.createExpense).not.toHaveBeenCalled();
+  });
+
+  it('keeps legacy tenant-finance and CA-auditor permissions separated at the HTTP boundary', async () => {
+    giving.createExpense.mockClear();
+    giving.approveExpense.mockClear();
+    giving.getFinanceReport.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/giving/expenses')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-tenant-finance')
+      .set('idempotency-key', 'tenant-finance-compat-expense')
+      .send({ category: 'MAINTENANCE', amountPaise: 10000, description: 'Legacy finance role expense' })
+      .expect(201)
+      .expect((response) => expect(response.body.status).toBe('PENDING_APPROVAL'));
+
+    await request(app.getHttpServer())
+      .post('/api/giving/expenses/expense-1/approve')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-tenant-finance')
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .get('/api/giving/reports/summary')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-ca-auditor')
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .post('/api/giving/expenses')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-ca-auditor')
+      .set('idempotency-key', 'auditor-expense-denied')
+      .send({ category: 'MAINTENANCE', amountPaise: 10000, description: 'Auditor must be read-only' })
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .post('/api/giving/expenses/expense-1/approve')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-ca-auditor')
+      .expect(403);
+
+    expect(giving.createExpense).toHaveBeenCalledTimes(1);
+    expect(giving.approveExpense).not.toHaveBeenCalled();
+    expect(giving.getFinanceReport).toHaveBeenCalledWith('00000000-0000-0000-0000-000000000001');
   });
 
   it('allows a finance approver to approve expenses, payments and refunds through protected HTTP routes', async () => {
