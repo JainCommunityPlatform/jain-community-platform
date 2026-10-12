@@ -3,8 +3,8 @@ name: Cleanup Actions Runs
 on:
   workflow_dispatch:
   schedule:
-    # Every 3 days at 14:30 UTC.
-    - cron: '30 14 */3 * *'
+    # Monthly on day 1 at 14:30 UTC; use Actions > Cleanup Actions Runs > Run workflow for on-demand cleanup.
+    - cron: '30 14 1 * *'
 
 permissions:
   actions: write
@@ -64,8 +64,6 @@ jobs:
               | sort -t $'\t' -k5,5r
           )
 
-          # Snapshot every run, including PR runs, so artifact/run references can
-          # be validated. PR runs are protected from run deletion.
           for run in "${RUNS[@]}"; do
             IFS=$'\t' read -r run_id workflow_name status conclusion created_at pr_count <<< "$run"
             KNOWN_RUN["$run_id"]=1
@@ -75,8 +73,6 @@ jobs:
             fi
           done
 
-          # Keep the most recent successful runs and a small failure/cancellation
-          # history for diagnosis. Never delete the current cleanup run.
           for run in "${RUNS[@]}"; do
             IFS=$'\t' read -r run_id workflow_name status conclusion created_at pr_count <<< "$run"
             [[ "$run_id" == "$CURRENT_RUN_ID" ]] && { KEEP_RUN["$run_id"]=1; continue; }
@@ -98,23 +94,15 @@ jobs:
             fi
           done
 
-          # Fail closed if a recognized artifact cannot be mapped to a run.
-          # Keep unrecognized artifact families entirely untouched.
           for artifact in "${ARTIFACTS[@]}"; do
             IFS=$'\t' read -r artifact_id artifact_run_id artifact_name artifact_expired artifact_created_at <<< "$artifact"
             [[ "$artifact_expired" == "true" ]] && continue
 
             family=""
             case "$artifact_name" in
-              backend-coverage|flutter-coverage)
-                family="coverage"
-                ;;
-              myjinalay-pr-aab-*)
-                family="android"
-                ;;
-              *)
-                continue
-                ;;
+              backend-coverage|flutter-coverage) family="coverage" ;;
+              myjinalay-pr-aab-*) family="android" ;;
+              *) continue ;;
             esac
 
             if [[ "$artifact_run_id" == "0" || -z "${KNOWN_RUN[$artifact_run_id]:-}" ]]; then
@@ -126,7 +114,6 @@ jobs:
               count_key="coverage:$artifact_name"
               limit="$MAX_COVERAGE_ARTIFACTS"
             else
-              # AAB names include a unique run number, so count the whole family.
               count_key="android"
               limit="$MAX_ANDROID_ARTIFACTS"
             fi
@@ -138,7 +125,6 @@ jobs:
             fi
           done
 
-          # Validate every protected run before the first destructive operation.
           for retained_run_id in "${!KEEP_RUN[@]}"; do
             if [[ -z "${KNOWN_RUN[$retained_run_id]:-}" ]]; then
               echo "::error::Protected run $retained_run_id is missing from the snapshot. No deletion will occur."
@@ -151,7 +137,6 @@ jobs:
           echo "Keeping up to $MAX_COVERAGE_ARTIFACTS artifacts for each known coverage name and $MAX_ANDROID_ARTIFACTS MyJinalay AAB artifacts."
           echo "Unrecognized artifact families will not be deleted."
 
-          # Delete only stale artifacts in the explicit allowlist.
           for artifact in "${ARTIFACTS[@]}"; do
             IFS=$'\t' read -r artifact_id artifact_run_id artifact_name artifact_expired artifact_created_at <<< "$artifact"
             [[ "$artifact_expired" == "true" ]] && continue
@@ -167,7 +152,6 @@ jobs:
               "/repos/${REPOSITORY}/actions/artifacts/${artifact_id}"
           done
 
-          # Delete only completed, non-PR runs outside the retention set.
           for run in "${RUNS[@]}"; do
             IFS=$'\t' read -r run_id workflow_name status conclusion created_at pr_count <<< "$run"
             [[ "$run_id" == "$CURRENT_RUN_ID" ]] && continue
