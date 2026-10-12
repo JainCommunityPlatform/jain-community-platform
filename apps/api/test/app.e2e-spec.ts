@@ -688,6 +688,38 @@ describe('API endpoints (integration)', () => {
     }
   });
 
+  it('finance mutations reject unresolved tenant context before writes or audit events', async () => {
+    const routes = [
+      { path: '/api/giving/pledges', service: giving.createPledge },
+      { path: '/api/giving/pledges/pledge-1/payments', service: giving.recordPayment },
+      { path: '/api/giving/payments/payment-1/approve', service: giving.approvePayment },
+      { path: '/api/giving/payments/payment-1/reject', service: giving.rejectPayment },
+      { path: '/api/giving/expenses', service: giving.createExpense },
+      { path: '/api/giving/expenses/expense-1/approve', service: giving.approveExpense },
+      { path: '/api/giving/expenses/expense-1/reject', service: giving.rejectExpense },
+      { path: '/api/giving/payments/payment-1/adjustments', service: giving.createAdjustment },
+      { path: '/api/giving/adjustments/adjustment-1/approve', service: giving.approveAdjustment },
+      { path: '/api/giving/adjustments/adjustment-1/reject', service: giving.rejectAdjustment },
+    ];
+
+    audit.record.mockClear();
+    for (const route of routes) {
+      route.service.mockClear();
+      await request(app.getHttpServer())
+        .post(route.path)
+        .set('Host', 'unknown.example.com')
+        .set('x-test-user', 'user-finance-approver')
+        .expect(403)
+        .expect({
+          statusCode: 403,
+          message: 'Tenant authorization context is required',
+          error: 'Forbidden',
+        });
+      expect(route.service).not.toHaveBeenCalled();
+    }
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
   it('GET /api/giving/payments denies tenant administrators at the HTTP authorization boundary', async () => {
     await request(app.getHttpServer())
       .get('/api/giving/payments')
