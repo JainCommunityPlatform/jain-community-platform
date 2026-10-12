@@ -1331,3 +1331,13 @@ And no finance persistence service is called
 And no financial audit event is recorded
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — “denies cross-tenant financial writes before persistence and audit side effects”. The API E2E test uses mocked identity/membership and giving services; persisted multi-tenant Firestore verification remains open.
+
+## Scenario: Cross-tenant membership changes are denied without mutation
+
+Given a user belongs to tenant A
+And the active request context resolves tenant B
+When the user attempts to update or remove a member of tenant B
+Then each request is denied with HTTP 403 for tenant access
+And neither the membership update nor removal service is called
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “denies cross-tenant membership mutations before changing another tenant”. The API E2E test uses mocked identity/membership and tenant-member services; persisted membership isolation remains open.

@@ -78,3 +78,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Evidence boundary:** mocked identity/membership and service layer; persisted cross-tenant Firestore behavior is still open.
 - **Next action:** finish PR #167 post-merge CI verification; open the focused PR for this gap, inspect exact-head CI, fix genuine failures, merge only when required checks pass, verify post-merge CI, and continue the route matrix.
 - **Release policy:** Android build/upload remains manual/on-demand.
+
+## Execution checkpoint — cross-tenant membership mutation denial
+
+- **Previous completed item:** [PR #168](https://github.com/JainCommunityPlatform/jain-community-platform/pull/168) merged as `bcc180f696a406cff2b56d1a06ee6015e47b6dfb`; exact PR-head [CI #760](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38292189804) passed all required checks. Post-merge [CI #761](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38292520082) is being verified.
+- **Current item:** P0 tenant-boundary route matrix — cross-tenant membership mutations. Added HTTP E2E assertions for PATCH and DELETE tenant-member endpoints, including no mutation service call on denial.
+- **Evidence boundary:** mocked identity/membership and tenant-member service; persisted Firestore isolation is still open.
+- **Next action:** finish post-merge CI #761, open the focused PR, inspect exact-head CI, fix genuine failures, merge only when all required checks pass, verify post-merge CI, and continue the route matrix.
+- **Release policy:** Android build/upload remains manual/on-demand.
