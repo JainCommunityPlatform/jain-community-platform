@@ -1159,3 +1159,15 @@ And the user's global profile remains available with its identity fields intact
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “revoking the last finance role deletes only that tenant membership and preserves shared identity”. This verifies the role-revocation workflow against Firestore emulator persistence.
 
+## Concurrent pledge creation — idempotency and persisted state
+
+### Scenario: Concurrent retries with the same idempotency key create only one pledge
+
+Given an authenticated donor submits a pledge to an active campaign
+And two identical requests arrive concurrently with the same tenant, donor, campaign, amount and idempotency key
+When both requests complete
+Then both responses identify the same pledge
+And exactly one pledge is persisted for the tenant
+And no payment or receipt is created as a side effect
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “deduplicates concurrent pledge creation with the same idempotency key”. This exercises concurrent requests against Firestore emulator persistence.

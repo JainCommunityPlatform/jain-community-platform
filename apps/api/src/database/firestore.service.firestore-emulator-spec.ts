@@ -1727,4 +1727,43 @@ describe('FirestoreService against the Firestore emulator', () => {
   }, 15000);
 
 
+  it('deduplicates concurrent pledge creation with the same idempotency key', async () => {
+    const suffix = `emulator-concurrent-pledge-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const isolatedTenantId = `${tenantId}-${suffix}`;
+    const donor = await service.upsertUser({ subject: `donor-${suffix}` });
+    const campaign = await service.createGivingCampaign({
+      tenantId: isolatedTenantId,
+      actorUserId: `campaign-admin-${suffix}`,
+      name: 'Concurrent pledge campaign',
+    });
+    await service.updateGivingCampaignStatus(isolatedTenantId, campaign.id, 'ACTIVE');
+
+    const input = {
+      tenantId: isolatedTenantId,
+      donorUserId: donor.id,
+      campaignId: campaign.id,
+      pledgedAmountPaise: 50000,
+      idempotencyKey: `pledge-concurrent-${suffix}`,
+    };
+    const [first, second] = await Promise.all([
+      service.createDonationPledge(input),
+      service.createDonationPledge(input),
+    ]);
+
+    expect(first.id).toBe(second.id);
+    const persisted = await service.listDonationPledgesForTenant(isolatedTenantId);
+    expect(persisted).toHaveLength(1);
+    expect(persisted[0]).toMatchObject({
+      id: first.id,
+      donorUserId: donor.id,
+      campaignId: campaign.id,
+      pledgedAmountPaise: 50000,
+      paidAmountPaise: 0,
+      status: 'PLEDGED',
+    });
+    expect(await service.listDonationPaymentsForTenant(isolatedTenantId)).toHaveLength(0);
+    expect(await service.listDonationReceiptsForTenant(isolatedTenantId)).toHaveLength(0);
+  }, 15000);
+
+
 });
