@@ -38,6 +38,7 @@ describe('API endpoints (integration)', () => {
     getFinanceReport: jest.Mock;
     getReconciliationReport: jest.Mock;
     listTenantPledges: jest.Mock;
+    listPublicCampaigns: jest.Mock;
   };
   let audit: { record: jest.Mock };
 
@@ -165,6 +166,17 @@ describe('API endpoints (integration)', () => {
       getFinanceReport: jest.fn().mockResolvedValue({ totals: { receivedAmountPaise: 0 } }),
       getReconciliationReport: jest.fn().mockResolvedValue({ receipts: { isBalanced: true } }),
       listTenantPledges: jest.fn().mockResolvedValue([]),
+      listPublicCampaigns: jest.fn().mockResolvedValue([{
+        id: 'campaign-public',
+        tenantId: '00000000-0000-0000-0000-000000000001',
+        name: 'Temple Renovation',
+        description: 'Support renovation',
+        targetAmountPaise: 2500000,
+        currency: 'INR',
+        status: 'ACTIVE',
+        createdBy: 'internal-creator-id',
+        createdAt: new Date('2026-10-01T00:00:00.000Z'),
+      }]),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
 
@@ -349,6 +361,39 @@ describe('API endpoints (integration)', () => {
         error: 'Not Found',
       });
   });
+  it('GET /api/giving/campaigns returns only the public campaign projection for the resolved tenant', async () => {
+    giving.listPublicCampaigns.mockClear();
+    await request(app.getHttpServer())
+      .get('/api/giving/campaigns')
+      .set('Host', 'badebabakharadi.com')
+      .expect(200)
+      .expect([{
+        id: 'campaign-public',
+        name: 'Temple Renovation',
+        description: 'Support renovation',
+        targetAmountPaise: 2500000,
+        currency: 'INR',
+        status: 'ACTIVE',
+        createdAt: '2026-10-01T00:00:00.000Z',
+      }]);
+    expect(giving.listPublicCampaigns).toHaveBeenCalledTimes(1);
+    expect(giving.listPublicCampaigns).toHaveBeenCalledWith('00000000-0000-0000-0000-000000000001');
+  });
+
+  it('GET /api/giving/campaigns rejects an unresolved tenant before reading campaigns', async () => {
+    giving.listPublicCampaigns.mockClear();
+    await request(app.getHttpServer())
+      .get('/api/giving/campaigns')
+      .set('Host', 'unknown.example.com')
+      .expect(400)
+      .expect({
+        statusCode: 400,
+        message: 'Tenant context is required',
+        error: 'Bad Request',
+      });
+    expect(giving.listPublicCampaigns).not.toHaveBeenCalled();
+  });
+
   it('GET /api/giving/payments denies tenant administrators at the HTTP authorization boundary', async () => {
     await request(app.getHttpServer())
       .get('/api/giving/payments')
