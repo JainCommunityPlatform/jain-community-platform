@@ -157,19 +157,19 @@ describe('FirestoreService against the Firestore emulator', () => {
     const isolatedTenantId = `${tenantId}-lifecycle-${suffix}`;
     const donor = await service.upsertUser({ subject: `emulator-donor-${suffix}` });
     const campaign = await service.createGivingCampaign({
-      isolatedTenantId, actorUserId: `finance-admin-${suffix}`, name: 'Emulator repair campaign',
+      tenantId: isolatedTenantId, actorUserId: `finance-admin-${suffix}`, name: 'Emulator repair campaign',
     });
     await service.updateGivingCampaignStatus(isolatedTenantId, campaign.id, 'ACTIVE');
     const pledge = await service.createDonationPledge({
-      isolatedTenantId, donorUserId: donor.id, campaignId: campaign.id,
+      tenantId: isolatedTenantId, donorUserId: donor.id, campaignId: campaign.id,
       pledgedAmountPaise: 100000, idempotencyKey: `pledge-${suffix}`,
     });
     const first = await service.recordDonationPayment({
-      isolatedTenantId, pledgeId: pledge.id, actorUserId: `cashier-a-${suffix}`,
+      tenantId: isolatedTenantId, pledgeId: pledge.id, actorUserId: `cashier-a-${suffix}`,
       amountPaise: 60000, method: 'UPI', idempotencyKey: `payment-a-${suffix}`,
     });
     const second = await service.recordDonationPayment({
-      isolatedTenantId, pledgeId: pledge.id, actorUserId: `cashier-b-${suffix}`,
+      tenantId: isolatedTenantId, pledgeId: pledge.id, actorUserId: `cashier-b-${suffix}`,
       amountPaise: 40000, method: 'BANK_TRANSFER', idempotencyKey: `payment-b-${suffix}`,
     });
 
@@ -211,7 +211,7 @@ describe('FirestoreService against the Firestore emulator', () => {
     const donorPledges = await service.listDonationPledgesForDonor(isolatedTenantId, donor.id);
     const donorReceipts = await service.listDonationReceiptsForDonor(isolatedTenantId, donor.id);
     expect(donorPledges.filter((item) => item.id === pledge.id)).toMatchObject([
-      { id: pledge.id, isolatedTenantId, donorUserId: donor.id, paidAmountPaise: 100000, status: 'PAID' },
+      { id: pledge.id, tenantId: isolatedTenantId, donorUserId: donor.id, paidAmountPaise: 100000, status: 'PAID' },
     ]);
     expect(donorReceipts.filter((receipt) => receipt.pledgeId === pledge.id)).toHaveLength(2);
     expect(new Set(donorReceipts.filter((receipt) => receipt.pledgeId === pledge.id).map((receipt) => receipt.paymentId)).size).toBe(2);
