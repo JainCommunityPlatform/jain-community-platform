@@ -1273,3 +1273,13 @@ And tenant A's payment and adjustment balances remain unchanged
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “rejects cross-tenant campaign, pledge and payment references when creating finance records”.
 
+### Scenario: Campaign status changes are tenant-scoped
+
+Given a giving campaign belongs to tenant A
+When a user operating in tenant B attempts to close that campaign by ID
+Then the update is rejected as not found within tenant B
+And the campaign remains active for tenant A
+And the campaign is not listed for tenant B
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “prevents a tenant from changing another tenant campaign status by ID”.
+
