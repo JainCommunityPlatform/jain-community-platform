@@ -310,6 +310,45 @@ describe('API endpoints (integration)', () => {
     expect(tenantMembers.get).not.toHaveBeenCalled();
   });
 
+  it('PATCH /api/tenant/members/:userId denies finance viewers before role changes', async () => {
+    tenantMembers.update.mockClear();
+    await request(app.getHttpServer()).patch('/api/tenant/members/00000000-0000-4000-8000-000000000099')
+      .set('Host', 'badebabakharadi.com').set('x-test-user', 'user-viewer')
+      .send({ role: 'EVENT_MANAGER' }).expect(403);
+    expect(tenantMembers.update).not.toHaveBeenCalled();
+  });
+
+  it('PATCH /api/tenant/members/:userId allows a tenant administrator to update a non-financial role', async () => {
+    tenantMembers.update.mockClear();
+    await request(app.getHttpServer()).patch('/api/tenant/members/00000000-0000-4000-8000-000000000099')
+      .set('Host', 'badebabakharadi.com').set('x-test-user', 'user-a')
+      .send({ role: 'EVENT_MANAGER' }).expect(200)
+      .expect((response) => expect(response.body).toMatchObject({ role: 'EVENT_MANAGER' }));
+    expect(tenantMembers.update).toHaveBeenCalledWith('00000000-0000-4000-8000-000000000099', 'EVENT_MANAGER');
+  });
+
+  it('DELETE /api/tenant/members/:userId denies finance viewers before membership removal', async () => {
+    tenantMembers.remove.mockClear();
+    await request(app.getHttpServer()).delete('/api/tenant/members/00000000-0000-4000-8000-000000000099')
+      .set('Host', 'badebabakharadi.com').set('x-test-user', 'user-viewer').expect(403);
+    expect(tenantMembers.remove).not.toHaveBeenCalled();
+  });
+
+  it('DELETE /api/tenant/members/:userId allows a tenant administrator to remove a member', async () => {
+    tenantMembers.remove.mockClear();
+    await request(app.getHttpServer()).delete('/api/tenant/members/00000000-0000-4000-8000-000000000099')
+      .set('Host', 'badebabakharadi.com').set('x-test-user', 'user-a').expect(200);
+    expect(tenantMembers.remove).toHaveBeenCalledWith('00000000-0000-4000-8000-000000000099');
+  });
+
+  it('PATCH /api/tenant/members/:userId rejects unsupported roles before updating membership', async () => {
+    tenantMembers.update.mockClear();
+    await request(app.getHttpServer()).patch('/api/tenant/members/00000000-0000-4000-8000-000000000099')
+      .set('Host', 'badebabakharadi.com').set('x-test-user', 'user-a')
+      .send({ role: 'SUPER_ADMIN' }).expect(400);
+    expect(tenantMembers.update).not.toHaveBeenCalled();
+  });
+
   it('GET /api/tenant/resolve resolves the persisted tenant', async () => {
     await request(app.getHttpServer())
       .get('/api/tenant/resolve')
