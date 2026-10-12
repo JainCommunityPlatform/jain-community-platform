@@ -95,3 +95,12 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Evidence boundary:** Flutter widget/router behavior only; backend authorization remains separately required and production session/role-refresh behavior is still open.
 - **Next action:** finish post-merge CI #763, open the focused PR, inspect exact-head CI, fix real failures, merge only when required checks pass, verify post-merge CI, then continue auth/session journey gaps.
 - **Release policy:** Android build/upload remains manual/on-demand.
+
+## Incident checkpoint — post-merge Firestore concurrency failure
+
+- **Observed:** PR #170 exact-head [CI #764](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38293467475) passed, but post-merge [CI #765](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38293792926) failed in the Firestore emulator suite.
+- **Failure:** `deduplicates concurrent pledge creation with the same idempotency key` threw `3 INVALID_ARGUMENT: Transaction is invalid or closed`; 41 emulator tests passed and 1 failed.
+- **Fix in progress:** bounded retry for this specific closed-transaction error, after re-reading the deterministic pledge document and returning a matching committed record if present. The test remains unchanged and continues to require two concurrent callers to return the same persisted pledge.
+- **Evidence boundary:** emulator failure is unrelated to the Flutter route test but blocks a healthy default-branch CI baseline; production concurrency behavior is not claimed.
+- **Next action:** open a focused hotfix PR, require exact-head emulator CI to pass (repeat if needed to detect flakiness), merge only after all required checks pass, verify post-merge CI, then resume the auth/session PR queue.
+- **Release policy:** Android build/upload remains manual/on-demand.
