@@ -17,6 +17,7 @@ import { FirestoreTenantResolver } from '../src/tenant/firestore-tenant.resolver
 import { ProfileService } from '../src/profile/profile.service';
 import { AuditService } from '../src/audit/audit.service';
 import { GivingService } from '../src/giving/giving.service';
+import { TenantMemberService } from '../src/tenant/tenant-member.service';
 
 describe('API endpoints (integration)', () => {
   let app: INestApplication;
@@ -41,6 +42,7 @@ describe('API endpoints (integration)', () => {
     listPublicCampaigns: jest.Mock;
   };
   let audit: { record: jest.Mock };
+  let tenantMembers: { list: jest.Mock; get: jest.Mock; create: jest.Mock; update: jest.Mock; remove: jest.Mock };
 
   beforeAll(async () => {
     const authenticationGuard = {
@@ -179,6 +181,13 @@ describe('API endpoints (integration)', () => {
       }]),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
+    tenantMembers = {
+      list: jest.fn().mockResolvedValue([{ id: 'membership-1', userId: '00000000-0000-4000-8000-000000000099', role: 'CONTENT_MANAGER', createdAt: new Date('2026-01-01T00:00:00.000Z') }]),
+      get: jest.fn().mockResolvedValue({ id: 'membership-1', userId: '00000000-0000-4000-8000-000000000099', role: 'CONTENT_MANAGER', createdAt: new Date('2026-01-01T00:00:00.000Z') }),
+      create: jest.fn().mockResolvedValue({ id: 'membership-created', userId: '00000000-0000-4000-8000-000000000099', role: 'CONTENT_MANAGER', createdAt: new Date('2026-01-01T00:00:00.000Z') }),
+      update: jest.fn().mockResolvedValue({ id: 'membership-1', userId: '00000000-0000-4000-8000-000000000099', role: 'EVENT_MANAGER', createdAt: new Date('2026-01-01T00:00:00.000Z') }),
+      remove: jest.fn().mockResolvedValue(undefined),
+    };
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -195,6 +204,8 @@ describe('API endpoints (integration)', () => {
       .useValue(profile)
       .overrideProvider(GivingService)
       .useValue(giving)
+      .overrideProvider(TenantMemberService)
+      .useValue(tenantMembers)
       .overrideProvider(AuditService)
       .useValue(audit)
       .compile();
@@ -260,6 +271,43 @@ describe('API endpoints (integration)', () => {
         expect(response.body[0].eventType).toBe('KSHAMAWANI');
         expect(response.body[0].eventId).toBe('kshamawani-2026');
       });
+  });
+
+  it('GET /api/tenant/members returns the authorized tenant member list', async () => {
+    tenantMembers.list.mockClear();
+    await request(app.getHttpServer()).get('/api/tenant/members').set('Host', 'badebabakharadi.com').set('x-test-user', 'user-a')
+      .expect(200).expect((response) => {
+        expect(response.body).toHaveLength(1);
+        expect(response.body[0]).toMatchObject({ userId: '00000000-0000-4000-8000-000000000099', role: 'CONTENT_MANAGER' });
+      });
+    expect(tenantMembers.list).toHaveBeenCalledTimes(1);
+  });
+
+  it('GET /api/tenant/members allows a finance viewer with tenant.read', async () => {
+    tenantMembers.list.mockClear();
+    await request(app.getHttpServer()).get('/api/tenant/members').set('Host', 'badebabakharadi.com').set('x-test-user', 'user-viewer').expect(200);
+    expect(tenantMembers.list).toHaveBeenCalledTimes(1);
+  });
+
+  it('POST /api/tenant/members denies finance viewers before member creation', async () => {
+    tenantMembers.create.mockClear();
+    await request(app.getHttpServer()).post('/api/tenant/members').set('Host', 'badebabakharadi.com').set('x-test-user', 'user-viewer')
+      .send({ userId: '00000000-0000-4000-8000-000000000099', role: 'CONTENT_MANAGER' }).expect(403);
+    expect(tenantMembers.create).not.toHaveBeenCalled();
+  });
+
+  it('POST /api/tenant/members allows a tenant administrator to assign a non-financial role', async () => {
+    tenantMembers.create.mockClear();
+    await request(app.getHttpServer()).post('/api/tenant/members').set('Host', 'badebabakharadi.com').set('x-test-user', 'user-a')
+      .send({ userId: '00000000-0000-4000-8000-000000000099', role: 'CONTENT_MANAGER' }).expect(201)
+      .expect((response) => expect(response.body).toMatchObject({ userId: '00000000-0000-4000-8000-000000000099', role: 'CONTENT_MANAGER' }));
+    expect(tenantMembers.create).toHaveBeenCalledWith('00000000-0000-4000-8000-000000000099', 'CONTENT_MANAGER');
+  });
+
+  it('GET /api/tenant/members rejects malformed user IDs before member lookup', async () => {
+    tenantMembers.get.mockClear();
+    await request(app.getHttpServer()).get('/api/tenant/members/not-a-uuid').set('Host', 'badebabakharadi.com').set('x-test-user', 'user-a').expect(400);
+    expect(tenantMembers.get).not.toHaveBeenCalled();
   });
 
   it('GET /api/tenant/resolve resolves the persisted tenant', async () => {

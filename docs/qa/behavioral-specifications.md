@@ -962,3 +962,21 @@ When delivery history is listed or an attempt is retried
 Then only the selected tenant's delivery records are returned, terminal attempts increment the attempt counter, non-terminal transitions preserve it, and provider metadata is retained unless replaced
 
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “keeps notification preferences, delivery history and read state isolated by tenant and user”. This tests Firestore persistence against the emulator, not production delivery providers.
+
+## Tenant member management HTTP authorization — executable integration coverage
+
+### Scenario: Tenant members can be viewed by readers but changed only by tenant managers
+
+Given a request is authenticated and scoped to the resolved temple
+When a tenant administrator lists members or assigns a non-financial role
+Then the HTTP API returns the tenant member list or the created membership
+
+Given a finance viewer has tenant read permission but not tenant management permission
+When that viewer attempts to create a tenant membership
+Then the API returns 403 and does not invoke the membership service
+
+Given a tenant member lookup contains a malformed user identifier
+When the HTTP endpoint validates the request
+Then the API returns 400 before invoking the membership service
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — tenant member list/create authorization and UUID validation tests. Service-level coverage for tenant scoping, financial-role separation, audit records, duplicate memberships and last-admin protection remains in `apps/api/src/tenant/tenant-member.service.spec.ts`.
