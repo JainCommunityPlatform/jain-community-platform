@@ -1298,3 +1298,14 @@ And no financial audit event is recorded
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — “campaign creation and status changes reject unresolved tenant context before writes or audit events”.
 
+
+### Scenario: Approved partial payments reconcile to persisted receipts and donor history
+
+Given a donor has a pledge for an active campaign and the pledge is paid in multiple approved payments
+When each payment is independently approved
+Then the persisted pledge balance equals the sum of approved payments
+And every approved payment has one distinct receipt number
+And donor pledge and receipt history reflects the same persisted records
+And the reconciliation report has no missing, orphaned, or amount-mismatched receipts and reports a balanced result
+
+Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “persists partial payments, updates the pledge and issues distinct receipts transactionally”. This test uses isolated Firestore emulator data; it does not prove production Firebase or device-level verification.
