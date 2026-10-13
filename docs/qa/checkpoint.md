@@ -1,3 +1,12 @@
+## CI failure and repair — PR #189 Flutter donor pledge journey (13 October 2026)
+
+- **Failed exact-head run:** [CI #820](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38432132112) on head `1039c6d4e9dae1701deb462833fe3f12fe902b20`. Backend lint/unit/integration/Firestore-emulator/build, Flutter analyze, and repository validation passed; Flutter tests failed and the merge gate failed. Android AAB was skipped by design.
+- **Root cause:** the new widget test expected `₹500.00` twice in “My pledges”; the actual UI renders one amount label. The remaining 72 Flutter tests passed, including the negative inactive-donor case. This is a test expectation mismatch, not a product defect indicated by the observed failure.
+- **Repair committed:** [`4b4f5e7f0e0b52fc02d71e493184a98561732064`](https://github.com/JainCommunityPlatform/jain-community-platform/commit/4b4f5e7f0e0b52fc02d71e493184a98561732064) changes the amount-label assertion to exactly one visible match. The pledge request body, idempotency-key, success feedback, visible pledge status, and negative-path assertions remain intact.
+- **Current status:** rerun CI on the new head and inspect every required job. PR #189 remains open; do not merge until all required checks are green and it is mergeable. Post-merge CI must be verified separately or recorded UNKNOWN. Android build/upload remains manual/on-demand.
+
+---
+
 ## Latest verified state — PR #188 merged; Flutter donor pledge journey regression in progress (13 October 2026)
 
 - **Merged PR #188:** [donor pledge creation HTTP contract](https://github.com/JainCommunityPlatform/jain-community-platform/pull/188), merge commit `a2761bcdd4c5b23909a474928ad37802e38fc8fe`.
