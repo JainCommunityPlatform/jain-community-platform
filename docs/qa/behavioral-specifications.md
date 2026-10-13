@@ -1426,3 +1426,19 @@ Then it loads the backend session exactly once
 And the controller exposes the restored user, tenant, role, and permission roles
 
 Executable regression: `apps/flutter/test/core/session/app_session_controller_test.dart` — “restores the backend session when Firebase already has a user at startup”. This unit test uses a mocked Firebase auth provider and mocked backend session service; persisted Firebase/device restart and production API behavior remain separate verification layers.
+
+
+## Campaign write authorization — HTTP integration coverage
+
+### Scenario: Campaign creation and status changes require finance-write permission
+
+Given the request has a resolved tenant and an authenticated member
+When a tenant administrator attempts to create a giving campaign
+Then the API returns HTTP 403 before invoking campaign persistence
+And no success audit event is recorded
+
+When a finance viewer attempts to change a campaign's status
+Then the API returns HTTP 403 before invoking campaign persistence
+And no success audit event is recorded
+
+The tests exercise the NestJS HTTP guard/controller boundary with mocked persistence and audit services. They do not claim persisted Firestore or staging verification.
