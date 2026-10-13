@@ -37,3 +37,10 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Next regression:** branch `qa/finance-report-tenant-scope` adds an HTTP integration scenario allowing a finance viewer to read summary and reconciliation reports while asserting both service calls receive only the resolved tenant ID. The existing cross-tenant summary denial remains in place.
 - **Evidence boundary:** the new scenario uses mocked identity, membership, and report-service outputs. It proves HTTP authorization and tenant argument propagation only; it does not prove persisted report correctness, export behavior, or production membership.
 - **Next steps:** run exact-head CI, repair failures without weakening assertions, merge only if green/mergeable, then verify post-merge CI and continue the P0 inventory/authorization work. Android build/upload remains manual/on-demand.
+
+
+## CI failure and repair — PR #178 (13 October 2026)
+
+- **CI #786 failed:** [workflow run](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38332292446). Repository validation and Flutter analysis/tests passed. Backend lint, unit tests, and integration tests passed. Firestore emulator integration failed because `allocates unique receipt numbers when separate pledges are approved concurrently` exceeded Jest's default 5-second timeout; 41 other emulator tests passed.
+- **Repair:** the concurrency test now has a 15-second timeout, preserving all receipt uniqueness, count, and payment assertions. This is a targeted timeout adjustment for emulator transaction contention, not a skipped test or weakened assertion.
+- **Next:** wait for the new exact-head CI run. Do not merge until all required jobs pass. The post-merge run for PR #177 remains unknown because the connected commit-run/status methods do not expose the push-triggered run.
