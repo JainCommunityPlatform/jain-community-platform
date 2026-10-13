@@ -232,3 +232,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Branch:** `qa/flutter-donor-pledge-journey`.
 - **Evidence boundary:** mocked HTTP widget test; live API, Firebase identity, persisted Firestore and staging/device behavior remain separate evidence layers.
 - **Next:** inspect exact-head CI, fix genuine failures without weakening assertions, merge only when required checks pass and the PR is mergeable, verify post-merge default-branch CI where available, then continue the donation payment → approval → receipt UI path. Android build/upload remains manual/on-demand.
+
+
+## CI repair checkpoint — Flutter donor pledge journey (13 October 2026)
+
+- PR #189 exact-head CI #820 failed because one new widget test expected two pledge amount labels where the actual “My pledges” UI renders one. Backend checks, Flutter analysis, repository validation and the other 72 Flutter tests passed; the merge gate correctly failed. Android build was skipped by design.
+- Corrected the assertion to one visible amount label in commit `4b4f5e7f0e0b52fc02d71e493184a98561732064`. Functional request payload, idempotency header, success/error feedback, and pledge status assertions remain unchanged.
+- **Next:** verify all required jobs on the updated exact PR head; fix any further genuine failures, merge only when all checks pass and the PR is mergeable, verify post-merge CI separately, then continue the P0 payment → approval → receipt UI integration gap. Android build/upload remains manual/on-demand.
