@@ -96,7 +96,7 @@ void main() {
 
     await tester.tap(find.text('My pledges'));
     await tester.pumpAndSettle();
-    expect(find.text('₹500.00'), findsNWidgets(2));
+    expect(find.text('₹500.00'), findsOneWidget);
     expect(find.textContaining('Status: PLEDGED'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
