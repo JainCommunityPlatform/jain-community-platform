@@ -786,6 +786,57 @@ describe('API endpoints (integration)', () => {
     expect(audit.record).not.toHaveBeenCalled();
   });
 
+  it('POST /api/giving/campaigns allows a finance operator and records the tenant-scoped success audit', async () => {
+    giving.createCampaign.mockClear();
+    audit.record.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/giving/campaigns')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-operator')
+      .send({ name: 'Temple Renovation', description: 'Authorized campaign', targetAmountPaise: 100000 })
+      .expect(201)
+      .expect({ id: 'campaign-created', name: 'Test campaign', status: 'DRAFT' });
+
+    const tenantId = '00000000-0000-0000-0000-000000000001';
+    expect(giving.createCampaign).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId,
+      actorUserId: 'user-finance-operator',
+      name: 'Temple Renovation',
+      description: 'Authorized campaign',
+      targetAmountPaise: 100000,
+    }));
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'GIVING_CAMPAIGN_CREATED',
+      entity: 'GivingCampaign',
+      entityId: 'campaign-created',
+    }));
+  });
+
+  it('PATCH /api/giving/campaigns/:campaignId/status allows a finance operator and records the success audit', async () => {
+    giving.updateCampaignStatus.mockClear();
+    audit.record.mockClear();
+
+    await request(app.getHttpServer())
+      .patch('/api/giving/campaigns/campaign-1/status')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-operator')
+      .send({ status: 'CLOSED' })
+      .expect(200)
+      .expect({ id: 'campaign-1', status: 'CLOSED' });
+
+    expect(giving.updateCampaignStatus).toHaveBeenCalledWith(
+      '00000000-0000-0000-0000-000000000001',
+      'campaign-1',
+      'CLOSED',
+    );
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'GIVING_CAMPAIGN_STATUS_UPDATED',
+      entity: 'GivingCampaign',
+      entityId: 'campaign-1',
+    }));
+  });
+
   it('campaign creation and status changes reject unresolved tenant context before writes or audit events', async () => {
     const routes = [
       {
