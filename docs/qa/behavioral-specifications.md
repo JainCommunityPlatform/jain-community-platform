@@ -1442,3 +1442,17 @@ Then the API returns HTTP 403 before invoking campaign persistence
 And no success audit event is recorded
 
 The tests exercise the NestJS HTTP guard/controller boundary with mocked persistence and audit services. They do not claim persisted Firestore or staging verification.
+
+
+### Scenario: Authorized finance operators can create and close campaigns with audit records
+
+Given a finance operator has finance-write permission in the resolved tenant
+When the operator creates a campaign
+Then the API passes the resolved tenant ID and authenticated actor ID to campaign persistence
+And the API records a campaign-created audit event
+
+When the operator changes a campaign's status
+Then the API passes the resolved tenant ID, campaign ID, and requested status to persistence
+And the API records a campaign-status-updated audit event
+
+The HTTP integration tests use mocked membership, persistence, and audit services; they do not prove persisted Firestore or staging behavior.
