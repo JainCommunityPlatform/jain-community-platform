@@ -1107,7 +1107,9 @@ describe('API endpoints (integration)', () => {
     }
   });
 
-  it('denies cross-tenant donor self-service reads before donor data access', async () => {
+  it('scopes donor self-service history to the active tenant and authenticated donor', async () => {
+    const tenantId = '00000000-0000-0000-0000-000000000001';
+    const donorUserId = 'user-cross-tenant';
     const routes = [
       { path: '/api/giving/my-receipts', service: giving.listMyReceipts },
       { path: '/api/giving/my-pledges', service: giving.listMyPledges },
@@ -1115,19 +1117,17 @@ describe('API endpoints (integration)', () => {
 
     for (const route of routes) {
       route.service.mockClear();
+      route.service.mockResolvedValueOnce([]);
 
       await request(app.getHttpServer())
         .get(route.path)
         .set('Host', 'badebabakharadi.com')
-        .set('x-test-user', 'user-cross-tenant')
-        .expect(403)
-        .expect({
-          statusCode: 403,
-          message: 'Tenant access denied',
-          error: 'Forbidden',
-        });
+        .set('x-test-user', donorUserId)
+        .expect(200)
+        .expect([]);
 
-      expect(route.service).not.toHaveBeenCalled();
+      expect(route.service).toHaveBeenCalledTimes(1);
+      expect(route.service).toHaveBeenCalledWith(tenantId, donorUserId);
     }
   });
 
