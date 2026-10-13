@@ -1,24 +1,17 @@
 # JCP Autonomous QA Checkpoint
 
-Date: 13 October 2026
+Date: 13 October 2026  
 Repository: [JainCommunityPlatform/jain-community-platform](https://github.com/JainCommunityPlatform/jain-community-platform)
 
-## Last completed item
+## Latest merged change — post-merge gate is red
 
-- **Merged:** [PR #174 — expired-session redirect](https://github.com/JainCommunityPlatform/jain-community-platform/pull/174), merge commit `d65da1908469c02c7570972138ed12f2ea75303f`.
-- **Exact-head CI:** [CI #774](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38296884078) passed Flutter analyze/tests, backend lint/unit/integration/Firestore-emulator/build, repository validation, and merge gate. Android AAB was skipped by design.
-- **Post-merge CI evidence:** the available commit-run lookup filters to pull-request-triggered runs and returned no run for the merge commit; this is **unknown**, not a pass. The default-branch run still needs verification through the Actions UI/API.
-- **Evidence boundary:** PR #174 tests mocked session-service failure and Flutter router behavior; real Firebase token expiry/API authentication remain unverified.
+- **Merged:** [PR #175 — initial session restoration failure](https://github.com/JainCommunityPlatform/jain-community-platform/pull/175), merge commit [6c5a703afa1bf7d6bb2c4a902275ad05a6996008](https://github.com/JainCommunityPlatform/jain-community-platform/commit/6c5a703afa1bf7d6bb2c4a902275ad05a6996008).
+- **Exact PR-head CI:** [run #778](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38304250367) passed all applicable required jobs on the PR head. Android AAB was skipped by design.
+- **Post-merge default-branch CI:** [run #779](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38323486041) completed with **failure** on the merge commit. Flutter analyze/tests and repository validation passed. Backend lint and unit tests passed; the Firestore emulator integration job failed, so backend build was skipped and the merge gate failed. Android AAB remained skipped as intended.
+- **Root cause from job log:** the existing emulator test `allows only one concurrent approval of a refund and creates one approval notification` exceeded Jest's default 5,000 ms per-test timeout. The same test passed in PR-head CI #778 in 3,210 ms; neighboring emulator concurrency tests also take about 3 seconds. The pledge idempotency regression passed in #779. This is consistent with emulator contention/test timeout sensitivity; no failed financial assertion was reported.
+- **Fix in this branch:** adds an explicit 15-second timeout to this one emulator-heavy concurrency test. All outcome, persisted-balance, single-notification, and single-winner assertions remain unchanged. Exact-head CI must prove the fix.
+- **Evidence boundary:** Firestore emulator only; no production Firebase or staging behavior is claimed.
 
-## Current item
+## Next action
 
-- **PR:** [#175 — initial session restoration failure](https://github.com/JainCommunityPlatform/jain-community-platform/pull/175), branch `qa/session-initial-restore-failure`.
-- **Tested code head:** `1d5f84fc05bd038a2783a98ca0a9566d19e16ed0` ([commit](https://github.com/JainCommunityPlatform/jain-community-platform/commit/1d5f84fc05bd038a2783a98ca0a9566d19e16ed0)).
-- **Exact-head CI:** [run #777](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38303203058) passed on that code head: Flutter analyze/tests (including the new regression), repository validation, backend lint/unit/integration/Firestore-emulator/build, and merge gate passed. Android AAB was skipped by policy. The earlier [run #776](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38303088743) failed Flutter analysis because the new test used a named argument for positional `FakeAuth`; the test constructor call was corrected without changing assertions.
-- **Current PR state:** open and reported mergeable after run #777. The merge operation could not be executed through the connected GitHub tool in this checkpoint; do not treat the PR as merged.
-- **Evidence boundary:** mocked Firebase auth/session service and Flutter router only; production Firebase token validity, live API behavior, and device behavior remain unverified.
-- **Post-merge evidence:** not available until the PR is merged. The commit-run lookup currently exposes PR-triggered runs only, so an empty result for a merge commit is unknown, not green.
-
-## Exact next action
-
-Recheck the current PR head and required checks (this checkpoint-only follow-up itself needs exact-head CI), merge only when the current head is green and mergeable, then verify the post-merge default-branch run through an Actions/status source that exposes push-triggered runs. Update this checkpoint and issue #162 with the merge SHA and post-merge evidence; then continue with the next highest-priority uncovered P0 gap. Keep Android build/upload manual/on-demand.
+Open a focused PR for the timeout fix, inspect every exact-head CI job, repair any genuine failure without weakening functional assertions, and merge only when all required checks are green and the PR is mergeable. Then verify the push-triggered default-branch run through the Actions API. Keep Android build/upload manual/on-demand. Once the post-merge baseline is green, resume the next highest-priority uncovered P0 from the coverage inventory.

@@ -139,3 +139,13 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Assertions:** controller enters error state, clears the cached session, redirects admin route to login, and removes protected content.
 - **Evidence boundary:** mocked auth/session service and router only; real Firebase/API/device verification remains open.
 - **Next action:** run exact-head CI, fix real failures, merge only when required checks pass, verify post-merge default-branch CI, update issue #162/checkpoint, then continue the P0 backlog. Android build/upload stays manual/on-demand.
+
+
+## Incident checkpoint — post-merge refund-approval emulator timeout (13 October 2026)
+
+- **Merged change under verification:** [PR #175](https://github.com/JainCommunityPlatform/jain-community-platform/pull/175), merge commit [6c5a703afa1bf7d6bb2c4a902275ad05a6996008](https://github.com/JainCommunityPlatform/jain-community-platform/commit/6c5a703afa1bf7d6bb2c4a902275ad05a6996008). Exact PR-head [CI #778](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38304250367) passed.
+- **Post-merge failure:** [CI #779](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38323486041) failed in the Firestore emulator suite. The test `allows only one concurrent approval of a refund and creates one approval notification` exceeded Jest's default 5-second test timeout; 41 emulator tests passed and this one timed out. The same test completed in 3,210 ms in CI #778; concurrent pledge idempotency passed in #779.
+- **Classification:** emulator integration-test timeout sensitivity under runner/emulator contention; no failed financial invariant assertion was reported. Do not classify as a product defect without further evidence.
+- **Repair:** the focused branch adds a 15-second timeout only to the slow, emulator-backed race test. Assertions that exactly one concurrent approver succeeds, the other gets `ADJUSTMENT_NOT_PENDING`, persisted refund/payment/pledge balances are correct, and exactly one approval notification exists remain unchanged.
+- **Exit criteria:** exact-head CI green across all required jobs; merge only when mergeable; verify post-merge push CI green; update issue #162 with exact links. If the test still times out at 15 seconds, investigate emulator/transaction contention rather than increasing timeouts repeatedly.
+- **Evidence boundary:** configured Firestore emulator only; production concurrency behavior is not claimed. Android build/upload remains manual/on-demand.
