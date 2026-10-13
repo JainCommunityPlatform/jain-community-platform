@@ -184,3 +184,14 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Regression tests:** tenant administrators cannot create campaigns; finance viewers cannot change campaign status. Both requests must return HTTP 403 before the GivingService mutation and audit writer are called.
 - **Evidence boundary:** HTTP integration tests with mocked membership, persistence and audit services; persisted Firestore/staging verification remains open.
 - **Next:** inspect exact-head CI, repair genuine failures without weakening assertions, merge only when required checks pass and the PR is mergeable, verify post-merge CI, then continue the P0 authorization matrix. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — campaign write denial verified; positive authorization cases next (13 October 2026)
+
+- **Merged:** PR #184 — [campaign write authorization denial tests](https://github.com/JainCommunityPlatform/jain-community-platform/pull/184), merge commit `551c8b64fc620baa54ef69d8ec47dc63b33a678a`.
+- **Exact-head CI:** [run #803](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38413438929) passed all required jobs on `927cf9063321ee9bfea4aa000c6260eea12f813a`; Android AAB skipped as intended.
+- **Post-merge CI:** [run #804](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38415911846) was in progress at checkpoint time.
+- **Current P0:** positive campaign-write authorization: finance operators with `finance.write` should create/update campaigns with the resolved tenant and actor passed to persistence, and success audit events emitted.
+- **Branch:** `qa/campaign-authorized-write-audit`.
+- **Evidence boundary:** HTTP integration tests with mocked membership, persistence and audit services; Firestore/staging lifecycle verification remains open.
+- **Next:** inspect exact-head CI, repair genuine failures, merge only when required checks pass and PR is mergeable, verify post-merge CI, and continue the P0 matrix. Android build/upload remains manual/on-demand.
