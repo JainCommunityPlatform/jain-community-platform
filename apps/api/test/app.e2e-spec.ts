@@ -1107,6 +1107,30 @@ describe('API endpoints (integration)', () => {
     }
   });
 
+  it('denies cross-tenant donor self-service reads before donor data access', async () => {
+    const routes = [
+      { path: '/api/giving/my-receipts', service: giving.listMyReceipts },
+      { path: '/api/giving/my-pledges', service: giving.listMyPledges },
+    ];
+
+    for (const route of routes) {
+      route.service.mockClear();
+
+      await request(app.getHttpServer())
+        .get(route.path)
+        .set('Host', 'badebabakharadi.com')
+        .set('x-test-user', 'user-cross-tenant')
+        .expect(403)
+        .expect({
+          statusCode: 403,
+          message: 'Tenant access denied',
+          error: 'Forbidden',
+        });
+
+      expect(route.service).not.toHaveBeenCalled();
+    }
+  });
+
   it('allows a finance viewer to read tenant-scoped summary and reconciliation reports', async () => {
     const tenantId = '00000000-0000-0000-0000-000000000001';
     const summary = { tenantId, totalIncomePaise: 12345 };
