@@ -1385,6 +1385,68 @@ describe('API endpoints (integration)', () => {
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'DONATION_ADJUSTMENT_REJECTED' }));
   });
 
+  it('does not emit success audit events when maker-checker decisions are rejected', async () => {
+    const deniedDecisions = [
+      {
+        path: '/api/giving/payments/payment-1/approve',
+        service: giving.approvePayment,
+        action: 'DONATION_PAYMENT_VERIFIED',
+      },
+      {
+        path: '/api/giving/payments/payment-1/reject',
+        service: giving.rejectPayment,
+        action: 'DONATION_PAYMENT_REJECTED',
+        body: { reason: 'Maker cannot review own payment' },
+      },
+      {
+        path: '/api/giving/expenses/expense-1/approve',
+        service: giving.approveExpense,
+        action: 'DONATION_EXPENSE_APPROVED',
+      },
+      {
+        path: '/api/giving/expenses/expense-1/reject',
+        service: giving.rejectExpense,
+        action: 'DONATION_EXPENSE_REJECTED',
+        body: { reason: 'Maker cannot review own expense' },
+      },
+      {
+        path: '/api/giving/adjustments/adjustment-1/approve',
+        service: giving.approveAdjustment,
+        action: 'DONATION_ADJUSTMENT_APPROVED',
+      },
+      {
+        path: '/api/giving/adjustments/adjustment-1/reject',
+        service: giving.rejectAdjustment,
+        action: 'DONATION_ADJUSTMENT_REJECTED',
+        body: { reason: 'Requester cannot review own adjustment' },
+      },
+    ];
+
+    audit.record.mockClear();
+
+    for (const decision of deniedDecisions) {
+      decision.service.mockClear();
+      decision.service.mockRejectedValueOnce(
+        new ForbiddenException('Maker-checker separation required'),
+      );
+
+      const httpRequest = request(app.getHttpServer())
+        .post(decision.path)
+        .set('Host', 'badebabakharadi.com')
+        .set('x-test-user', 'user-finance-approver');
+
+      if (decision.body) httpRequest.send(decision.body);
+
+      await httpRequest.expect(403);
+      expect(decision.service).toHaveBeenCalledTimes(1);
+      expect(audit.record).not.toHaveBeenCalledWith(
+        expect.objectContaining({ action: decision.action }),
+      );
+    }
+
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
   it('does not grant finance access to tenant administrators with a legacy combined role or platform admins', async () => {
     giving.listTenantExpenses.mockClear();
     for (const user of ['user-legacy-finance-admin', 'user-platform-admin']) {
