@@ -837,6 +837,39 @@ describe('API endpoints (integration)', () => {
     }));
   });
 
+  it('campaign writes deny finance operators whose membership belongs to another tenant before mutation or audit', async () => {
+    const routes = [
+      {
+        method: 'post',
+        path: '/api/giving/campaigns',
+        service: giving.createCampaign,
+        body: { name: 'Cross-tenant campaign', description: 'Must not be created', targetAmountPaise: 50000 },
+      },
+      {
+        method: 'patch',
+        path: '/api/giving/campaigns/campaign-1/status',
+        service: giving.updateCampaignStatus,
+        body: { status: 'CLOSED' },
+      },
+    ];
+
+    audit.record.mockClear();
+    for (const route of routes) {
+      route.service.mockClear();
+      const httpRequest = request(app.getHttpServer());
+      const response = route.method === 'patch'
+        ? httpRequest.patch(route.path)
+        : httpRequest.post(route.path);
+      await response
+        .set('Host', 'badebabakharadi.com')
+        .set('x-test-user', 'user-cross-tenant')
+        .send(route.body)
+        .expect(403);
+      expect(route.service).not.toHaveBeenCalled();
+    }
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
   it('campaign creation and status changes reject unresolved tenant context before writes or audit events', async () => {
     const routes = [
       {
