@@ -219,7 +219,7 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 ## Execution checkpoint — donor pledge HTTP contract (13 October 2026)
 
 - **Previous item verified:** PR #187 merged as `f56c65e772a46ee840b3dbae7c90bcfc9edbf704`; exact-head CI #812 and post-merge [CI #813](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38421519258) passed all applicable jobs. Android AAB skipped by design.
-- **Current P0:** strengthen the donor pledge creation HTTP boundary. The focused branch adds a positive test for tenant/donor/campaign/amount/idempotency propagation and success audit, plus a cross-tenant denial asserting no persistence or audit side effects.
+- **Current P0:** strengthen the donor pledge creation HTTP boundary. The focused branch adds a positive test for tenant/donor/campaign/amount/idempotency propagation and success audit, plus an inactive tenant-donor relationship HTTP denial asserting no success audit. The initial cross-tenant guard expectation failed because the route allows the giving layer to enforce donor eligibility; the test was corrected to match the established contract.
 - **Branch:** `qa/donor-pledge-http-contract`.
 - **Evidence boundary:** mocked API integration; persisted Firestore campaign-to-receipt lifecycle and Flutter UI-to-API/device evidence remain open.
 - **Next:** inspect exact-head CI; fix root causes without weakening assertions; merge only when required checks pass and the PR is mergeable; verify post-merge CI; then continue the next uncovered P0. Android build/upload remains manual/on-demand.
