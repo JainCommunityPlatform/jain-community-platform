@@ -1,7 +1,20 @@
 # JCP Autonomous QA Checkpoint
 
-Date: 13 October 2026  
+Date: 13 October 2026
 Repository: [JainCommunityPlatform/jain-community-platform](https://github.com/JainCommunityPlatform/jain-community-platform)
+
+## Latest verified state — PR #178 merged; next P0 regression in progress
+
+- **Merged:** [PR #178 — tenant-scoped finance reports](https://github.com/JainCommunityPlatform/jain-community-platform/pull/178), merge commit [07ba1c49cdc09e51e1eeea42cf6924babeadeefc](https://github.com/JainCommunityPlatform/jain-community-platform/commit/07ba1c49cdc09e51e1eeea42cf6924babeadeefc).
+- **Exact-head CI:** [run #788](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38333465838) passed repository validation, backend lint/unit/integration/Firestore-emulator/build, Flutter analyze/tests, and merge gate on head `a2bac0c7386f4a6b5e9a20b46ca090f97412839c`. Android AAB was skipped by design.
+- **Post-merge CI for PR #178:** **UNKNOWN**. The connected workflow-run lookup exposes PR-triggered runs only and returned no push-triggered run for merge commit `07ba1c49cdc09e51e1eeea42cf6924babeadeefc`. Do not infer a post-merge pass from PR CI.
+- **Previous verified post-merge state:** [PR #177's default-branch CI #785](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38332211061) passed on merge commit `ec0ac60e67660c4372b17e54e2a077d9bbd5a513`.
+- **Current work:** branch `qa/finance-read-routes-tenant-isolation`, based on PR #178's merge commit. Adds an HTTP integration test denying a cross-tenant finance operator access to tenant-wide receipts, pledges, payments, expenses, adjustments, summary and reconciliation routes; asserts each protected service is not called. Updates the coverage inventory and behavioural specification.
+- **Evidence boundary:** this is mocked-identity/membership HTTP integration coverage. It proves the API authorization boundary and no-service-call behavior in the test harness; it does not establish production membership resolution or persisted Firestore isolation.
+- **Next:** finish the focused PR, inspect CI on its exact head, fix any real failures without weakening assertions, merge only when all required checks pass and it is mergeable, then verify push-triggered default-branch CI and continue the P0 route matrix. Android build/upload remains manual/on-demand.
+
+---
+
 
 ## Latest merged change — post-merge gate is red
 

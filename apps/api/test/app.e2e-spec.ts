@@ -1078,6 +1078,35 @@ describe('API endpoints (integration)', () => {
       });
   });
 
+  it('denies cross-tenant finance users access to tenant-wide giving read routes before data access', async () => {
+    const routes = [
+      { path: '/api/giving/receipts', service: giving.listTenantReceipts },
+      { path: '/api/giving/pledges', service: giving.listTenantPledges },
+      { path: '/api/giving/payments', service: giving.listTenantPayments },
+      { path: '/api/giving/expenses', service: giving.listTenantExpenses },
+      { path: '/api/giving/adjustments', service: giving.listTenantAdjustments },
+      { path: '/api/giving/reports/summary', service: giving.getFinanceReport },
+      { path: '/api/giving/reports/reconciliation', service: giving.getReconciliationReport },
+    ];
+
+    for (const route of routes) {
+      route.service.mockClear();
+
+      await request(app.getHttpServer())
+        .get(route.path)
+        .set('Host', 'badebabakharadi.com')
+        .set('x-test-user', 'user-cross-tenant')
+        .expect(403)
+        .expect({
+          statusCode: 403,
+          message: 'Tenant access denied',
+          error: 'Forbidden',
+        });
+
+      expect(route.service).not.toHaveBeenCalled();
+    }
+  });
+
   it('allows a finance viewer to read tenant-scoped summary and reconciliation reports', async () => {
     const tenantId = '00000000-0000-0000-0000-000000000001';
     const summary = { tenantId, totalIncomePaise: 12345 };

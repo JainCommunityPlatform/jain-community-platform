@@ -1234,6 +1234,17 @@ And querying an unrelated donor returns no receipts
 Executable regression: `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “isolates persisted donor pledge and receipt history by both tenant and donor”. This validates persisted Firestore query isolation using the emulator, not production Firebase.
 
 
+### Scenario: Finance users cannot read tenant-wide giving data across tenant boundaries
+
+Given a finance user belongs to tenant A
+And the active request host resolves to tenant B
+When the user requests tenant receipts, pledges, payments, expenses, adjustments, the finance summary, or the reconciliation report
+Then each request is denied with HTTP 403
+And the corresponding tenant-wide read service is not called
+And no tenant B financial data is returned to the user
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “denies cross-tenant finance users access to tenant-wide giving read routes before data access”. The HTTP integration test uses mocked identity, membership, and giving services; persisted Firestore isolation and production membership resolution remain separate evidence requirements.
+
 ### Scenario: Finance reports and tenant-wide history require tenant context
 
 Given a finance approver is authenticated
