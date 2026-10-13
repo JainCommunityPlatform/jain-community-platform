@@ -1456,3 +1456,15 @@ Then the API passes the resolved tenant ID, campaign ID, and requested status to
 And the API records a campaign-status-updated audit event
 
 The HTTP integration tests use mocked membership, persistence, and audit services; they do not prove persisted Firestore or staging behavior.
+
+
+### Scenario: Finance operator cannot write campaigns across tenant boundaries
+
+Given a finance operator has membership in tenant B
+And the active tenant context resolves to tenant A
+When the operator attempts to create a campaign or change a campaign status in tenant A
+Then the API returns HTTP 403
+And campaign persistence is not invoked
+And no success audit event is recorded
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “campaign writes deny finance operators whose membership belongs to another tenant before mutation or audit”. The test exercises the HTTP authorization boundary with mocked membership, persistence and audit services; persisted Firestore isolation and staging verification remain separate evidence requirements.
