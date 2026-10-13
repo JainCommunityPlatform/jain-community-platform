@@ -149,3 +149,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Repair:** the focused branch adds a 15-second timeout only to the slow, emulator-backed race test. Assertions that exactly one concurrent approver succeeds, the other gets `ADJUSTMENT_NOT_PENDING`, persisted refund/payment/pledge balances are correct, and exactly one approval notification exists remain unchanged.
 - **Exit criteria:** exact-head CI green across all required jobs; merge only when mergeable; verify post-merge push CI green; update issue #162 with exact links. If the test still times out at 15 seconds, investigate emulator/transaction contention rather than increasing timeouts repeatedly.
 - **Evidence boundary:** configured Firestore emulator only; production concurrency behavior is not claimed. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — maker-checker HTTP audit boundary (13 October 2026)
+
+- **Previous item:** PR #180 merged as `7f3b572a20d58c61e0cf5c6d27984594d018fb1a`. Corrected exact-head CI #794 passed all applicable required jobs on `e5a2c6e5f9d39e5b9964532c8b4e9b123e07aa13`; post-merge default-branch CI remains UNKNOWN.
+- **Current P0:** financial maker-checker failure paths. PR #181 adds HTTP integration assertions that rejected approval/rejection decisions for payments, expenses and adjustments return 403 and do not emit success audit events.
+- **Evidence boundary:** GivingService rejection is mocked for the HTTP test. Existing Firestore emulator tests remain the persisted self-approval evidence; staging/production remains open.
+- **Next:** verify all required checks on PR #181's exact head, repair root causes without weakening assertions, merge only when green and mergeable, verify post-merge push CI where available, and continue the P0 inventory. Android build/upload remains manual/on-demand.

@@ -1,3 +1,13 @@
+## Latest verified state — PR #180 merged; PR #181 maker-checker audit regression in progress (13 October 2026)
+
+- **Merged:** [PR #180 — donor self-service history tenant and identity scope](https://github.com/JainCommunityPlatform/jain-community-platform/pull/180), merge commit [7f3b572a20d58c61e0cf5c6d27984594d018fb1a](https://github.com/JainCommunityPlatform/jain-community-platform/commit/7f3b572a20d58c61e0cf5c6d27984594d018fb1a).
+- **Initial CI failure:** [run #792](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38346537917) failed backend integration because the first version incorrectly expected a 403 for donor self-service based only on a membership mismatch. The contract is to return the authenticated donor's history scoped by the active tenant and donor identity.
+- **Corrected exact-head CI:** [run #794](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38352904588) passed Flutter analyze/tests, backend lint/unit/integration/Firestore emulator/build, repository validation and merge gate on corrected head `e5a2c6e5f9d39e5b9964532c8b4e9b123e07aa13`. Android AAB was skipped by design.
+- **Post-merge CI for #180:** **UNKNOWN**. The available commit-run lookup did not return a push-triggered run for merge commit `7f3b572a20d58c61e0cf5c6d27984594d018fb1a`; exact-head PR CI is not proof of post-merge CI.
+- **Current work:** PR #181, branch `qa/finance-maker-checker-http-audit`, adds an HTTP E2E regression for denied approvals/rejections of payments, expenses and adjustments. It asserts HTTP 403 and no corresponding success audit event. Existing service/emulator tests cover the underlying self-approval invariants.
+- **Evidence boundary:** the new HTTP test mocks GivingService to force maker-checker denials and checks controller/audit behavior. It does not replace Firestore emulator or staging evidence.
+- **Next:** monitor exact-head CI, repair real failures without weakening assertions, merge only when all required checks pass and the PR is mergeable, verify push-triggered default-branch CI where accessible, and immediately continue the next highest-priority P0 gap. Android build/upload remains manual/on-demand.
+
 # JCP Autonomous QA Checkpoint
 
 Date: 13 October 2026
