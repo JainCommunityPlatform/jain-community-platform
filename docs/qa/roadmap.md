@@ -157,3 +157,12 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Current P0:** financial maker-checker failure paths. PR #181 adds HTTP integration assertions that rejected approval/rejection decisions for payments, expenses and adjustments return 403 and do not emit success audit events.
 - **Evidence boundary:** GivingService rejection is mocked for the HTTP test. Existing Firestore emulator tests remain the persisted self-approval evidence; staging/production remains open.
 - **Next:** verify all required checks on PR #181's exact head, repair root causes without weakening assertions, merge only when green and mergeable, verify post-merge push CI where available, and continue the P0 inventory. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — startup session restoration
+
+- **Current P0 test gap:** controller-level startup restoration when Firebase already has a user.
+- **Branch:** `qa/session-restore-startup-current-master`.
+- **Regression:** verifies one backend session load and restoration of authenticated user, tenant, admin status, and permission roles.
+- **Evidence boundary:** mocked Firebase auth and backend service only; device/emulator restart and production API verification remain open.
+- **Exit:** exact-head CI green, merge when eligible, verify post-merge CI where available, then continue the P0 inventory. Android build/upload remains manual/on-demand.

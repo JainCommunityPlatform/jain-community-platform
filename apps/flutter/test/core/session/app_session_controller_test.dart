@@ -43,6 +43,27 @@ class FakeFirebaseAuthProvider implements FirebaseAuthProvider {
   Future<void> dispose() => controller.close();
 }
 
+class RestoredFirebaseAuthProvider implements FirebaseAuthProvider {
+  RestoredFirebaseAuthProvider(this.user);
+
+  final FirebaseAuthUser? user;
+
+  @override
+  bool get isSignedIn => user != null;
+
+  @override
+  Stream<FirebaseAuthUser?> authStateChanges() => Stream.value(user);
+
+  @override
+  Future<String?> getIdToken() async => 'restored-token';
+
+  @override
+  Future<void> signInWithGoogle() async {}
+
+  @override
+  Future<void> signOut() async {}
+}
+
 class FakeAuthSessionService extends AuthSessionService {
   FakeAuthSessionService(this.loader)
       : super(ApiClient(baseUrl: Uri.parse('https://example.test/')));
@@ -54,6 +75,44 @@ class FakeAuthSessionService extends AuthSessionService {
 }
 
 void main() {
+  test('restores the backend session when Firebase already has a user at startup',
+      () async {
+    final auth = RestoredFirebaseAuthProvider(
+      const FirebaseAuthUser(
+        uid: 'firebase-uid',
+        email: 'restored-admin@example.com',
+      ),
+    );
+    var sessionLoadCount = 0;
+    final service = FakeAuthSessionService(() async {
+      sessionLoadCount++;
+      return const AppSession(
+        isAuthenticated: true,
+        userId: 'restored-user-123',
+        tenantId: 'restored-tenant-123',
+        role: 'TENANT_ADMIN',
+        roles: ['EVENT_MANAGER'],
+      );
+    });
+    final controller = AppSessionController(
+      auth: auth,
+      sessionService: service,
+    );
+
+    await controller.initialize();
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(sessionLoadCount, 1);
+    expect(controller.status, AppSessionStatus.authenticated);
+    expect(controller.session.userId, 'restored-user-123');
+    expect(controller.session.tenantId, 'restored-tenant-123');
+    expect(controller.session.isAdmin, isTrue);
+    expect(controller.session.roles, ['EVENT_MANAGER']);
+
+    controller.dispose();
+  });
+
   test('starts signed out when Firebase emits no user', () async {
     final auth = FakeFirebaseAuthProvider();
     final service = FakeAuthSessionService(
