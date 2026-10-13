@@ -27,3 +27,20 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **CI:** [run #783](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38331902002) is pending; the jobs endpoint has not yet returned jobs. Do not merge until all required checks on the current exact head are green and the PR is mergeable. If CI fails, inspect logs and fix the cause without weakening assertions.
 - **Evidence boundary:** mocked identity/membership HTTP integration test; persisted production membership and the remaining media/export/admin route matrix remain open.
 - **Next:** finish PR #177's exact-head CI and post-merge verification, then continue with the next uncovered P0 from the inventory. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — PR #177 merged; finance-report tenant-scope regression in progress (13 October 2026)
+
+- **Merged:** [PR #177 — cross-tenant admin profile contact denial](https://github.com/JainCommunityPlatform/jain-community-platform/pull/177), merge commit [ec0ac60e67660c4372b17e54e2a077d9bbd5a513](https://github.com/JainCommunityPlatform/jain-community-platform/commit/ec0ac60e67660c4372b17e54e2a077d9bbd5a513).
+- **Exact-head CI:** [run #784](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38331949766) passed repository validation, Flutter analyze/tests, backend lint/unit/integration/Firestore-emulator/build, and merge gate on head `f403b3f9b0b0b595ae6c8baf3218658dc28d5e44`. Android AAB was skipped by design.
+- **Post-merge CI:** **unknown**, not marked green. The connected workflow-run lookup only returns PR-triggered runs and the combined status endpoint has no checks for this merge commit. The default-branch push run still needs verification through an Actions endpoint that includes push events.
+- **Next regression:** branch `qa/finance-report-tenant-scope` adds an HTTP integration scenario allowing a finance viewer to read summary and reconciliation reports while asserting both service calls receive only the resolved tenant ID. The existing cross-tenant summary denial remains in place.
+- **Evidence boundary:** the new scenario uses mocked identity, membership, and report-service outputs. It proves HTTP authorization and tenant argument propagation only; it does not prove persisted report correctness, export behavior, or production membership.
+- **Next steps:** run exact-head CI, repair failures without weakening assertions, merge only if green/mergeable, then verify post-merge CI and continue the P0 inventory/authorization work. Android build/upload remains manual/on-demand.
+
+
+## CI failure and repair — PR #178 (13 October 2026)
+
+- **CI #786 failed:** [workflow run](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38332292446). Repository validation and Flutter analysis/tests passed. Backend lint, unit tests, and integration tests passed. Firestore emulator integration failed because `allocates unique receipt numbers when separate pledges are approved concurrently` exceeded Jest's default 5-second timeout; 41 other emulator tests passed.
+- **Repair:** the concurrency test now has a 15-second timeout, preserving all receipt uniqueness, count, and payment assertions. This is a targeted timeout adjustment for emulator transaction contention, not a skipped test or weakened assertion.
+- **Next:** wait for the new exact-head CI run. Do not merge until all required jobs pass. The post-merge run for PR #177 remains unknown because the connected commit-run/status methods do not expose the push-triggered run.

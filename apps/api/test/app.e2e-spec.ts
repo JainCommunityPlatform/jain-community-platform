@@ -1078,6 +1078,33 @@ describe('API endpoints (integration)', () => {
       });
   });
 
+  it('allows a finance viewer to read tenant-scoped summary and reconciliation reports', async () => {
+    const tenantId = '00000000-0000-0000-0000-000000000001';
+    const summary = { tenantId, totalIncomePaise: 12345 };
+    const reconciliation = { tenantId, balanced: true };
+    giving.getFinanceReport.mockResolvedValue(summary);
+    giving.getReconciliationReport.mockResolvedValue(reconciliation);
+
+    await request(app.getHttpServer())
+      .get('/api/giving/reports/summary')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-viewer')
+      .expect(200)
+      .expect(summary);
+
+    await request(app.getHttpServer())
+      .get('/api/giving/reports/reconciliation')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-viewer')
+      .expect(200)
+      .expect(reconciliation);
+
+    expect(giving.getFinanceReport).toHaveBeenCalledTimes(1);
+    expect(giving.getFinanceReport).toHaveBeenCalledWith(tenantId);
+    expect(giving.getReconciliationReport).toHaveBeenCalledTimes(1);
+    expect(giving.getReconciliationReport).toHaveBeenCalledWith(tenantId);
+  });
+
 
   it('allows a finance viewer to read tenant expenses but not create adjustments or expenses', async () => {
     giving.createExpense.mockClear();

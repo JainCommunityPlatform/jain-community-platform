@@ -396,7 +396,7 @@ describe('FirestoreService against the Firestore emulator', () => {
     expect(new Set(receipts.map((receipt) => receipt.receiptNumber)).size).toBe(2);
     expect(new Set(receipts.map((receipt) => receipt.paymentId)).size).toBe(2);
     expect(receipts.every((receipt) => /^JCP-/.test(receipt.receiptNumber))).toBe(true);
-  });
+  }, 15000);
 
   it('rejects payment idempotency-key reuse when the original note differs and preserves the original pending payment', async () => {
     const suffix = `emulator-idempotency-conflict-${Date.now()}-${Math.random().toString(36).slice(2)}`;
