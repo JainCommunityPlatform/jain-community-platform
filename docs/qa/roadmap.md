@@ -166,3 +166,12 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Regression:** verifies one backend session load and restoration of authenticated user, tenant, admin status, and permission roles.
 - **Evidence boundary:** mocked Firebase auth and backend service only; device/emulator restart and production API verification remain open.
 - **Exit:** exact-head CI green, merge when eligible, verify post-merge CI where available, then continue the P0 inventory. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — startup session restoration completed (13 October 2026)
+
+- **Merged:** PR #182 at `3033dacd16f13bf9b5ad830d978c39c84270bd0e`.
+- **Exact-head CI:** run #800 passed all applicable required jobs on `7c5a3bc870b8e82fd6ac3d671fb7e9e4b1b5e546`; Android AAB skipped by design.
+- **Post-merge CI:** UNKNOWN; the available commit-run lookup did not expose a push-triggered run for the merge commit.
+- **Branch disposition:** unique startup-restoration regression from stale `qa/session-restore-on-startup` is now merged through PR #182. Stale `qa/session-signout-route-refresh` is superseded by the existing sign-out protected-route redirect test and must not be merged as-is.
+- **Remaining evidence gap:** real Firebase/device restart and production/staging API verification. Continue with the next highest-priority unfinished P0. Android build/upload remains manual/on-demand.
