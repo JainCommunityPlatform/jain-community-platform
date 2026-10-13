@@ -1403,3 +1403,16 @@ And the router redirects to login
 And protected content is no longer rendered
 
 Executable regression: `apps/flutter/test/widget_test.dart` — “redirects to login when a session refresh fails after expiry”. This verifies client behavior with a mocked session service; real Firebase token expiry and API authentication failures remain open.
+
+
+## Finance maker-checker denial — HTTP audit boundary
+
+### Scenario: Rejected payment, expense, or adjustment review never writes a success audit event
+
+Given a finance approver submits an approval or rejection for a payment, expense, or adjustment that they are not permitted to review
+When the giving service rejects the decision with HTTP 403 semantics
+Then the HTTP endpoint responds with 403
+And the controller does not record the corresponding success audit event
+And no success response is returned for the rejected decision
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “does not emit success audit events when maker-checker decisions are rejected”. This HTTP integration test mocks the GivingService rejection to verify controller error and audit behavior. The existing Firestore emulator self-approval tests remain the evidence for persisted maker-checker invariants; neither test layer proves production/staging operation.
