@@ -747,20 +747,29 @@ describe('API endpoints (integration)', () => {
     });
   });
 
-  it('POST /api/giving/pledges denies a cross-tenant member before pledge persistence or audit', async () => {
+  it('POST /api/giving/pledges maps an inactive tenant-donor relationship to 403 without success audit', async () => {
     giving.createPledge.mockClear();
     audit.record.mockClear();
+    giving.createPledge.mockRejectedValueOnce(
+      new ForbiddenException('This tenant donor relationship is inactive'),
+    );
 
     await request(app.getHttpServer())
       .post('/api/giving/pledges')
       .set('Host', 'badebabakharadi.com')
-      .set('x-test-user', 'user-cross-tenant')
-      .set('idempotency-key', 'cross-tenant-donor-pledge-1')
+      .set('x-test-user', 'donor-a')
+      .set('idempotency-key', 'inactive-donor-pledge-1')
       .send({ campaignId: 'campaign-public', pledgedAmountPaise: 5000 })
       .expect(403)
-      .expect((response) => expect(response.body.message).toBe('Tenant access denied'));
+      .expect((response) => expect(response.body.message).toBe('This tenant donor relationship is inactive'));
 
-    expect(giving.createPledge).not.toHaveBeenCalled();
+    expect(giving.createPledge).toHaveBeenCalledWith({
+      tenantId: '00000000-0000-0000-0000-000000000001',
+      donorUserId: 'donor-a',
+      campaignId: 'campaign-public',
+      pledgedAmountPaise: 5000,
+      idempotencyKey: 'inactive-donor-pledge-1',
+    });
     expect(audit.record).not.toHaveBeenCalled();
   });
 
