@@ -750,6 +750,42 @@ describe('API endpoints (integration)', () => {
     }
   });
 
+  it('POST /api/giving/campaigns denies tenant administrators before campaign creation or audit', async () => {
+    giving.createCampaign.mockClear();
+    audit.record.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/giving/campaigns')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .send({ name: 'Temple Renovation', description: 'Test campaign', targetAmountPaise: 100000 })
+      .expect(403)
+      .expect((response) => {
+        expect(response.body.message).toBe('Permission denied');
+      });
+
+    expect(giving.createCampaign).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
+  it('PATCH /api/giving/campaigns/:campaignId/status denies finance viewers before status mutation or audit', async () => {
+    giving.updateCampaignStatus.mockClear();
+    audit.record.mockClear();
+
+    await request(app.getHttpServer())
+      .patch('/api/giving/campaigns/campaign-1/status')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-viewer')
+      .send({ status: 'CLOSED' })
+      .expect(403)
+      .expect((response) => {
+        expect(response.body.message).toBe('Permission denied');
+      });
+
+    expect(giving.updateCampaignStatus).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
   it('campaign creation and status changes reject unresolved tenant context before writes or audit events', async () => {
     const routes = [
       {
