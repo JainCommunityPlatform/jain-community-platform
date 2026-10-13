@@ -706,6 +706,73 @@ describe('API endpoints (integration)', () => {
     expect(giving.listMyReceipts).toHaveBeenCalledWith(tenantId, 'donor-a');
   });
 
+  it('POST /api/giving/pledges creates a pledge for the authenticated donor in the resolved tenant and audits success', async () => {
+    giving.createPledge.mockClear();
+    audit.record.mockClear();
+    giving.createPledge.mockResolvedValueOnce({
+      id: 'pledge-created',
+      campaignId: 'campaign-public',
+      status: 'PLEDGED',
+      pledgedAmountPaise: 5000,
+    });
+
+    await request(app.getHttpServer())
+      .post('/api/giving/pledges')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'donor-a')
+      .set('idempotency-key', 'donor-pledge-create-1')
+      .send({ campaignId: 'campaign-public', pledgedAmountPaise: 5000 })
+      .expect(201)
+      .expect((response) => expect(response.body).toMatchObject({
+        id: 'pledge-created',
+        campaignId: 'campaign-public',
+        status: 'PLEDGED',
+        pledgedAmountPaise: 5000,
+      }));
+
+    expect(giving.createPledge).toHaveBeenCalledTimes(1);
+    expect(giving.createPledge).toHaveBeenCalledWith({
+      tenantId: '00000000-0000-0000-0000-000000000001',
+      donorUserId: 'donor-a',
+      campaignId: 'campaign-public',
+      pledgedAmountPaise: 5000,
+      idempotencyKey: 'donor-pledge-create-1',
+    });
+    expect(audit.record).toHaveBeenCalledTimes(1);
+    expect(audit.record).toHaveBeenCalledWith({
+      action: 'DONATION_PLEDGE_CREATED',
+      entity: 'DonationPledge',
+      entityId: 'pledge-created',
+      metadata: { campaignId: 'campaign-public', pledgedAmountPaise: 5000 },
+    });
+  });
+
+  it('POST /api/giving/pledges maps an inactive tenant-donor relationship to 403 without success audit', async () => {
+    giving.createPledge.mockClear();
+    audit.record.mockClear();
+    giving.createPledge.mockRejectedValueOnce(
+      new ForbiddenException('This tenant donor relationship is inactive'),
+    );
+
+    await request(app.getHttpServer())
+      .post('/api/giving/pledges')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'donor-a')
+      .set('idempotency-key', 'inactive-donor-pledge-1')
+      .send({ campaignId: 'campaign-public', pledgedAmountPaise: 5000 })
+      .expect(403)
+      .expect((response) => expect(response.body.message).toBe('This tenant donor relationship is inactive'));
+
+    expect(giving.createPledge).toHaveBeenCalledWith({
+      tenantId: '00000000-0000-0000-0000-000000000001',
+      donorUserId: 'donor-a',
+      campaignId: 'campaign-public',
+      pledgedAmountPaise: 5000,
+      idempotencyKey: 'inactive-donor-pledge-1',
+    });
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
   it('GET /api/giving/my-pledges and my-receipts reject missing tenant context before reading donor history', async () => {
     giving.listMyPledges.mockClear();
     giving.listMyReceipts.mockClear();

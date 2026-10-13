@@ -1480,3 +1480,18 @@ And campaign persistence is not invoked
 And no success audit event is recorded
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — “campaign writes deny finance operators and tenant administrators whose membership belongs to another tenant before mutation or audit”. This validates the HTTP authorization boundary with mocked membership, persistence and audit services; it does not replace persisted Firestore or staging verification.
+
+
+## Scenario: Donor creates a pledge in the resolved tenant
+
+Given an authenticated donor is viewing an active campaign for the resolved tenant
+When the donor submits a pledge with a valid idempotency key
+Then the API creates the pledge for the resolved tenant and authenticated donor identity
+And the requested campaign ID, amount, and idempotency key are passed to the giving service
+And a pledge-created audit event is recorded only after successful creation
+
+When the giving service rejects the donor because their tenant-donor relationship is inactive
+Then the API returns HTTP 403 with the inactive-relationship error
+And no pledge-created audit event is recorded
+
+Executable regressions: `apps/api/test/app.e2e-spec.ts` — “POST /api/giving/pledges creates a pledge for the authenticated donor in the resolved tenant and audits success” and “POST /api/giving/pledges maps an inactive tenant-donor relationship to 403 without success audit”. These tests cover the HTTP/controller boundary with mocked membership, giving persistence and audit services; persisted Firestore and Flutter UI-to-API verification remain separate evidence layers.
