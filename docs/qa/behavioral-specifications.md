@@ -1416,3 +1416,13 @@ And the controller does not record the corresponding success audit event
 And no success response is returned for the rejected decision
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — “does not emit success audit events when maker-checker decisions are rejected”. This HTTP integration test mocks the GivingService rejection to verify controller error and audit behavior. The existing Firestore emulator self-approval tests remain the evidence for persisted maker-checker invariants; neither test layer proves production/staging operation.
+
+
+## Scenario: Existing Firebase authentication restores the backend session on startup
+
+Given Firebase already has an authenticated user when the app starts
+When the session controller initializes
+Then it loads the backend session exactly once
+And the controller exposes the restored user, tenant, role, and permission roles
+
+Executable regression: `apps/flutter/test/core/session/app_session_controller_test.dart` — “restores the backend session when Firebase already has a user at startup”. This unit test uses a mocked Firebase auth provider and mocked backend session service; persisted Firebase/device restart and production API behavior remain separate verification layers.
