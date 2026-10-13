@@ -1,3 +1,15 @@
+## Latest verified state — PR #188 merged; Flutter donor pledge journey regression in progress (13 October 2026)
+
+- **Merged PR #188:** [donor pledge creation HTTP contract](https://github.com/JainCommunityPlatform/jain-community-platform/pull/188), merge commit `a2761bcdd4c5b23909a474928ad37802e38fc8fe`.
+- **Exact-head CI:** [run #818](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38422723605) passed on head `3e632fc142afbe26f2535515dfde21260132e250`. The API test verifies resolved tenant, authenticated donor, campaign, amount, idempotency key and success audit; inactive tenant-donor rejection returns 403 without success audit.
+- **Post-merge CI for PR #188:** **UNKNOWN**. The available commit workflow lookup does not expose push-triggered default-branch runs for merge commit `a2761bcdd4c5b23909a474928ad37802e38fc8fe`; PR-head CI is not a substitute.
+- **Merged PR #179:** [cross-tenant finance read denial](https://github.com/JainCommunityPlatform/jain-community-platform/pull/179), merge commit `e0a8a5eb5f5a3429e13b6ecaded64c118cb61f43`; exact-head [CI #790](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38342494756) passed. Post-merge CI is **UNKNOWN** from the available run/status endpoints.
+- **Current branch:** `qa/flutter-donor-pledge-journey`. New widget tests exercise the real `DonorGivingPage` and `ApiClient` with a mocked HTTP client: successful campaign → pledge submission → refreshed “My pledges” view, plus inactive-donor API failure feedback without a false success message. The BDD specification and QA inventory were updated on this branch.
+- **Evidence boundary:** Flutter widget tests with mocked HTTP verify request method/path/body/idempotency header and visible state transitions. They do not establish live API connectivity, Firebase identity, persisted Firestore behavior, or staging/device verification.
+- **Next:** inspect exact-head CI for this branch, fix real failures without weakening assertions, merge only if required checks pass and the PR is mergeable, verify push-triggered default-branch CI where available (otherwise record UNKNOWN), update issue #162, and continue the P0 donation lifecycle / payment-to-receipt UI integration gap. Android build/upload remains manual/on-demand.
+
+---
+
 ## Latest verified state — PR #182 merged; startup session restoration test completed (13 October 2026)
 
 - **Merged:** [PR #182 — startup session restoration regression](https://github.com/JainCommunityPlatform/jain-community-platform/pull/182), merge commit [3033dacd16f13bf9b5ad830d978c39c84270bd0e](https://github.com/JainCommunityPlatform/jain-community-platform/commit/3033dacd16f13bf9b5ad830d978c39c84270bd0e).
