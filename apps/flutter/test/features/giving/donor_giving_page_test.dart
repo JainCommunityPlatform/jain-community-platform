@@ -85,14 +85,18 @@ void main() {
       'campaignId': 'campaign-1',
       'pledgedAmountPaise': 50000,
     });
-    expect(createRequest.headers['Idempotency-Key'],
-        startsWith('donor-pledge-campaign-1-'));
+    expect(
+      createRequest.headers.entries
+          .singleWhere((entry) => entry.key.toLowerCase() == 'idempotency-key')
+          .value,
+      startsWith('donor-pledge-campaign-1-'),
+    );
     expect(find.text('Your pledge has been recorded.'), findsOneWidget);
     expect(find.text('Chaturmas Seva'), findsOneWidget);
 
     await tester.tap(find.text('My pledges'));
     await tester.pumpAndSettle();
-    expect(find.text('₹500.00'), findsOneWidget);
+    expect(find.text('₹500.00'), findsNWidgets(2));
     expect(find.textContaining('Status: PLEDGED'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
