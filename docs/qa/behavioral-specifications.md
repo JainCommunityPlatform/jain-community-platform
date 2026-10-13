@@ -1468,3 +1468,15 @@ And campaign persistence is not invoked
 And no success audit event is recorded
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — “campaign writes deny finance operators whose membership belongs to another tenant before mutation or audit”. The test exercises the HTTP authorization boundary with mocked membership, persistence and audit services; persisted Firestore isolation and staging verification remain separate evidence requirements.
+
+
+### Scenario: Cross-tenant campaign writes are denied for both finance operators and tenant administrators
+
+Given the active tenant context resolves to tenant A
+And the authenticated user's membership belongs to tenant B
+When a finance operator or tenant administrator attempts to create a campaign or change campaign status
+Then the API returns HTTP 403
+And campaign persistence is not invoked
+And no success audit event is recorded
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “campaign writes deny finance operators and tenant administrators whose membership belongs to another tenant before mutation or audit”. This validates the HTTP authorization boundary with mocked membership, persistence and audit services; it does not replace persisted Firestore or staging verification.

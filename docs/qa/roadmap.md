@@ -200,7 +200,17 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 ## Execution checkpoint — campaign authorization matrix (13 October 2026)
 
 - **Previous completed item:** [PR #185](https://github.com/JainCommunityPlatform/jain-community-platform/pull/185) merged as `eec4b012aa56e3904bffd7800de40b062d1553d2`. Exact-head [CI #805](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38416322337) passed all required jobs; Android AAB was skipped by design.
-- **Post-merge verification:** [CI #807](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38416748402) is still running as of this checkpoint.
+- **Post-merge verification:** [CI #807](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38416748402) passed; the stale running-status note is corrected in this checkpoint.
 - **Current P0:** cross-tenant campaign write denial. A finance operator whose membership belongs to tenant B must not create or change campaign status under tenant A; denied calls must not invoke campaign persistence or audit.
 - **Evidence boundary:** API HTTP integration with mocked membership/persistence/audit; Firestore/staging/device lifecycle verification remains open.
 - **Release policy:** Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — cross-tenant campaign write matrix expansion (13 October 2026)
+
+- **Previous item completed:** [PR #186](https://github.com/JainCommunityPlatform/jain-community-platform/pull/186) merged as `7ba24ef6718f65016752c3259e66469c501ebf50`.
+- **Exact-head CI:** [run #810](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38417681101) passed on `aa9d23280201828fb939d5a145c309f7f1d33e8e`; the initial run #808 timeout was fixed by giving the existing refund concurrency test 15 seconds while preserving assertions.
+- **Post-merge CI:** [run #811](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38418357794) passed on the merge commit. Repository validation, backend lint/tests/Firestore-emulator/build, Flutter analyze/tests, and merge gate passed; Android AAB skipped by design.
+- **Current P0:** extend campaign cross-tenant mutation denial to tenant administrators as well as finance operators.
+- **Branch:** `qa/campaign-cross-tenant-admin-denial`.
+- **Exit:** exact-head CI green, merge only when eligible, verify post-merge CI, update issue #162, then continue to the donor UI-to-API and persisted campaign lifecycle gaps. Android build/upload remains manual/on-demand.

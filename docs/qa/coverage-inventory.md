@@ -84,3 +84,11 @@ Evidence boundaries:
 - **Coverage:** finance-operator campaign creation/status changes assert resolved tenant context, authenticated actor where applicable, and success-audit records.
 - **Next P0:** deny campaign writes from a finance operator whose membership belongs to a different tenant; both create and status mutation must have no persistence or audit side effects.
 - **Evidence boundary:** HTTP integration with mocked membership, persistence and audit services; persisted campaign lifecycle and staging/device verification remain open. Android build/upload remains manual/on-demand.
+
+
+## Execution note — cross-tenant campaign write matrix (13 October 2026)
+
+- **PR in progress:** cross-tenant campaign write denial for both finance operators and tenant administrators.
+- **Regression:** create and status-update requests under tenant A using a membership from tenant B must return 403; campaign persistence and success-audit writer must remain untouched.
+- **Prior baseline:** PR #186 merged as `7ba24ef6718f65016752c3259e66469c501ebf50`; exact-head CI #810 passed and post-merge master CI #811 passed. Android AAB was skipped by design.
+- **Evidence boundary:** HTTP integration tests mock membership, persistence and audit. Persisted campaign lifecycle, donor UI-to-API journey, and staging/device verification remain open. Android build/upload remains manual/on-demand.
