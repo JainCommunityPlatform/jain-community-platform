@@ -97,6 +97,6 @@ Evidence boundaries:
 ## Execution note — donor pledge HTTP contract (13 October 2026)
 
 - Added an API integration regression for successful pledge creation: resolved tenant ID, authenticated donor ID, campaign ID, amount and idempotency key must reach the giving service; the success audit is asserted after the service returns the pledge.
-- Added a cross-tenant negative case: a member whose membership is for another tenant receives HTTP 403 before pledge persistence, and no success audit is written.
+- Added a negative HTTP case: when the giving service rejects a donor because their tenant-donor relationship is inactive, the controller returns HTTP 403 and emits no success audit. The first attempt incorrectly assumed the membership guard rejects all pledge writes from a cross-tenant member; CI showed that public donor pledge eligibility is enforced by the giving/persistence layer, so that unsupported expectation was replaced rather than weakening unrelated assertions.
 - **Evidence boundary:** these tests use mocked membership, giving persistence and audit services. They do not prove persisted Firestore lifecycle or a Flutter widget/device journey.
 - Current branch: `qa/donor-pledge-http-contract`; exact-head CI must pass before merge. Android build/upload remains manual/on-demand.
