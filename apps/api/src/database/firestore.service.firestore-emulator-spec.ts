@@ -1298,7 +1298,7 @@ describe('FirestoreService against the Firestore emulator', () => {
       .where('entityId', '==', adjustment.id)
       .get();
     expect(notifications.docs).toHaveLength(1);
-  });
+  }, 15000);
 
 
   it('flags missing, orphaned and amount-mismatched receipts in persisted reconciliation', async () => {

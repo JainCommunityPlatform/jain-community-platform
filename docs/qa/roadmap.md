@@ -195,3 +195,12 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Branch:** `qa/campaign-authorized-write-audit`.
 - **Evidence boundary:** HTTP integration tests with mocked membership, persistence and audit services; Firestore/staging lifecycle verification remains open.
 - **Next:** inspect exact-head CI, repair genuine failures, merge only when required checks pass and PR is mergeable, verify post-merge CI, and continue the P0 matrix. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — campaign authorization matrix (13 October 2026)
+
+- **Previous completed item:** [PR #185](https://github.com/JainCommunityPlatform/jain-community-platform/pull/185) merged as `eec4b012aa56e3904bffd7800de40b062d1553d2`. Exact-head [CI #805](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38416322337) passed all required jobs; Android AAB was skipped by design.
+- **Post-merge verification:** [CI #807](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38416748402) is still running as of this checkpoint.
+- **Current P0:** cross-tenant campaign write denial. A finance operator whose membership belongs to tenant B must not create or change campaign status under tenant A; denied calls must not invoke campaign persistence or audit.
+- **Evidence boundary:** API HTTP integration with mocked membership/persistence/audit; Firestore/staging/device lifecycle verification remains open.
+- **Release policy:** Android build/upload remains manual/on-demand.
