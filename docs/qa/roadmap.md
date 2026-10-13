@@ -223,3 +223,12 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Branch:** `qa/donor-pledge-http-contract`.
 - **Evidence boundary:** mocked API integration; persisted Firestore campaign-to-receipt lifecycle and Flutter UI-to-API/device evidence remain open.
 - **Next:** inspect exact-head CI; fix root causes without weakening assertions; merge only when required checks pass and the PR is mergeable; verify post-merge CI; then continue the next uncovered P0. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — donor pledge UI-to-HTTP journey (13 October 2026)
+
+- **Previous item:** [PR #188](https://github.com/JainCommunityPlatform/jain-community-platform/pull/188) merged; exact-head [CI #818](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38422723605) passed on `3e632fc142afbe26f2535515dfde21260132e250`. Post-merge default-branch CI remains UNKNOWN because the available run lookup only returns PR-triggered runs.
+- **Current P0:** QA-003, Flutter donor pledge journey. New widget tests cover successful campaign selection, amount entry, pledge POST payload and idempotency header, refreshed “My pledges” state, and inactive tenant-donor API error handling without a false success message.
+- **Branch:** `qa/flutter-donor-pledge-journey`.
+- **Evidence boundary:** mocked HTTP widget test; live API, Firebase identity, persisted Firestore and staging/device behavior remain separate evidence layers.
+- **Next:** inspect exact-head CI, fix genuine failures without weakening assertions, merge only when required checks pass and the PR is mergeable, verify post-merge default-branch CI where available, then continue the donation payment → approval → receipt UI path. Android build/upload remains manual/on-demand.
