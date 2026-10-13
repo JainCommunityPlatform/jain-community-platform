@@ -175,3 +175,12 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Post-merge CI:** UNKNOWN; the available commit-run lookup did not expose a push-triggered run for the merge commit.
 - **Branch disposition:** unique startup-restoration regression from stale `qa/session-restore-on-startup` is now merged through PR #182. Stale `qa/session-signout-route-refresh` is superseded by the existing sign-out protected-route redirect test and must not be merged as-is.
 - **Remaining evidence gap:** real Firebase/device restart and production/staging API verification. Continue with the next highest-priority unfinished P0. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — campaign write authorization boundary (13 October 2026)
+
+- **Current P0-C item:** close an authorization-matrix gap on campaign mutation routes.
+- **Branch:** `qa/campaign-write-authorization-boundary`.
+- **Regression tests:** tenant administrators cannot create campaigns; finance viewers cannot change campaign status. Both requests must return HTTP 403 before the GivingService mutation and audit writer are called.
+- **Evidence boundary:** HTTP integration tests with mocked membership, persistence and audit services; persisted Firestore/staging verification remains open.
+- **Next:** inspect exact-head CI, repair genuine failures without weakening assertions, merge only when required checks pass and the PR is mergeable, verify post-merge CI, then continue the P0 authorization matrix. Android build/upload remains manual/on-demand.
