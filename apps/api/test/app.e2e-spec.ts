@@ -133,6 +133,7 @@ describe('API endpoints (integration)', () => {
           userId === 'user-tenant-finance' ? 'TENANT_FINANCE' :
           userId === 'user-ca-auditor' ? 'CA_AUDITOR' :
           userId === 'user-cross-tenant' ? 'FINANCE_OPERATOR' :
+          userId === 'user-cross-tenant-admin' ? 'TENANT_ADMIN' :
           userId === 'user-platform-admin' ? 'FINANCE_APPROVER' : 'TENANT_ADMIN';
         return {
           userId,
@@ -330,6 +331,20 @@ describe('API endpoints (integration)', () => {
         expect(response.body.displayName).toBe('Updated Member');
         expect(response.body.primaryPhone).toBe('9876543210');
       });
+  });
+
+  it('PATCH /api/profile/:userId/contact denies a tenant administrator from another tenant before changing contact data', async () => {
+    const profiles = app.get(ProfileService);
+    const adminSetContact = jest.spyOn(profiles, 'adminSetContact');
+
+    await request(app.getHttpServer())
+      .patch('/api/profile/user-target/contact')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-cross-tenant-admin')
+      .send({ value: '9876543210' })
+      .expect(403);
+
+    expect(adminSetContact).not.toHaveBeenCalled();
   });
 
   it('GET /api/profile/activities returns participation history', async () => {
