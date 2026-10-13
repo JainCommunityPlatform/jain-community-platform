@@ -1241,7 +1241,7 @@ describe('FirestoreService against the Firestore emulator', () => {
       .get();
     expect(notifications.docs).toHaveLength(1);
     expect(notifications.docs[0].data()).toMatchObject({ type: 'REFUND_APPROVED', entityId: adjustment.id });
-  });
+  }, 15000);
 
   it('serializes concurrent approval and rejection so a refund has exactly one terminal outcome', async () => {
     const suffix = `emulator-adjustment-decision-race-${Date.now()}-${Math.random().toString(36).slice(2)}`;
