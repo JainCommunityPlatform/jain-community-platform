@@ -1490,8 +1490,8 @@ Then the API creates the pledge for the resolved tenant and authenticated donor 
 And the requested campaign ID, amount, and idempotency key are passed to the giving service
 And a pledge-created audit event is recorded only after successful creation
 
-When a member whose membership belongs to another tenant attempts the same request
-Then the API returns HTTP 403 before pledge persistence
+When the giving service rejects the donor because their tenant-donor relationship is inactive
+Then the API returns HTTP 403 with the inactive-relationship error
 And no pledge-created audit event is recorded
 
-Executable regressions: `apps/api/test/app.e2e-spec.ts` — “POST /api/giving/pledges creates a pledge for the authenticated donor in the resolved tenant and audits success” and “POST /api/giving/pledges denies a cross-tenant member before pledge persistence or audit”. These tests cover the HTTP/controller boundary with mocked membership, giving persistence and audit services; persisted Firestore and Flutter UI-to-API verification remain separate evidence layers.
+Executable regressions: `apps/api/test/app.e2e-spec.ts` — “POST /api/giving/pledges creates a pledge for the authenticated donor in the resolved tenant and audits success” and “POST /api/giving/pledges maps an inactive tenant-donor relationship to 403 without success audit”. These tests cover the HTTP/controller boundary with mocked membership, giving persistence and audit services; persisted Firestore and Flutter UI-to-API verification remain separate evidence layers.
