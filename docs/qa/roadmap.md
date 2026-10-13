@@ -214,3 +214,12 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Current P0:** extend campaign cross-tenant mutation denial to tenant administrators as well as finance operators.
 - **Branch:** `qa/campaign-cross-tenant-admin-denial`.
 - **Exit:** exact-head CI green, merge only when eligible, verify post-merge CI, update issue #162, then continue to the donor UI-to-API and persisted campaign lifecycle gaps. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — donor pledge HTTP contract (13 October 2026)
+
+- **Previous item verified:** PR #187 merged as `f56c65e772a46ee840b3dbae7c90bcfc9edbf704`; exact-head CI #812 and post-merge [CI #813](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38421519258) passed all applicable jobs. Android AAB skipped by design.
+- **Current P0:** strengthen the donor pledge creation HTTP boundary. The focused branch adds a positive test for tenant/donor/campaign/amount/idempotency propagation and success audit, plus a cross-tenant denial asserting no persistence or audit side effects.
+- **Branch:** `qa/donor-pledge-http-contract`.
+- **Evidence boundary:** mocked API integration; persisted Firestore campaign-to-receipt lifecycle and Flutter UI-to-API/device evidence remain open.
+- **Next:** inspect exact-head CI; fix root causes without weakening assertions; merge only when required checks pass and the PR is mergeable; verify post-merge CI; then continue the next uncovered P0. Android build/upload remains manual/on-demand.
