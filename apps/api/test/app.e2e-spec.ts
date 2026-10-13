@@ -137,7 +137,7 @@ describe('API endpoints (integration)', () => {
           userId === 'user-platform-admin' ? 'FINANCE_APPROVER' : 'TENANT_ADMIN';
         return {
           userId,
-          tenantId: userId === 'user-cross-tenant' ? 'tenant-b' : tenantId,
+          tenantId: userId === 'user-cross-tenant' || userId === 'user-cross-tenant-admin' ? 'tenant-b' : tenantId,
           role,
           ...(userId === 'user-legacy-finance-admin'
             ? { roles: ['TENANT_ADMIN', 'TENANT_FINANCE'] as const }
