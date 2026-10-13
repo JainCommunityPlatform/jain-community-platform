@@ -1,11 +1,11 @@
-## Latest verified state — PR #181 merged; PR #182 startup restoration regression in progress (13 October 2026)
+## Latest verified state — PR #182 merged; startup session restoration test completed (13 October 2026)
 
-- **Merged:** [PR #181 — maker-checker denial HTTP audit boundary](https://github.com/JainCommunityPlatform/jain-community-platform/pull/181), merge commit [9c6baff070b8e82fd6ac3d671fb7e9e4b1b5e546](https://github.com/JainCommunityPlatform/jain-community-platform/commit/9c6baff070b8e82fd6ac3d671fb7e9e4b1b5e546).
-- **Exact-head CI:** [run #796](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38378809579) passed frontend Flutter analyze/tests, backend lint/unit/integration/Firestore emulator/build, repository validation, and merge gate on head `180dc6ea4e4c7c1060b343b9e182ccbb35fc224e`. Android AAB was skipped by design.
-- **Post-merge CI for #181:** **UNKNOWN**. The available commit-run lookup did not return a push-triggered run for merge commit `9c6baff070b8e82fd6ac3d671fb7e9e4b1b5e546`; exact-head PR CI is not proof of post-merge CI.
-- **Current work:** PR #182, branch `qa/session-restore-startup-current-master`, adds a Flutter controller regression for restoring the backend session when Firebase already has a user at startup. It asserts a single backend session load and restored user, tenant, admin status, and permission roles.
-- **Evidence boundary:** PR #182 uses mocked Firebase auth and a mocked backend session service; device/emulator restart and production API verification remain open.
-- **Next:** verify all required checks on the latest exact head of PR #182, repair failures without weakening assertions, merge only when green and mergeable, verify post-merge CI where accessible, and continue to the next P0 gap. Android build/upload remains manual/on-demand.
+- **Merged:** [PR #182 — startup session restoration regression](https://github.com/JainCommunityPlatform/jain-community-platform/pull/182), merge commit [3033dacd16f13bf9b5ad830d978c39c84270bd0e](https://github.com/JainCommunityPlatform/jain-community-platform/commit/3033dacd16f13bf9b5ad830d978c39c84270bd0e).
+- **Exact-head CI:** [run #800](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38379823621) passed backend lint/unit/integration/Firestore-emulator/build, Flutter analyze/tests, repository validation, and merge gate on head `7c5a3bc870b8e82fd6ac3d671fb7e9e4b1b5e546`. Android AAB was skipped by design.
+- **Post-merge CI for #182:** **UNKNOWN**. The available commit-run lookup did not return a push-triggered run for merge commit `3033dacd16f13bf9b5ad830d978c39c84270bd0e`; exact-head PR CI is not proof of post-merge CI.
+- **Completed:** the unique startup restoration test from stale branch `qa/session-restore-on-startup` was ported onto current master and merged. It verifies one backend session load and restoration of user, tenant, admin status, and permission roles using mocked Firebase auth and backend session services.
+- **Superseded branch:** `qa/session-signout-route-refresh` was 37 commits behind master; its sign-out redirect behavior is already covered by `apps/flutter/test/widget_test.dart` test `redirects an open protected route to login when Firebase signs out`. Do not merge the stale branch.
+- **Next:** continue to the next highest-priority unfinished P0 gap in issue #162 and the QA inventory. Device/emulator restart and production API verification remain open. Android build/upload remains manual/on-demand.
 
 # JCP Autonomous QA Checkpoint
 
