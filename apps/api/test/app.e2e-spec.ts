@@ -129,7 +129,7 @@ describe('API endpoints (integration)', () => {
         const role =
           userId === 'user-viewer' ? 'FINANCE_VIEWER' :
           userId === 'user-finance-operator' ? 'FINANCE_OPERATOR' :
-          userId === 'user-finance-approver' ? 'FINANCE_APPROVER' :
+          userId === 'user-finance-approver' || userId === 'user-cross-tenant-approver' ? 'FINANCE_APPROVER' :
           userId === 'user-tenant-finance' ? 'TENANT_FINANCE' :
           userId === 'user-ca-auditor' ? 'CA_AUDITOR' :
           userId === 'user-cross-tenant' ? 'FINANCE_OPERATOR' :
@@ -137,7 +137,7 @@ describe('API endpoints (integration)', () => {
           userId === 'user-platform-admin' ? 'FINANCE_APPROVER' : 'TENANT_ADMIN';
         return {
           userId,
-          tenantId: userId === 'user-cross-tenant' || userId === 'user-cross-tenant-admin' ? 'tenant-b' : tenantId,
+          tenantId: userId === 'user-cross-tenant' || userId === 'user-cross-tenant-admin' || userId === 'user-cross-tenant-approver' ? 'tenant-b' : tenantId,
           role,
           ...(userId === 'user-legacy-finance-admin'
             ? { roles: ['TENANT_ADMIN', 'TENANT_FINANCE'] as const }
@@ -1063,6 +1063,25 @@ describe('API endpoints (integration)', () => {
         message: 'Permission denied',
         error: 'Forbidden',
       });
+  });
+
+  it('POST /api/giving/payments/:paymentId/approve denies a finance approver whose membership belongs to another tenant before processing or audit', async () => {
+    giving.approvePayment.mockClear();
+    audit.record.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/giving/payments/payment-1/approve')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-cross-tenant-approver')
+      .expect(403)
+      .expect({
+        statusCode: 403,
+        message: 'Tenant access denied',
+        error: 'Forbidden',
+      });
+
+    expect(giving.approvePayment).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
   });
 
   it('GET /api/giving/payments denies a finance user whose membership belongs to another tenant', async () => {
