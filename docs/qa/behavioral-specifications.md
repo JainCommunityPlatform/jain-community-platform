@@ -1581,3 +1581,14 @@ And the adjustment rejection service is not invoked
 And no adjustment-rejected success audit event is recorded
 
 Executable regressions: apps/api/test/app.e2e-spec.ts — “denies cross-tenant financial writes before persistence and audit side effects” now includes the expense rejection and adjustment rejection endpoints. These HTTP tests use mocked membership, GivingService, and audit; Firestore emulator coverage separately exercises persisted cross-tenant financial isolation.
+
+
+## Scenario: Revoked finance role loses access across protected finance reads
+
+Given a user has the finance-operator role in the active tenant
+And the user can read tenant-scoped finance data
+When a platform administrator revokes the user's finance role
+Then the user's next request to each tenant-scoped finance read route is denied
+And the API does not invoke expense, payment, adjustment, pledge, receipt, summary, or reconciliation read services
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “revoking a finance role removes protected access on the next HTTP request”. The role transition is mocked in the HTTP test; persisted membership revocation and staging identity propagation remain separate verification items.

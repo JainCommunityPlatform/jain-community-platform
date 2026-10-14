@@ -1,3 +1,12 @@
+## Execution checkpoint — cross-tenant rejection merged; finance revocation matrix next (14 October 2026)
+
+- PR #194 merged at `1cf74488f16e643aca4835c222102d3b0f63a867`; exact-head CI #853 passed all required checks. Post-merge default-branch CI remains UNKNOWN because the available commit workflow lookup returned no run.
+- Current P0 branch `qa/finance-role-revocation-protected-route-matrix` expands the role-revocation regression from expenses alone to seven protected finance reads (expenses, payments, adjustments, pledges, receipts, summary and reconciliation), asserting denial and zero service calls after revocation.
+- The test uses mocked membership state; persisted Firestore revocation and staging identity propagation remain open. Keep these evidence types separate.
+- Next sequence: verify exact-head CI and merge this focused regression if all required checks pass; then resume the protected-route × role matrix and persisted donor UI → API → Firestore lifecycle. Android build/upload remains manual/on-demand.
+
+---
+
 # JCP QA Roadmap
 
 Last reviewed: 12 October 2026  
