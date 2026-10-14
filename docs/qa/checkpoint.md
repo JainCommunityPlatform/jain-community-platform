@@ -1,3 +1,13 @@
+## Latest execution — cross-tenant expense/adjustment rejection route coverage in progress (14 October 2026)
+
+- **Previous P0 item merged:** [PR #193 — deny cross-tenant payment rejection](https://github.com/JainCommunityPlatform/jain-community-platform/pull/193), merge commit `daf2a43d8f1c0d3209fc3afae1a505d6063f7927`; exact-head [CI #851](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38504621506) passed.
+- **Current branch:** `qa/cross-tenant-expense-adjustment-rejection-denial` adds two route-matrix cases to the existing cross-tenant financial-write regression: rejecting an expense and rejecting an adjustment must return 403 before invoking the decision service or emitting a success audit event.
+- **Scenario evidence:** executable in `apps/api/test/app.e2e-spec.ts`; behavioural specification and QA inventory updated in this branch. These are HTTP tests with mocked membership/service/audit; persisted Firestore isolation remains separately covered and staging/device verification is still open.
+- **CI status:** new branch CI not yet confirmed. Do not merge before every required check passes on the exact latest head and mergeability is confirmed. Post-merge CI for PR #193 is not exposed by the available commit-run lookup, so it remains UNKNOWN until directly verified.
+- **Next:** close this route gap, then continue the P0 persisted UI → API → Firestore donation lifecycle and finish the complete role × protected-route inventory. Android build/upload remains manual/on-demand.
+
+---
+
 ## Latest execution — PR #192 merged; cross-tenant payment rejection denial in progress (14 October 2026)
 
 - **Merged:** [PR #192 — deny cross-tenant payment recording](https://github.com/JainCommunityPlatform/jain-community-platform/pull/192), merge commit `a071ebb6ab88f33178d09fe44aa98b65293cd9ea`.
