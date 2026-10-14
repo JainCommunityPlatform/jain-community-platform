@@ -278,3 +278,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Branch:** `qa/cross-tenant-payment-rejection-denial`.
 - **Evidence boundary:** mocked HTTP authorization; persisted Firestore cross-tenant payment decision isolation is covered by emulator tests. Live staging/device evidence remains open.
 - **Next:** inspect exact-head CI, fix genuine failures without weakening assertions, merge only when required checks pass and the PR is mergeable, verify post-merge CI, then continue the P0 route matrix and persisted UI/API workflow evidence. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — cross-tenant expense/adjustment rejection routes (14 October 2026)
+
+- PR #193's payment-rejection denial merged; exact-head CI #851 passed. The connected commit-run lookup does not expose post-merge push CI for merge commit `daf2a43d8f1c0d3209fc3afae1a505d6063f7927`, so post-merge verification remains UNKNOWN.
+- Next focused P0 regression extends the cross-tenant financial write matrix to expense rejection and adjustment rejection. Both must return HTTP 403 without invoking the relevant service or emitting a success audit event.
+- After exact-head CI and merge, continue the persisted UI → API → Firestore donation lifecycle and full role × protected-route inventory. Mocked HTTP coverage is not environment verification. Android build/upload remains manual/on-demand.
