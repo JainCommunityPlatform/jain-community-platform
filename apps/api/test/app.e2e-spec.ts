@@ -2012,17 +2012,32 @@ describe('API endpoints (integration)', () => {
         .set('x-test-user', 'user-platform-admin')
         .expect(200);
 
-      await request(app.getHttpServer())
-        .get('/api/giving/expenses')
-        .set('Host', 'badebabakharadi.com')
-        .set('x-test-user', 'finance-target')
-        .expect(403)
-        .expect((response) => {
-          expect(response.body.message).toBe('Permission denied');
-        });
+      // Revocation must be effective on the very next request across every
+      // existing tenant-scoped finance read route, not just expenses.
+      const protectedReads = [
+        { path: '/api/giving/expenses', service: giving.listTenantExpenses },
+        { path: '/api/giving/payments', service: giving.listTenantPayments },
+        { path: '/api/giving/adjustments', service: giving.listTenantAdjustments },
+        { path: '/api/giving/pledges', service: giving.listTenantPledges },
+        { path: '/api/giving/receipts', service: giving.listTenantReceipts },
+        { path: '/api/giving/reports/summary', service: giving.getSummaryReport },
+        { path: '/api/giving/reports/reconciliation', service: giving.getReconciliationReport },
+      ];
+      for (const route of protectedReads) route.service.mockClear();
 
-      // The rejected request must stop at authorization, before tenant data is read.
-      expect(giving.listTenantExpenses).toHaveBeenCalledTimes(1);
+      for (const route of protectedReads) {
+        await request(app.getHttpServer())
+          .get(route.path)
+          .set('Host', 'badebabakharadi.com')
+          .set('x-test-user', 'finance-target')
+          .expect(403)
+          .expect((response) => {
+            expect(response.body.message).toBe('Permission denied');
+          });
+        expect(route.service).not.toHaveBeenCalled();
+      }
+
+      // Every revoked request must stop at authorization before finance data is read.
     } finally {
       if (originalResolve) {
         membership.resolve.mockImplementation(originalResolve);
