@@ -1130,6 +1130,29 @@ describe('API endpoints (integration)', () => {
       });
   });
 
+  it('finance viewers can read each tenant-scoped finance list and report', async () => {
+    const tenantId = '00000000-0000-0000-0000-000000000001';
+    const reads = [
+      { path: '/api/giving/payments', service: giving.listTenantPayments },
+      { path: '/api/giving/expenses', service: giving.listTenantExpenses },
+      { path: '/api/giving/adjustments', service: giving.listTenantAdjustments },
+      { path: '/api/giving/receipts', service: giving.listTenantReceipts },
+      { path: '/api/giving/pledges', service: giving.listTenantPledges },
+      { path: '/api/giving/reports/summary', service: giving.getFinanceReport },
+      { path: '/api/giving/reports/reconciliation', service: giving.getReconciliationReport },
+    ];
+
+    for (const route of reads) {
+      route.service.mockClear();
+      await request(app.getHttpServer())
+        .get(route.path)
+        .set('Host', 'badebabakharadi.com')
+        .set('x-test-user', 'user-viewer')
+        .expect(200);
+      expect(route.service).toHaveBeenCalledWith(tenantId);
+    }
+  });
+
   it('POST /api/giving/payments/:paymentId/approve denies tenant administrators before payment processing', async () => {
     await request(app.getHttpServer())
       .post('/api/giving/payments/payment-1/approve')
