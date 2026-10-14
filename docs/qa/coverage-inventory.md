@@ -107,3 +107,9 @@ Evidence boundaries:
 - New widget regression: `apps/flutter/test/features/giving/donor_giving_page_test.dart` — “donor sees a receipt after an approved payment appears on refresh”. It verifies no receipt is shown before the mocked backend reports an approved payment, then the donor refreshes and sees the returned receipt number, method/date, and amount.
 - Evidence boundary: this verifies donor UI refresh/rendering against mocked HTTP state. It does not execute finance approval, prove persisted Firestore transaction/receipt creation, or establish staging/device behavior. Those remain P0 follow-ups.
 - PR #189 merged as `88adb21d0330d2cc03d45b1b0c1b07ca3b759147`; exact-head CI #822 passed. Post-merge [CI #823](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38495571718) was still running at branch creation; update status only after its conclusion is observed. Android AAB remains manual/on-demand.
+
+
+## Post-merge verification — PR #189 (14 October 2026)
+
+- Push-triggered [CI #823](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38495571718) completed successfully on merge commit `88adb21d0330d2cc03d45b1b0c1b07ca3b759147`. Repository validation, backend lint/unit/integration/Firestore-emulator/build, Flutter analyze/tests and merge gate passed. Android AAB was skipped under the manual/on-demand release policy.
+- This confirms the post-merge CI gate only; it does not upgrade the donor pledge journey to persisted/staging/device verified.
