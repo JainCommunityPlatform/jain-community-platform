@@ -1230,6 +1230,16 @@ describe('API endpoints (integration)', () => {
         service: giving.approveAdjustment,
         body: {},
       },
+      {
+        path: '/api/giving/expenses/expense-1/reject',
+        service: giving.rejectExpense,
+        body: { reason: 'Cross-tenant rejection attempt' },
+      },
+      {
+        path: '/api/giving/adjustments/adjustment-1/reject',
+        service: giving.rejectAdjustment,
+        body: { reason: 'Cross-tenant rejection attempt' },
+      },
     ];
 
     for (const [index, route] of routes.entries()) {
