@@ -253,4 +253,21 @@ describe('FirebaseStorageService', () => {
       buffer: Buffer.from('text'),
     })).rejects.toThrow('Only image uploads are supported');
   });
+
+  it('rejects an empty image buffer before contacting Firebase Storage', async () => {
+    const service = new FirebaseStorageService(
+      { getFirebaseApp: jest.fn() } as never,
+      { get: jest.fn().mockReturnValue('bucket') } as never,
+    );
+
+    await expect(service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'empty.jpg',
+      contentType: 'image/jpeg',
+      buffer: Buffer.alloc(0),
+    })).rejects.toThrow('The uploaded image is empty');
+
+    expect(getStorage).not.toHaveBeenCalled();
+  });
+
 });
