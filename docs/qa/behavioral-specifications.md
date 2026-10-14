@@ -1634,3 +1634,13 @@ And the API records a `WEBSITE_MEDIA_UPLOADED` audit event with tenant-scoped pa
 And the API returns the upload metadata to the caller
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — the authorized website media upload HTTP contract test. It exercises the NestJS route/guard/controller pipeline with mocked identity, Storage and audit dependencies. It does not prove real Firebase Storage persistence, URL reachability, publish/reload, or staging/device behavior.
+
+
+## Scenario: Reject an empty website media image before Storage access
+
+Given a tenant content manager uploads an image with an empty byte buffer
+When the website media Storage service validates the upload
+Then the service rejects the image with the empty-upload validation error
+And Firebase Storage is not contacted
+
+Executable regression: `apps/api/src/website/firebase-storage.service.spec.ts` — “rejects an empty image buffer before contacting Firebase Storage”. This is service-level validation; HTTP multipart behavior and real Firebase Storage/staging verification remain separate.
