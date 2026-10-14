@@ -326,3 +326,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Acceptance: 403 before Storage upload or audit side effects; exact-head CI required before merge.
 - Evidence boundary: mocked identity/Storage/audit in the NestJS HTTP pipeline. Real Storage and staging identity verification remain open.
 - Continue to the next QA task while post-merge CI is pending; record its result when available. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — empty media and MIME spoofing (14 October 2026)
+
+- PR #205 merged with exact-head CI #873 green; PR #204 post-merge CI #872 also passed all required jobs. PR #205 post-merge CI #876 remains in progress.
+- PR #206 found that client-controlled `image/*` MIME types could be trusted without validating bytes. A regression now requires recognized image signatures and derives persisted content type from the bytes. The first attempt failed an oversized-file regression due to validation order; fixed by checking empty and maximum size before image signature. Current exact-head CI #877 is running; merge only after green and mergeability.
+- Continue next to the finance role × protected-route matrix and persisted donation-to-receipt journey. Mocks are not environment verification. Android build/upload remains manual/on-demand.
