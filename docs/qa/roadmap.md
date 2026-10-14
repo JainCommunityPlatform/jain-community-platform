@@ -244,7 +244,7 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 ## Execution checkpoint — donor receipt refresh regression (14 October 2026)
 
 - **Previous item merged:** [PR #189 — Flutter donor pledge journey](https://github.com/JainCommunityPlatform/jain-community-platform/pull/189), merge commit `88adb21d0330d2cc03d45b1b0c1b07ca3b759147`; exact-head [CI #822](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38435636205) passed.
-- **Post-merge CI:** [CI #823](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38495571718) was still running when this checkpoint was created. Verify its final conclusion before recording the post-merge gate as passed.
+- **Post-merge CI:** [CI #823](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38495571718) passed on merge commit `88adb21d0330d2cc03d45b1b0c1b07ca3b759147`; repository validation, backend checks, Flutter analyze/tests, and merge gate all succeeded. Android AAB was skipped by design.
 - **Current P0:** donor receipt visibility after independent payment approval. Branch `qa/donor-receipt-after-approval-refresh` adds a widget regression asserting the receipt list remains empty before the backend reflects approval and shows the receipt after donor refresh.
 - **Evidence boundary:** mocked HTTP/widget coverage only; approval authorization, persisted Firestore receipt creation, end-to-end financial state transition and staging/device verification remain open.
 - **Release policy:** Android build/upload remains manual/on-demand.
