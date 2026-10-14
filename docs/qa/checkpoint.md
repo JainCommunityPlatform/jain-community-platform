@@ -1,3 +1,14 @@
+## Latest execution — PR #189 merged; donor receipt refresh regression in progress (14 October 2026)
+
+- **Merged:** [PR #189 — Flutter donor pledge journey](https://github.com/JainCommunityPlatform/jain-community-platform/pull/189), merge commit `88adb21d0330d2cc03d45b1b0c1b07ca3b759147`.
+- **Exact-head CI:** [CI #822](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38435636205) passed on `ebd3c0aade33e0aa11e687bfa347d06a58053213`.
+- **Post-merge CI:** [CI #823](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38495571718) completed successfully: repository validation, backend lint/unit/integration/Firestore-emulator/build, Flutter analyze/tests, and merge gate all passed on merge commit `88adb21d0330d2cc03d45b1b0c1b07ca3b759147`; Android AAB was skipped by design.
+- **Current branch:** `qa/donor-receipt-after-approval-refresh`. Adds a donor widget regression: receipts are absent before the API reflects an approved payment, then appear with receipt number, method/date and amount after refresh.
+- **Evidence boundary:** mocked HTTP/widget state transition only; no claim of approval API execution, persisted Firestore receipt issuance, or staging/device verification.
+- **Next:** exact-head CI on this branch, fix real failures without weakening assertions, merge only when required checks are green and mergeable, verify default-branch CI, update issue #162, and continue the remaining persisted payment-to-receipt P0. Android build/upload remains manual/on-demand.
+
+---
+
 ## CI failure and repair — PR #189 Flutter donor pledge journey (13 October 2026)
 
 - **Failed exact-head run:** [CI #820](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38432132112) on head `1039c6d4e9dae1701deb462833fe3f12fe902b20`. Backend lint/unit/integration/Firestore-emulator/build, Flutter analyze, and repository validation passed; Flutter tests failed and the merge gate failed. Android AAB was skipped by design.
@@ -87,3 +98,6 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **CI #786 failed:** [workflow run](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38332292446). Repository validation and Flutter analysis/tests passed. Backend lint, unit tests, and integration tests passed. Firestore emulator integration failed because `allocates unique receipt numbers when separate pledges are approved concurrently` exceeded Jest's default 5-second timeout; 41 other emulator tests passed.
 - **Repair:** the concurrency test now has a 15-second timeout, preserving all receipt uniqueness, count, and payment assertions. This is a targeted timeout adjustment for emulator transaction contention, not a skipped test or weakened assertion.
 - **Next:** wait for the new exact-head CI run. Do not merge until all required jobs pass. The post-merge run for PR #177 remains unknown because the connected commit-run/status methods do not expose the push-triggered run.
+
+
+- **PR #190 CI #832 failure and repair (14 October 2026):** [run #832](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38499891701) again failed only the receipt widget's exact date-label assertion; 73 Flutter tests passed and one failed. Backend checks and repository validation passed; merge gate correctly failed. Moving the fixture from midnight to noon UTC did not resolve the assertion, so the test now derives the expected medium-date string from `MaterialLocalizations` and the same fixed instant, while still asserting the actual rendered subtitle exactly equals `UPI • <localized issue date>`. Receipt visibility, receipt number and amount assertions remain. Await fresh exact-head CI.

@@ -239,3 +239,12 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - PR #189 exact-head CI #820 failed because one new widget test expected two pledge amount labels where the actual “My pledges” UI renders one. Backend checks, Flutter analysis, repository validation and the other 72 Flutter tests passed; the merge gate correctly failed. Android build was skipped by design.
 - Corrected the assertion to one visible amount label in commit `4b4f5e7f0e0b52fc02d71e493184a98561732064`. Functional request payload, idempotency header, success/error feedback, and pledge status assertions remain unchanged.
 - **Next:** verify all required jobs on the updated exact PR head; fix any further genuine failures, merge only when all checks pass and the PR is mergeable, verify post-merge CI separately, then continue the P0 payment → approval → receipt UI integration gap. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — donor receipt refresh regression (14 October 2026)
+
+- **Previous item merged:** [PR #189 — Flutter donor pledge journey](https://github.com/JainCommunityPlatform/jain-community-platform/pull/189), merge commit `88adb21d0330d2cc03d45b1b0c1b07ca3b759147`; exact-head [CI #822](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38435636205) passed.
+- **Post-merge CI:** [CI #823](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38495571718) passed on merge commit `88adb21d0330d2cc03d45b1b0c1b07ca3b759147`; repository validation, backend checks, Flutter analyze/tests, and merge gate all succeeded. Android AAB was skipped by design.
+- **Current P0:** donor receipt visibility after independent payment approval. Branch `qa/donor-receipt-after-approval-refresh` adds a widget regression asserting the receipt list remains empty before the backend reflects approval and shows the receipt after donor refresh.
+- **Evidence boundary:** mocked HTTP/widget coverage only; approval authorization, persisted Firestore receipt creation, end-to-end financial state transition and staging/device verification remain open.
+- **Release policy:** Android build/upload remains manual/on-demand.
