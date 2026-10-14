@@ -1524,3 +1524,15 @@ Then the donor receipt endpoint is read again
 And the newly returned receipt number, payment method, issue date, and amount are visible
 
 Executable regression: `apps/flutter/test/features/giving/donor_giving_page_test.dart` — “donor sees a receipt after an approved payment appears on refresh”. The widget test uses mocked HTTP state to verify the UI transition only. It does not exercise the approval endpoint or persisted receipt transaction; Firestore/emulator and staging/device evidence remain required.
+
+
+## Scenario: Finance approver cannot approve a payment across tenant boundaries
+
+Given the active tenant context resolves to tenant A
+And the authenticated finance approver's membership belongs to tenant B
+When the approver requests payment approval in tenant A
+Then the API returns HTTP 403 with a tenant-access-denied response
+And the payment approval service is not invoked
+And no payment-approved success audit event is recorded
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “POST /api/giving/payments/:paymentId/approve denies a finance approver whose membership belongs to another tenant before processing or audit”. The HTTP test mocks membership, GivingService and audit; the Firestore-emulator cross-tenant payment test separately checks persisted data isolation.
