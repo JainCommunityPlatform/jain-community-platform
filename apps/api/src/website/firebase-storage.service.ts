@@ -42,25 +42,24 @@ export class FirebaseStorageService {
       );
     }
 
-    // Mobile/browser file pickers sometimes label valid image bytes as
-    // application/octet-stream. Trust a recognized image signature in that
-    // case, but never allow an arbitrary non-image payload through.
-    const detectedContentType = detectImageContentType(input.buffer);
-    const suppliedContentType = input.contentType.trim().toLowerCase().split(';')[0];
-    const contentType = suppliedContentType.startsWith('image/')
-      ? suppliedContentType
-      : detectedContentType;
-
-    if (!contentType || !contentType.startsWith('image/')) {
-      throw new Error('Only image uploads are supported');
-    }
-
     if (input.buffer.length === 0) {
       throw new Error('The uploaded image is empty');
     }
 
     if (input.buffer.length > 10 * 1024 * 1024) {
       throw new Error('Image upload exceeds the 10 MB limit');
+    }
+
+    // Mobile/browser file pickers sometimes label valid image bytes as
+    // application/octet-stream. Trust a recognized image signature in that
+    // case, but never allow an arbitrary non-image payload through.
+    const detectedContentType = detectImageContentType(input.buffer);
+    // Never trust the client-provided MIME type by itself: non-image bytes can
+    // be mislabeled as image/jpeg and then stored with a public image URL.
+    const contentType = detectedContentType;
+
+    if (!contentType) {
+      throw new Error('Only image uploads are supported');
     }
 
     const safeName = input.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
