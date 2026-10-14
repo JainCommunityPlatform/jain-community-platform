@@ -1610,3 +1610,15 @@ When they list, create, retrieve, or update tenants, list or add tenant administ
 Then every request returns HTTP 403 before tenant operations or audit writes occur
 
 The route matrix in `apps/api/test/app.e2e-spec.ts` uses the real NestJS HTTP guard/controller pipeline with mocked identity and Firestore dependencies. It does not prove production identity claims or persisted tenant onboarding; platform-admin positive paths and environment verification remain open.
+
+
+## Feature: Website media upload authorization
+
+### Scenario: Deny cross-tenant and finance-only media uploads
+Given a content manager belongs to tenant B while tenant A is the active website
+Or a finance-only viewer has no content-management permission
+When they upload an image to `POST /api/website/media`
+Then the API returns HTTP 403 before Firebase Storage is called
+And no website-media success audit event is recorded
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “denies website media uploads to cross-tenant content managers and finance-only users before storage or audit”. Identity, Storage and audit dependencies are mocked; real Firebase Storage and staging verification remain open.
