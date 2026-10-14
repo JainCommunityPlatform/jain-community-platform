@@ -215,7 +215,7 @@ void main() {
     expect(receiptReads.last, hasLength(1));
     expect(find.text('JCP-2026-0001'), findsOneWidget);
     expect(find.text('₹500.00'), findsOneWidget);
-    expect(find.text('UPI • 14 Oct 2026'), findsOneWidget);
+    expect(find.text('UPI • Oct 14, 2026'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
