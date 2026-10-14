@@ -1086,6 +1086,26 @@ describe('API endpoints (integration)', () => {
     expect(audit.record).not.toHaveBeenCalled();
   });
 
+  it('POST /api/giving/payments/:paymentId/reject denies a finance approver whose membership belongs to another tenant before processing or audit', async () => {
+    giving.rejectPayment.mockClear();
+    audit.record.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/giving/payments/payment-1/reject')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-cross-tenant-approver')
+      .send({ reason: 'Reject from another tenant' })
+      .expect(403)
+      .expect({
+        statusCode: 403,
+        message: 'Tenant access denied',
+        error: 'Forbidden',
+      });
+
+    expect(giving.rejectPayment).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
   it('POST /api/giving/payments/:paymentId/approve denies a finance approver whose membership belongs to another tenant before processing or audit', async () => {
     giving.approvePayment.mockClear();
     audit.record.mockClear();
