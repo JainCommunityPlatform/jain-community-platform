@@ -63,11 +63,19 @@ Then the application explains why the file was rejected
 And the backend rejects invalid payloads even if the client validation is bypassed
 And existing published content remains unchanged
 
-### Scenario: Deny cross-tenant or unauthorized upload
-Given a user lacks content-management permission for the active tenant
-When they submit a media upload or website mutation
-Then the API rejects the request
-And no tenant media or configuration is changed
+### Scenario: Deny cross-tenant or unauthorized website mutations
+Given a content manager belongs to tenant B while tenant A is the active request tenant
+When they update or reset tenant A's website configuration
+Then the API returns HTTP 403 before the website service is invoked
+And tenant A's configuration remains unchanged
+
+### Scenario: Deny website mutations to finance-only roles
+Given a finance viewer has no content-management permission
+When they update tenant website configuration
+Then the API returns HTTP 403 before the website service is invoked
+And tenant website configuration remains unchanged
+
+The HTTP regressions in `apps/api/test/app.e2e-spec.ts` use mocked membership and `WebsiteService`; persisted configuration and staging identity checks remain separate.
 
 ## Feature: Authentication and tenant boundary
 
