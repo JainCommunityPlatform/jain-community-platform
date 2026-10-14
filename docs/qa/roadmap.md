@@ -302,3 +302,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Current branch adds explicit finance-approver negative cases for approving/rejecting expenses and adjustments across tenant boundaries. Every request must be denied before mutation service invocation and must not emit a success audit.
 - The new regression is mocked HTTP evidence; persisted membership and staging verification remain open.
 - Next: inspect exact-head CI, merge only when green and mergeable, verify post-merge CI, then continue the protected-route × role matrix and persisted donation lifecycle. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — website tenant-boundary regression (14 October 2026)
+
+- PR #197 merged as `8b73a6d81e71c447e925c193fd62044bdac4da74`; exact-head CI #858 and post-merge default-branch CI #859 passed. Android AAB was skipped by design.
+- Current branch adds route-level denials for cross-tenant website configuration update/reset and finance-viewer update attempts, asserting the website service is not called.
+- Mocked HTTP authorization evidence only; persisted configuration, actual media upload and staging verification remain open.
+- Next: verify exact-head CI and merge/post-merge gate this regression, then continue the protected-route matrix and persisted donation-to-receipt journey.

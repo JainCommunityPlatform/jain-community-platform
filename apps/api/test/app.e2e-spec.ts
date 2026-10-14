@@ -19,6 +19,7 @@ import { AuditService } from '../src/audit/audit.service';
 import { GivingService } from '../src/giving/giving.service';
 import { TenantMemberService } from '../src/tenant/tenant-member.service';
 import { FirestoreService } from '../src/database/firestore.service';
+import { WebsiteService } from '../src/website/website.service';
 
 describe('API endpoints (integration)', () => {
   let app: INestApplication;
@@ -55,6 +56,7 @@ describe('API endpoints (integration)', () => {
     revokeFinancialRole: jest.Mock;
   };
   let firestore: { getTenantById: jest.Mock; recordAudit: jest.Mock };
+  let website: { updateCurrent: jest.Mock; resetCurrent: jest.Mock };
 
   beforeAll(async () => {
     const authenticationGuard = {
@@ -134,10 +136,11 @@ describe('API endpoints (integration)', () => {
           userId === 'user-ca-auditor' ? 'CA_AUDITOR' :
           userId === 'user-cross-tenant' ? 'FINANCE_OPERATOR' :
           userId === 'user-cross-tenant-admin' ? 'TENANT_ADMIN' :
+          userId === 'user-cross-tenant-content' || userId === 'user-content-manager' ? 'CONTENT_MANAGER' :
           userId === 'user-platform-admin' ? 'FINANCE_APPROVER' : 'TENANT_ADMIN';
         return {
           userId,
-          tenantId: userId === 'user-cross-tenant' || userId === 'user-cross-tenant-admin' || userId === 'user-cross-tenant-approver' ? 'tenant-b' : tenantId,
+          tenantId: userId === 'user-cross-tenant' || userId === 'user-cross-tenant-admin' || userId === 'user-cross-tenant-approver' || userId === 'user-cross-tenant-content' ? 'tenant-b' : tenantId,
           role,
           ...(userId === 'user-legacy-finance-admin'
             ? { roles: ['TENANT_ADMIN', 'TENANT_FINANCE'] as const }
@@ -249,6 +252,10 @@ describe('API endpoints (integration)', () => {
       }]),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
+    website = {
+      updateCurrent: jest.fn().mockResolvedValue({ title: 'Updated tenant site' }),
+      resetCurrent: jest.fn().mockResolvedValue({ title: 'Default tenant site' }),
+    };
     tenantMembers = {
       list: jest.fn().mockResolvedValue([{ id: 'membership-1', userId: '00000000-0000-4000-8000-000000000099', role: 'CONTENT_MANAGER', createdAt: new Date('2026-01-01T00:00:00.000Z') }]),
       get: jest.fn().mockResolvedValue({ id: 'membership-1', userId: '00000000-0000-4000-8000-000000000099', role: 'CONTENT_MANAGER', createdAt: new Date('2026-01-01T00:00:00.000Z') }),
@@ -278,6 +285,8 @@ describe('API endpoints (integration)', () => {
       .useValue(firestore)
       .overrideProvider(AuditService)
       .useValue(audit)
+      .overrideProvider(WebsiteService)
+      .useValue(website)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -309,6 +318,41 @@ describe('API endpoints (integration)', () => {
         );
         expect(response.body.role).toBe('TENANT_ADMIN');
       });
+  });
+
+  it('denies cross-tenant content managers website configuration mutations before service calls', async () => {
+    website.updateCurrent.mockClear();
+    website.resetCurrent.mockClear();
+
+    await request(app.getHttpServer())
+      .put('/api/website/site')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-cross-tenant-content')
+      .send({ title: 'Cross-tenant overwrite attempt' })
+      .expect(403);
+
+    expect(website.updateCurrent).not.toHaveBeenCalled();
+
+    await request(app.getHttpServer())
+      .post('/api/website/site/reset')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-cross-tenant-content')
+      .expect(403);
+
+    expect(website.resetCurrent).not.toHaveBeenCalled();
+  });
+
+  it('denies finance viewers website configuration mutations before service calls', async () => {
+    website.updateCurrent.mockClear();
+
+    await request(app.getHttpServer())
+      .put('/api/website/site')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-viewer')
+      .send({ title: 'Finance role content mutation attempt' })
+      .expect(403);
+
+    expect(website.updateCurrent).not.toHaveBeenCalled();
   });
 
   it('GET /api/profile returns the canonical profile', async () => {

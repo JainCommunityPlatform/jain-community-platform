@@ -1,12 +1,14 @@
-## Latest execution — cross-tenant finance approver decision matrix in progress (14 October 2026)
+## Latest execution — PR #197 merged; website tenant-boundary regression in progress (14 October 2026)
 
-- **Previous item merged:** [PR #195 — finance-role revocation across protected reads](https://github.com/JainCommunityPlatform/jain-community-platform/pull/195), merge commit c2c7f8eccd69fc429709ebb6edb208d530807563; exact-head [CI #856](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38509600329) passed.
-- **Post-merge CI:** [CI #857](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38513616595) was still running at the time this checkpoint was authored; repository validation and Flutter tests passed, while backend Firestore-emulator tests were in progress. Confirm completion before claiming green.
-- **Current branch:** qa/cross-tenant-approver-expense-adjustment-decisions adds HTTP regressions for a finance approver from tenant B attempting to approve or reject an expense or adjustment in tenant A. Each path must return 403 before service invocation and emit no success audit.
-- **Evidence boundary:** mocked membership/HTTP/service/audit test; persisted Firestore and staging identity verification remain separate.
-- **Next:** run exact-head CI, fix genuine failures without weakening assertions, merge only when all required checks pass, verify post-merge CI, then continue remaining protected-route × role gaps and persisted donation lifecycle. Android build/upload remains manual/on-demand.
+- **Merged:** [PR #197 — cross-tenant finance approver decisions](https://github.com/JainCommunityPlatform/jain-community-platform/pull/197), merge commit `8b73a6d81e71c447e925c193fd62044bdac4da74`.
+- **Exact-head CI:** [CI #858](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38513835626) passed backend lint/unit/integration/Firestore-emulator/build, Flutter analyze/tests, repository validation and merge gate.
+- **Post-merge CI:** [CI #859](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38552926706) passed the same applicable checks on the default branch. Android AAB was skipped by design.
+- **Current branch:** `qa/website-config-tenant-boundary` adds HTTP integration regressions for a content manager from tenant B attempting to update or reset tenant A's website configuration, and for a finance viewer attempting an unauthorized website update. Each must return 403 before the website service is invoked.
+- **Evidence boundary:** mocked membership and WebsiteService HTTP tests; persisted website configuration, actual Storage upload and staging identity checks remain open.
+- **Next:** inspect exact-head CI, repair genuine failures without weakening assertions, merge only when all required checks pass and the PR is mergeable, verify post-merge CI, then continue P0 route inventory and persisted donation lifecycle. Android build/upload remains manual/on-demand.
 
 ---
+
 
 ## Latest execution — PR #194 merged; finance revocation matrix in progress (14 October 2026)
 
