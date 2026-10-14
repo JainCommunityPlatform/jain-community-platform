@@ -235,4 +235,91 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
       isBalanced: true,
     });
   });
+
+  it('rejects a payment without issuing a receipt or increasing the donor pledge balance', async () => {
+    const host = 'giving-emulator.jcp.test';
+
+    const campaignResponse = await request(app.getHttpServer())
+      .post('/api/giving/campaigns')
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .send({
+        name: 'Rejected payment no-receipt journey',
+        description: 'Rejected payment must not create donor receipt history',
+        targetAmountPaise: 50000,
+      })
+      .expect(201);
+
+    const campaignId = campaignResponse.body.id as string;
+    await request(app.getHttpServer())
+      .patch(`/api/giving/campaigns/${campaignId}/status`)
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .send({ status: 'ACTIVE' })
+      .expect(200);
+
+    const pledgeResponse = await request(app.getHttpServer())
+      .post('/api/giving/pledges')
+      .set('Host', host)
+      .set('x-test-user', donorSubject)
+      .set('idempotency-key', `rejected-pledge-${tenantId}`)
+      .send({ campaignId, pledgedAmountPaise: 25000 })
+      .expect(201);
+    const pledgeId = pledgeResponse.body.id as string;
+
+    const paymentResponse = await request(app.getHttpServer())
+      .post(`/api/giving/pledges/${pledgeId}/payments`)
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .set('idempotency-key', `rejected-payment-${tenantId}`)
+      .send({ amountPaise: 10000, method: 'UPI', reference: 'rejected-emulator-upi-ref' })
+      .expect(201);
+    const paymentId = paymentResponse.body.id as string;
+    expect(paymentResponse.body.status).toBe('PENDING_APPROVAL');
+
+    const rejectionResponse = await request(app.getHttpServer())
+      .post(`/api/giving/payments/${paymentId}/reject`)
+      .set('Host', host)
+      .set('x-test-user', approverSubject)
+      .send({ reason: 'Payment reference could not be verified' })
+      .expect(201);
+    expect(rejectionResponse.body).toMatchObject({
+      id: paymentId,
+      tenantId,
+      pledgeId,
+      status: 'REJECTED',
+    });
+
+    const donorReceiptsResponse = await request(app.getHttpServer())
+      .get('/api/giving/my-receipts')
+      .set('Host', host)
+      .set('x-test-user', donorSubject)
+      .expect(200);
+    expect(donorReceiptsResponse.body).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ paymentId }),
+    ]));
+
+    const donorPledgesResponse = await request(app.getHttpServer())
+      .get('/api/giving/my-pledges')
+      .set('Host', host)
+      .set('x-test-user', donorSubject)
+      .expect(200);
+    expect(donorPledgesResponse.body).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: pledgeId,
+        paidAmountPaise: 0,
+        status: 'PLEDGED',
+      }),
+    ]));
+
+    const persistedPayments = await firestore.listDonationPaymentsForTenant(tenantId);
+    expect(persistedPayments).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: paymentId, status: 'REJECTED' }),
+    ]));
+    const persistedReceipts = await firestore.listDonationReceiptsForTenant(tenantId);
+    expect(persistedReceipts).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ paymentId }),
+    ]));
+  });
+
 });
