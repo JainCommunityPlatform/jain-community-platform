@@ -134,6 +134,6 @@ Evidence boundaries:
 
 ## Execution note — cross-tenant payment rejection denial (14 October 2026)
 
-- PR #192 merged as `a071ebb6ab88f33178d09fe44aa98b65293cd9ea`; exact-head [CI #846](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38504152722) passed. Post-merge [CI #847](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38504392374) is queued/running; do not mark post-merge verification complete until it finishes.
+- PR #192 merged as `a071ebb6ab88f33178d09fe44aa98b65293cd9ea`; exact-head [CI #846](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38504152722) passed. Post-merge [CI #847](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38504392374) passed backend lint/unit/integration/Firestore-emulator/build, Flutter analyze/tests, repository validation and merge gate. Android AAB was skipped by design.
 - Current branch `qa/cross-tenant-payment-rejection-denial` adds a route-level regression: a finance approver whose membership belongs to tenant B cannot reject a payment while tenant A is active; assert HTTP 403 and no GivingService call or success audit.
 - Evidence boundary: mocked HTTP authorization; Firestore emulator separately covers persisted cross-tenant payment decision isolation. Staging/device verification remains open.
