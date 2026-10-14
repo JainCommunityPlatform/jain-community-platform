@@ -113,3 +113,6 @@ Evidence boundaries:
 
 - Push-triggered [CI #823](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38495571718) completed successfully on merge commit `88adb21d0330d2cc03d45b1b0c1b07ca3b759147`. Repository validation, backend lint/unit/integration/Firestore-emulator/build, Flutter analyze/tests and merge gate passed. Android AAB was skipped under the manual/on-demand release policy.
 - This confirms the post-merge CI gate only; it does not upgrade the donor pledge journey to persisted/staging/device verified.
+
+
+- **PR #190 failure/repair (14 October 2026):** [CI #826](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38495861329) failed the new receipt widget test because its exact date label assumed `14 Oct 2026`; Flutter's test locale emits `Oct 14, 2026`. Corrected only the locale-specific expected string; receipt visibility, API refresh, receipt number and amount assertions remain intact. Await fresh exact-head CI.
