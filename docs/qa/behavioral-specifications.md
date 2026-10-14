@@ -1511,3 +1511,16 @@ Then the app shows the API error to the donor
 And the app does not show the pledge-success message or pretend the pledge was created
 
 Executable regression: `apps/flutter/test/features/giving/donor_giving_page_test.dart` — “donor can create a pledge from a campaign and see it in My pledges” and “donor pledge failure is shown and does not report success”. These widget tests use a mocked HTTP client; they verify the Flutter-to-HTTP contract and UI state transitions, not live API, persisted Firestore, Firebase identity, or device/staging behavior.
+
+
+## Scenario: Donor sees a receipt only after payment approval is reflected by the API
+
+Given the donor has no issued receipts
+When the donor opens Receipts
+Then the UI shows “No receipts yet” and no receipt number
+When an authorized finance approver completes payment approval outside the donor screen
+And the donor refreshes giving data
+Then the donor receipt endpoint is read again
+And the newly returned receipt number, payment method, issue date, and amount are visible
+
+Executable regression: `apps/flutter/test/features/giving/donor_giving_page_test.dart` — “donor sees a receipt after an approved payment appears on refresh”. The widget test uses mocked HTTP state to verify the UI transition only. It does not exercise the approval endpoint or persisted receipt transaction; Firestore/emulator and staging/device evidence remain required.
