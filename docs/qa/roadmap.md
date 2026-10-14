@@ -294,3 +294,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - PR #193's payment-rejection denial merged; exact-head CI #851 passed. The connected commit-run lookup does not expose post-merge push CI for merge commit `daf2a43d8f1c0d3209fc3afae1a505d6063f7927`, so post-merge verification remains UNKNOWN.
 - Next focused P0 regression extends the cross-tenant financial write matrix to expense rejection and adjustment rejection. Both must return HTTP 403 without invoking the relevant service or emitting a success audit event.
 - After exact-head CI and merge, continue the persisted UI → API → Firestore donation lifecycle and full role × protected-route inventory. Mocked HTTP coverage is not environment verification. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — cross-tenant finance approver decisions (14 October 2026)
+
+- PR #195 merged; exact-head CI #856 passed. Post-merge CI #857 was still running when this checkpoint was prepared, with Flutter and repository validation green and backend Firestore-emulator tests in progress.
+- Current branch adds explicit finance-approver negative cases for approving/rejecting expenses and adjustments across tenant boundaries. Every request must be denied before mutation service invocation and must not emit a success audit.
+- The new regression is mocked HTTP evidence; persisted membership and staging verification remain open.
+- Next: inspect exact-head CI, merge only when green and mergeable, verify post-merge CI, then continue the protected-route × role matrix and persisted donation lifecycle. Android build/upload remains manual/on-demand.

@@ -1580,7 +1580,7 @@ Then the API returns HTTP 403 with a tenant-access-denied response
 And the adjustment rejection service is not invoked
 And no adjustment-rejected success audit event is recorded
 
-Executable regressions: apps/api/test/app.e2e-spec.ts — “denies cross-tenant financial writes before persistence and audit side effects” now includes the expense rejection and adjustment rejection endpoints. These HTTP tests use mocked membership, GivingService, and audit; Firestore emulator coverage separately exercises persisted cross-tenant financial isolation.
+Executable regressions: `apps/api/test/app.e2e-spec.ts` — “denies cross-tenant financial writes before persistence and audit side effects” covers the finance-operator write matrix; “denies cross-tenant finance approvers expense and adjustment decisions before persistence or audit” specifically covers approve/reject of expenses and adjustments for a finance approver whose membership belongs to another tenant. Both HTTP tests use mocked membership, GivingService, and audit; Firestore emulator coverage separately exercises persisted cross-tenant financial isolation.
 
 
 ## Scenario: Revoked finance role loses access across protected finance reads

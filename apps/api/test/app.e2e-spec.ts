@@ -1337,6 +1337,52 @@ describe('API endpoints (integration)', () => {
       });
   });
 
+  it('denies cross-tenant finance approvers expense and adjustment decisions before persistence or audit', async () => {
+    const routes = [
+      {
+        path: '/api/giving/expenses/expense-1/approve',
+        service: giving.approveExpense,
+        body: {},
+      },
+      {
+        path: '/api/giving/expenses/expense-1/reject',
+        service: giving.rejectExpense,
+        body: { reason: 'Cross-tenant approval decision attempt' },
+      },
+      {
+        path: '/api/giving/adjustments/adjustment-1/approve',
+        service: giving.approveAdjustment,
+        body: {},
+      },
+      {
+        path: '/api/giving/adjustments/adjustment-1/reject',
+        service: giving.rejectAdjustment,
+        body: { reason: 'Cross-tenant approval decision attempt' },
+      },
+    ];
+
+    for (const [index, route] of routes.entries()) {
+      route.service.mockClear();
+      audit.record.mockClear();
+
+      await request(app.getHttpServer())
+        .post(route.path)
+        .set('Host', 'badebabakharadi.com')
+        .set('x-test-user', 'user-cross-tenant-approver')
+        .set('idempotency-key', `cross-tenant-approver-decision-${index}`)
+        .send(route.body)
+        .expect(403)
+        .expect({
+          statusCode: 403,
+          message: 'Tenant access denied',
+          error: 'Forbidden',
+        });
+
+      expect(route.service).not.toHaveBeenCalled();
+      expect(audit.record).not.toHaveBeenCalled();
+    }
+  });
+
   it('denies cross-tenant finance users access to tenant-wide giving read routes before data access', async () => {
     const routes = [
       { path: '/api/giving/receipts', service: giving.listTenantReceipts },
