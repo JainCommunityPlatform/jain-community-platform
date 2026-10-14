@@ -1657,3 +1657,14 @@ When the image is accepted for storage
 Then the service derives the stored content type from the recognized image signature rather than the client declaration
 
 Executable regression: `apps/api/src/website/firebase-storage.service.spec.ts`. The service rejects disguised non-image bytes and persists detected MIME metadata for mismatched client MIME types. This does not prove real Storage or staging behavior.
+
+
+## Scenario: Reject an empty multipart website image before side effects
+
+Given an authorized tenant content manager submits a zero-byte file to `POST /api/website/media`
+When the website media upload route validates the multipart request
+Then the API returns HTTP 400 with the empty-image validation message
+And the Storage upload service is not invoked
+And no success audit event is recorded
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “rejects an empty multipart website image before Storage upload or audit”. The HTTP test uses mocked Storage/audit; actual Firebase Storage and staging behavior remain separate verification layers.
