@@ -2020,7 +2020,7 @@ describe('API endpoints (integration)', () => {
         { path: '/api/giving/adjustments', service: giving.listTenantAdjustments },
         { path: '/api/giving/pledges', service: giving.listTenantPledges },
         { path: '/api/giving/receipts', service: giving.listTenantReceipts },
-        { path: '/api/giving/reports/summary', service: giving.getSummaryReport },
+        { path: '/api/giving/reports/summary', service: giving.getFinanceReport },
         { path: '/api/giving/reports/reconciliation', service: giving.getReconciliationReport },
       ];
       for (const route of protectedReads) route.service.mockClear();
