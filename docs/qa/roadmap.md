@@ -333,3 +333,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - PR #205 merged with exact-head CI #873 green; PR #204 post-merge CI #872 also passed all required jobs. PR #205 post-merge CI #876 remains in progress.
 - PR #206 found that client-controlled `image/*` MIME types could be trusted without validating bytes. A regression now requires recognized image signatures and derives persisted content type from the bytes. The first attempt failed an oversized-file regression due to validation order; fixed by checking empty and maximum size before image signature. Current exact-head CI #877 is running; merge only after green and mergeability.
 - Continue next to the finance role × protected-route matrix and persisted donation-to-receipt journey. Mocks are not environment verification. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — empty multipart website image rejection (14 October 2026)
+
+- Current branch `qa/reject-empty-multipart-website-image` adds a route-level regression for a zero-byte multipart upload to `POST /api/website/media`.
+- Acceptance: HTTP 400 before Storage service invocation or success audit; service-level empty-buffer and MIME-signature checks remain unchanged.
+- Evidence boundary: mocked Storage/audit HTTP integration. Real Firebase Storage, website publish/reload, and staging/device verification remain open.
+- Verify exact-head CI, fix genuine failures without weakening assertions, merge only when all required checks pass and GitHub reports mergeable; then verify default-branch CI. Continue next P0 without waiting for post-merge CI. Android build/upload remains manual/on-demand.
