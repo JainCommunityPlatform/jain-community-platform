@@ -2,7 +2,7 @@
 
 - **Merged:** [PR #190 — donor receipt after approval refresh](https://github.com/JainCommunityPlatform/jain-community-platform/pull/190), merge commit `56e8d986b96ac48027881148475dc98f9d6ad590`.
 - **Exact-head CI:** [CI #835](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38502664984) passed on `2ea0fa41264a2979de8be50e16932df717e57205`; backend, Flutter analyze/tests, repository validation and merge gate passed. Android AAB was skipped by design.
-- **Post-merge CI:** [CI #836](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38503267430) is in progress on the merge commit. Repository validation and Flutter analyze/tests passed; backend lint/test/build was still running at last check. Do not mark post-merge verification complete until the run concludes.
+- **Post-merge CI:** [CI #836](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38503267430) completed successfully on the merge commit. Backend lint/tests/build, Flutter analyze/tests, repository validation and merge gate passed; Android AAB was skipped by design.
 - **Current P0:** [PR #191 — deny cross-tenant payment approval](https://github.com/JainCommunityPlatform/jain-community-platform/pull/191) denies a finance approver whose membership belongs to another tenant from approving a payment. New HTTP regression in `apps/api/test/app.e2e-spec.ts` asserts HTTP 403, no approval-service call and no success audit.
 - **Evidence boundary:** HTTP authorization test uses mocked membership, GivingService and audit; persisted cross-tenant denial is covered separately by Firestore-emulator tests. Production/staging verification remains open.
 - **Release policy:** Android build/upload remains manual/on-demand.
