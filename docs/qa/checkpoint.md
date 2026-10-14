@@ -167,3 +167,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 
 
 - **PR #190 CI #832 failure and repair (14 October 2026):** [run #832](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38499891701) again failed only the receipt widget's exact date-label assertion; 73 Flutter tests passed and one failed. Backend checks and repository validation passed; merge gate correctly failed. Moving the fixture from midnight to noon UTC did not resolve the assertion, so the test now derives the expected medium-date string from `MaterialLocalizations` and the same fixed instant, while still asserting the actual rendered subtitle exactly equals `UPI • <localized issue date>`. Receipt visibility, receipt number and amount assertions remain. Await fresh exact-head CI.
+
+
+## Current execution — platform tenant administration route matrix (14 October 2026)
+
+- Previous PR #198 post-merge CI #861 completed successfully on merge commit `10eb9f1fc69a0b75637ff6feb5be28eb39e436ef`: repository validation, backend lint/unit/integration/Firestore emulator/build, Flutter analyze/tests and merge gate passed; Android AAB skipped by policy.
+- Current branch: `qa/platform-tenant-admin-route-authorization`. Adds HTTP denials for non-platform users across tenant list/create/get/update, tenant-admin list/add and custom-domain verification routes. It also updates the coverage inventory, behavioral specification and roadmap.
+- Required next: inspect exact-head CI, fix any real failures without weakening assertions, merge only if all required checks pass and the PR is mergeable, then record post-merge CI when available. Do not wait for post-merge CI to start the next task.
+- Evidence boundary: mocked identity/Firestore in the NestJS HTTP pipeline; persisted tenant onboarding and production/staging identity remain open. Android build/upload stays manual/on-demand.
