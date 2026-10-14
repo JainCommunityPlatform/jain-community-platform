@@ -1560,3 +1560,24 @@ And the payment rejection service is not invoked
 And no payment-rejected success audit event is recorded
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — “POST /api/giving/payments/:paymentId/reject denies a finance approver whose membership belongs to another tenant before processing or audit”. The HTTP test mocks membership, GivingService and audit; Firestore-emulator tests separately cover persisted cross-tenant payment decision isolation.
+
+
+## Scenario: Finance approver cannot reject another tenant's expense
+
+Given the active tenant context resolves to tenant A
+And the authenticated finance approver's membership belongs to tenant B
+When the approver requests rejection of an expense in tenant A
+Then the API returns HTTP 403 with a tenant-access-denied response
+And the expense rejection service is not invoked
+And no expense-rejected success audit event is recorded
+
+## Scenario: Finance approver cannot reject another tenant's adjustment
+
+Given the active tenant context resolves to tenant A
+And the authenticated finance approver's membership belongs to tenant B
+When the approver requests rejection of an adjustment in tenant A
+Then the API returns HTTP 403 with a tenant-access-denied response
+And the adjustment rejection service is not invoked
+And no adjustment-rejected success audit event is recorded
+
+Executable regressions: apps/api/test/app.e2e-spec.ts — “denies cross-tenant financial writes before persistence and audit side effects” now includes the expense rejection and adjustment rejection endpoints. These HTTP tests use mocked membership, GivingService, and audit; Firestore emulator coverage separately exercises persisted cross-tenant financial isolation.
