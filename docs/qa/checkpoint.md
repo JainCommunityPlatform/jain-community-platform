@@ -1,3 +1,13 @@
+## Latest execution — cross-tenant finance approver decision matrix in progress (14 October 2026)
+
+- **Previous item merged:** [PR #195 — finance-role revocation across protected reads](https://github.com/JainCommunityPlatform/jain-community-platform/pull/195), merge commit c2c7f8eccd69fc429709ebb6edb208d530807563; exact-head [CI #856](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38509600329) passed.
+- **Post-merge CI:** [CI #857](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38513616595) was still running at the time this checkpoint was authored; repository validation and Flutter tests passed, while backend Firestore-emulator tests were in progress. Confirm completion before claiming green.
+- **Current branch:** qa/cross-tenant-approver-expense-adjustment-decisions adds HTTP regressions for a finance approver from tenant B attempting to approve or reject an expense or adjustment in tenant A. Each path must return 403 before service invocation and emit no success audit.
+- **Evidence boundary:** mocked membership/HTTP/service/audit test; persisted Firestore and staging identity verification remain separate.
+- **Next:** run exact-head CI, fix genuine failures without weakening assertions, merge only when all required checks pass, verify post-merge CI, then continue remaining protected-route × role gaps and persisted donation lifecycle. Android build/upload remains manual/on-demand.
+
+---
+
 ## Latest execution — PR #194 merged; finance revocation matrix in progress (14 October 2026)
 
 - **Merged:** [PR #194 — cross-tenant expense and adjustment rejection denial](https://github.com/JainCommunityPlatform/jain-community-platform/pull/194), merge commit `1cf74488f16e643aca4835c222102d3b0f63a867`.
