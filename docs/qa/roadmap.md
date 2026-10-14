@@ -341,3 +341,13 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Acceptance: HTTP 400 before Storage service invocation or success audit; service-level empty-buffer and MIME-signature checks remain unchanged.
 - Evidence boundary: mocked Storage/audit HTTP integration. Real Firebase Storage, website publish/reload, and staging/device verification remain open.
 - Verify exact-head CI, fix genuine failures without weakening assertions, merge only when all required checks pass and GitHub reports mergeable; then verify default-branch CI. Continue next P0 without waiting for post-merge CI. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — finance read-route matrix (14 October 2026)
+
+- **Merged:** [PR #211](https://github.com/JainCommunityPlatform/jain-community-platform/pull/211), merge commit `b1a2f110ef7bb290848c48ac05c29861195b62a7`.
+- **Exact-head CI:** [#885](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38609457479) passed backend lint/unit/integration/Firestore-emulator/build, Flutter analyze/tests, repository validation and merge gate. Android AAB skipped by design.
+- **Post-merge CI:** [#886](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38612960495) is running at this checkpoint; record its actual conclusion after completion.
+- **Coverage added:** finance viewers can read tenant-wide payments, expenses, adjustments, receipts, pledges, summary and reconciliation; each controller passes the resolved tenant ID to its service.
+- **Next P0:** connected donor journey from Flutter pledge submission through authorized payment approval and persisted Firestore receipt to refreshed donor receipt history. Existing Firestore emulator tests prove persistence/service behavior, and Flutter widget tests prove mocked HTTP/UI transitions; neither alone proves the connected runtime journey.
+- **Evidence boundary:** current PR is HTTP integration with mocked identity/membership/service dependencies. No staging/device claim. Android build/upload remains manual/on-demand.
