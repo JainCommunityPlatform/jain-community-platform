@@ -176,7 +176,7 @@ void main() {
                     'receiptNumber': 'JCP-2026-0001',
                     'amountPaise': 50000,
                     'method': 'UPI',
-                    'issuedAt': '2026-10-14T00:00:00.000Z',
+                    'issuedAt': '2026-10-14T12:00:00.000Z',
                   },
                 ]
               : <Map<String, dynamic>>[];
