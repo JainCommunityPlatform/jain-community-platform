@@ -152,3 +152,12 @@ Evidence boundaries:
 - Branch `qa/website-media-upload-authorization` adds HTTP-route regressions for a cross-tenant content manager and a finance-only viewer attempting `POST /api/website/media`.
 - Acceptance: each returns HTTP 403 before Firebase Storage upload and audit recording; tests assert both side-effect mocks remain untouched.
 - Evidence boundary: NestJS route/guard/interceptor pipeline with mocked identity, Storage adapter and audit. Actual Firebase Storage, persisted website publication, and staging identity remain unverified.
+
+
+## Execution note — authorized website media upload (14 October 2026)
+
+- PR #201 merged as `1cac24f38110d355142881776651651b056cd2b7`: [authorized upload HTTP contract regression](https://github.com/JainCommunityPlatform/jain-community-platform/pull/201).
+- Exact-head [CI #866](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38561377120) passed backend lint/unit/integration/Firestore emulator/build, Flutter analysis/tests, repository validation and merge gate. Android AAB was skipped under the manual/on-demand release policy.
+- The positive HTTP regression asserts that an authorized tenant content manager's upload passes the resolved tenant ID to Storage and records the expected tenant-scoped success audit metadata.
+- Evidence boundary: identity, Storage and audit dependencies are mocked. This is HTTP integration evidence only; real Firebase Storage, persisted metadata, publish/reload, and staging/device verification remain open.
+- Post-merge CI for merge commit `1cac24f38110d355142881776651651b056cd2b7` is UNKNOWN because the connected workflow-run lookup returned no push-triggered runs. Do not infer a pass from PR CI.
