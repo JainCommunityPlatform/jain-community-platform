@@ -1,3 +1,14 @@
+## Latest execution — PR #194 merged; finance revocation matrix in progress (14 October 2026)
+
+- **Merged:** [PR #194 — cross-tenant expense and adjustment rejection denial](https://github.com/JainCommunityPlatform/jain-community-platform/pull/194), merge commit `1cf74488f16e643aca4835c222102d3b0f63a867`.
+- **Exact-head CI:** [run #853](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38505114157) passed backend lint/unit/integration/Firestore-emulator/build, Flutter analyze/tests, repository validation and merge gate on head `caf88ebaa0d8455b77871c1fe5fe102bab2b91a0`. Android AAB was skipped by design.
+- **Post-merge CI:** UNKNOWN. Commit workflow lookup returned no run for the merge commit; do not infer post-merge success from PR-head CI.
+- **Current branch:** `qa/finance-role-revocation-protected-route-matrix` extends QA-006 so revoking finance access is checked against seven tenant-scoped read routes: expenses, payments, adjustments, pledges, receipts, summary, and reconciliation. Each request must return 403 and avoid calling its read service.
+- **Evidence boundary:** the HTTP test models the membership role transition in memory. Persisted Firestore revocation, token/session propagation, and staging verification remain open.
+- **Next:** run exact-head CI, repair genuine failures without weakening assertions, merge only if green/mergeable, verify post-merge CI, then continue the P0 route matrix and persisted donation lifecycle. Android build/upload remains manual/on-demand.
+
+---
+
 ## Latest execution — cross-tenant expense/adjustment rejection route coverage in progress (14 October 2026)
 
 - **Previous P0 item merged:** [PR #193 — deny cross-tenant payment rejection](https://github.com/JainCommunityPlatform/jain-community-platform/pull/193), merge commit `daf2a43d8f1c0d3209fc3afae1a505d6063f7927`; exact-head [CI #851](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38504621506) passed.
