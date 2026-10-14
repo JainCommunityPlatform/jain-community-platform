@@ -258,3 +258,13 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Branch:** `qa/cross-tenant-payment-approval-denial`.
 - **Evidence boundary:** the route regression uses mocked membership, GivingService and audit; Firestore emulator covers persisted cross-tenant payment denial separately. Live staging/device evidence remains open.
 - **Next:** inspect the newest exact-head CI for PR #191; repair genuine failures without weakening assertions; merge only when checks pass and mergeability is confirmed; then continue P0 inventory and persisted UI/API workflow evidence. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — cross-tenant approval merged; payment recording denial in progress (14 October 2026)
+
+- **Previous item merged:** [PR #191](https://github.com/JainCommunityPlatform/jain-community-platform/pull/191), merge commit `a3918a09fe7a8cd64d5259a2511ab76e05209acf`; exact-head [CI #842](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38503605901) passed all required checks. Android AAB was skipped by design.
+- **Post-merge CI:** [CI #843](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38503917818) passed backend lint/unit/integration/Firestore-emulator/build, Flutter analyze/tests, repository validation and merge gate. Android AAB was skipped by design.
+- **Current P0:** route-level denial of cross-tenant payment recording before mutation/audit.
+- **Branch:** `qa/cross-tenant-payment-recording-denial`.
+- **Evidence boundary:** mocked HTTP authorization; persisted Firestore cross-tenant payment reference isolation is covered by emulator tests. Live staging/device evidence remains open.
+- **Next:** inspect exact-head CI, fix genuine failures without weakening assertions, merge only when required checks pass and the PR is mergeable, verify post-merge CI, then continue the P0 route matrix and persisted UI/API workflow evidence. Android build/upload remains manual/on-demand.

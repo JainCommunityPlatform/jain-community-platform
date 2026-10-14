@@ -1065,6 +1065,27 @@ describe('API endpoints (integration)', () => {
       });
   });
 
+  it('POST /api/giving/pledges/:pledgeId/payments denies a finance operator whose membership belongs to another tenant before recording or audit', async () => {
+    giving.recordPayment.mockClear();
+    audit.record.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/giving/pledges/pledge-1/payments')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-cross-tenant')
+      .set('idempotency-key', 'cross-tenant-payment-attempt')
+      .send({ amountPaise: 5000, method: 'UPI', reference: 'cross-tenant-ref' })
+      .expect(403)
+      .expect({
+        statusCode: 403,
+        message: 'Tenant access denied',
+        error: 'Forbidden',
+      });
+
+    expect(giving.recordPayment).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
   it('POST /api/giving/payments/:paymentId/approve denies a finance approver whose membership belongs to another tenant before processing or audit', async () => {
     giving.approvePayment.mockClear();
     audit.record.mockClear();
