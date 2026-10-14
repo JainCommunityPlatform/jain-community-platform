@@ -115,4 +115,4 @@ Evidence boundaries:
 - This confirms the post-merge CI gate only; it does not upgrade the donor pledge journey to persisted/staging/device verified.
 
 
-- **PR #190 failure/repair (14 October 2026):** [CI #826](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38495861329) failed the new receipt widget test because its exact date label assumed `14 Oct 2026`; Flutter's test locale emits `Oct 14, 2026`. Corrected only the locale-specific expected string; receipt visibility, API refresh, receipt number and amount assertions remain intact. Await fresh exact-head CI.
+- **PR #190 CI #829 failure and repair (14 October 2026):** [run #829](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38499257670) failed the receipt widget's exact date-label assertion; 73 Flutter tests passed and one failed. Backend checks and repository validation passed. The fixture timestamp at midnight UTC could shift dates when converted with `toLocal()`, so it is now noon UTC; the exact localized label and receipt content assertions are preserved. Await fresh exact-head CI.
