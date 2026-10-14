@@ -1,3 +1,24 @@
+## CI failure and repair — PR #189 Flutter donor pledge journey (13 October 2026)
+
+- **Failed exact-head run:** [CI #820](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38432132112) on head `1039c6d4e9dae1701deb462833fe3f12fe902b20`. Backend lint/unit/integration/Firestore-emulator/build, Flutter analyze, and repository validation passed; Flutter tests failed and the merge gate failed. Android AAB was skipped by design.
+- **Root cause:** the new widget test expected `₹500.00` twice in “My pledges”; the actual UI renders one amount label. The remaining 72 Flutter tests passed, including the negative inactive-donor case. This is a test expectation mismatch, not a product defect indicated by the observed failure.
+- **Repair committed:** [`4b4f5e7f0e0b52fc02d71e493184a98561732064`](https://github.com/JainCommunityPlatform/jain-community-platform/commit/4b4f5e7f0e0b52fc02d71e493184a98561732064) changes the amount-label assertion to exactly one visible match. The pledge request body, idempotency-key, success feedback, visible pledge status, and negative-path assertions remain intact.
+- **Current status:** rerun CI on the new head and inspect every required job. PR #189 remains open; do not merge until all required checks are green and it is mergeable. Post-merge CI must be verified separately or recorded UNKNOWN. Android build/upload remains manual/on-demand.
+
+---
+
+## Latest verified state — PR #188 merged; Flutter donor pledge journey regression in progress (13 October 2026)
+
+- **Merged PR #188:** [donor pledge creation HTTP contract](https://github.com/JainCommunityPlatform/jain-community-platform/pull/188), merge commit `a2761bcdd4c5b23909a474928ad37802e38fc8fe`.
+- **Exact-head CI:** [run #818](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38422723605) passed on head `3e632fc142afbe26f2535515dfde21260132e250`. The API test verifies resolved tenant, authenticated donor, campaign, amount, idempotency key and success audit; inactive tenant-donor rejection returns 403 without success audit.
+- **Post-merge CI for PR #188:** **UNKNOWN**. The available commit workflow lookup does not expose push-triggered default-branch runs for merge commit `a2761bcdd4c5b23909a474928ad37802e38fc8fe`; PR-head CI is not a substitute.
+- **Merged PR #179:** [cross-tenant finance read denial](https://github.com/JainCommunityPlatform/jain-community-platform/pull/179), merge commit `e0a8a5eb5f5a3429e13b6ecaded64c118cb61f43`; exact-head [CI #790](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38342494756) passed. Post-merge CI is **UNKNOWN** from the available run/status endpoints.
+- **Current branch:** `qa/flutter-donor-pledge-journey`. New widget tests exercise the real `DonorGivingPage` and `ApiClient` with a mocked HTTP client: successful campaign → pledge submission → refreshed “My pledges” view, plus inactive-donor API failure feedback without a false success message. The BDD specification and QA inventory were updated on this branch.
+- **Evidence boundary:** Flutter widget tests with mocked HTTP verify request method/path/body/idempotency header and visible state transitions. They do not establish live API connectivity, Firebase identity, persisted Firestore behavior, or staging/device verification.
+- **Next:** inspect exact-head CI for this branch, fix real failures without weakening assertions, merge only if required checks pass and the PR is mergeable, verify push-triggered default-branch CI where available (otherwise record UNKNOWN), update issue #162, and continue the P0 donation lifecycle / payment-to-receipt UI integration gap. Android build/upload remains manual/on-demand.
+
+---
+
 ## Latest verified state — PR #182 merged; startup session restoration test completed (13 October 2026)
 
 - **Merged:** [PR #182 — startup session restoration regression](https://github.com/JainCommunityPlatform/jain-community-platform/pull/182), merge commit [3033dacd16f13bf9b5ad830d978c39c84270bd0e](https://github.com/JainCommunityPlatform/jain-community-platform/commit/3033dacd16f13bf9b5ad830d978c39c84270bd0e).

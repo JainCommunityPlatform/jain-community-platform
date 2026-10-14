@@ -1495,3 +1495,19 @@ Then the API returns HTTP 403 with the inactive-relationship error
 And no pledge-created audit event is recorded
 
 Executable regressions: `apps/api/test/app.e2e-spec.ts` — “POST /api/giving/pledges creates a pledge for the authenticated donor in the resolved tenant and audits success” and “POST /api/giving/pledges maps an inactive tenant-donor relationship to 403 without success audit”. These tests cover the HTTP/controller boundary with mocked membership, giving persistence and audit services; persisted Firestore and Flutter UI-to-API verification remain separate evidence layers.
+
+
+## Scenario: Donor creates a pledge from the Flutter campaign list
+
+Given the donor giving screen loads an active campaign from the API
+And the donor selects “Make a pledge” and enters a valid amount
+When the donor confirms the pledge
+Then the app sends the selected campaign ID and amount in paise to `POST /api/giving/pledges`
+And the request includes a campaign-scoped idempotency key
+And after success, the app reloads donor data and opens “My pledges” with the new pledge visible
+
+When the API rejects pledge creation because the tenant-donor relationship is inactive
+Then the app shows the API error to the donor
+And the app does not show the pledge-success message or pretend the pledge was created
+
+Executable regression: `apps/flutter/test/features/giving/donor_giving_page_test.dart` — “donor can create a pledge from a campaign and see it in My pledges” and “donor pledge failure is shown and does not report success”. These widget tests use a mocked HTTP client; they verify the Flutter-to-HTTP contract and UI state transitions, not live API, persisted Firestore, Firebase identity, or device/staging behavior.
