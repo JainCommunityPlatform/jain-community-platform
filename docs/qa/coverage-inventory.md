@@ -160,4 +160,14 @@ Evidence boundaries:
 - Exact-head [CI #866](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38561377120) passed backend lint/unit/integration/Firestore emulator/build, Flutter analysis/tests, repository validation and merge gate. Android AAB was skipped under the manual/on-demand release policy.
 - The positive HTTP regression asserts that an authorized tenant content manager's upload passes the resolved tenant ID to Storage and records the expected tenant-scoped success audit metadata.
 - Evidence boundary: identity, Storage and audit dependencies are mocked. This is HTTP integration evidence only; real Firebase Storage, persisted metadata, publish/reload, and staging/device verification remain open.
-- Post-merge CI for merge commit `1cac24f38110d355142881776651651b056cd2b7` is UNKNOWN because the connected workflow-run lookup returned no push-triggered runs. Do not infer a pass from PR CI.
+- Post-merge [CI #867](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38563988003) passed on merge commit `1cac24f38110d355142881776651651b056cd2b7`; backend, Flutter, repository validation and merge gate succeeded. Android AAB was skipped by design.
+
+
+## Execution note — reject empty website media uploads (14 October 2026)
+
+- PR #204 merged as `f9844577f71b4fd7611557176c83a784c5c29e03`: [empty image buffer regression](https://github.com/JainCommunityPlatform/jain-community-platform/pull/204).
+- Exact-head [CI #871](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38576707061) passed backend lint/unit/integration/Firestore emulator/build, Flutter analysis/tests, repository validation and merge gate. Android AAB was skipped under the manual/on-demand policy.
+- The Firebase Storage service regression rejects a zero-length buffer with the documented validation error and asserts Firebase Storage is not contacted.
+- Post-merge [CI #872](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38578721968) is still running at checkpoint time. Verify its final conclusion separately; do not infer a pass from PR CI.
+- Evidence boundary: service-level empty-buffer validation only. HTTP multipart empty-file behavior, real Firebase Storage persistence, website publish/reload, and staging/device behavior remain open. Continue P0 donation-to-receipt connected journey and role/route coverage.
+- Android build/upload remains manual/on-demand.
