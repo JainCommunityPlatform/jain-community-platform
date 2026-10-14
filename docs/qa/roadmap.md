@@ -248,3 +248,13 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Current P0:** donor receipt visibility after independent payment approval. Branch `qa/donor-receipt-after-approval-refresh` adds a widget regression asserting the receipt list remains empty before the backend reflects approval and shows the receipt after donor refresh.
 - **Evidence boundary:** mocked HTTP/widget coverage only; approval authorization, persisted Firestore receipt creation, end-to-end financial state transition and staging/device verification remain open.
 - **Release policy:** Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — receipt refresh merged; cross-tenant payment approval denial (14 October 2026)
+
+- **Previous item merged:** [PR #190 — donor receipt after approval refresh](https://github.com/JainCommunityPlatform/jain-community-platform/pull/190), merge commit `56e8d986b96ac48027881148475dc98f9d6ad590`; exact-head [CI #835](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38502664984) passed all required checks; Android AAB skipped by design.
+- **Post-merge CI:** [CI #836](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38503267430) is still in progress. Repository validation and Flutter analyze/tests passed; backend checks are pending. Verify the final conclusion before marking complete.
+- **Current P0:** add a route-level negative test proving that a finance approver with a membership in another tenant cannot approve a payment and cannot emit a success audit event.
+- **Branch:** `qa/cross-tenant-payment-approval-denial`.
+- **Evidence boundary:** the route regression uses mocked membership, GivingService and audit; Firestore emulator covers persisted cross-tenant payment denial separately. Live staging/device evidence remains open.
+- **Next:** wait for post-merge CI #836; inspect exact-head CI for this branch; repair genuine failures without weakening assertions; merge only when checks pass and mergeability is confirmed; then continue P0 inventory and persisted UI/API workflow evidence. Android build/upload remains manual/on-demand.
