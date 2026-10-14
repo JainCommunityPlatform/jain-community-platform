@@ -1897,6 +1897,31 @@ describe('API endpoints (integration)', () => {
     expect(giving.rejectAdjustment).not.toHaveBeenCalled();
   });
 
+  it('platform tenant administration routes deny non-platform users before tenant operations', async () => {
+    firestore.getTenantById.mockClear();
+    firestore.recordAudit.mockClear();
+
+    const routes = [
+      { method: 'get', path: '/api/platform/tenants' },
+      { method: 'post', path: '/api/platform/tenants', body: { name: 'Unauthorized Tenant', slug: 'unauthorized-tenant' } },
+      { method: 'get', path: '/api/platform/tenants/tenant-finance-a' },
+      { method: 'put', path: '/api/platform/tenants/tenant-finance-a', body: { name: 'Unauthorized Rename' } },
+      { method: 'get', path: '/api/platform/tenants/tenant-finance-a/admins' },
+      { method: 'post', path: '/api/platform/tenants/tenant-finance-a/admins', body: { email: 'admin@example.test' } },
+      { method: 'post', path: '/api/platform/tenants/tenant-finance-a/domain/verify' },
+    ] as const;
+
+    for (const route of routes) {
+      const call = request(app.getHttpServer())[route.method](route.path)
+        .set('x-test-user', 'user-a');
+      if ('body' in route) call.send(route.body);
+      await call.expect(403);
+    }
+
+    expect(firestore.getTenantById).not.toHaveBeenCalled();
+    expect(firestore.recordAudit).not.toHaveBeenCalled();
+  });
+
   it('GET /api/platform/tenants/:tenantId/finance-team denies non-platform users before listing members', async () => {
     membership.listTenantMemberships.mockClear();
 

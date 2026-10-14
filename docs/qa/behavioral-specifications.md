@@ -1600,3 +1600,13 @@ Then the user's next request to each tenant-scoped finance read route is denied
 And the API does not invoke expense, payment, adjustment, pledge, receipt, summary, or reconciliation read services
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — “revoking a finance role removes protected access on the next HTTP request”. The role transition is mocked in the HTTP test; persisted membership revocation and staging identity propagation remain separate verification items.
+
+
+## Feature: Platform tenant-administration authorization
+
+### Scenario: Deny tenant administration to non-platform users
+Given an authenticated user without the platform tenant-management permission
+When they list, create, retrieve, or update tenants, list or add tenant administrators, or verify a tenant custom domain
+Then every request returns HTTP 403 before tenant operations or audit writes occur
+
+The route matrix in `apps/api/test/app.e2e-spec.ts` uses the real NestJS HTTP guard/controller pipeline with mocked identity and Firestore dependencies. It does not prove production identity claims or persisted tenant onboarding; platform-admin positive paths and environment verification remain open.
