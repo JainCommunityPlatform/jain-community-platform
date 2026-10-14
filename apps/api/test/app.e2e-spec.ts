@@ -2257,6 +2257,24 @@ describe('API endpoints (integration)', () => {
   });
 
 
+  it('rejects an empty multipart website image before Storage upload or audit', async () => {
+    storage.uploadTenantImage.mockClear();
+    audit.record.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/website/media')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .attach('file', Buffer.alloc(0), { filename: 'empty.jpg', contentType: 'image/jpeg' })
+      .expect(400)
+      .expect((response) => {
+        expect(response.body.message).toBe('The uploaded image is empty');
+      });
+
+    expect(storage.uploadTenantImage).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
   it('uploads website media for an authorized tenant admin and records tenant-scoped audit metadata', async () => {
     storage.uploadTenantImage.mockClear();
     audit.record.mockClear();
