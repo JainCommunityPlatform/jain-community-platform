@@ -318,3 +318,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Acceptance: each route returns 403 before tenant lookup or audit side effects; exact-head CI must pass before merge.
 - Evidence boundary: HTTP integration with mocked identity and Firestore adapter. Persisted onboarding and production/staging identity remain open.
 - Workflow rule: continue the next QA task while post-merge CI is pending; record the result when available. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — website media upload authorization (14 October 2026)
+
+- Current branch `qa/website-media-upload-authorization` adds HTTP denial cases for cross-tenant content managers and finance-only viewers uploading to `POST /api/website/media`.
+- Acceptance: 403 before Storage upload or audit side effects; exact-head CI required before merge.
+- Evidence boundary: mocked identity/Storage/audit in the NestJS HTTP pipeline. Real Storage and staging identity verification remain open.
+- Continue to the next QA task while post-merge CI is pending; record its result when available. Android build/upload remains manual/on-demand.
