@@ -1548,3 +1548,15 @@ And the payment-recording service is not invoked
 And no payment-recorded success audit event is recorded
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — “POST /api/giving/pledges/:pledgeId/payments denies a finance operator whose membership belongs to another tenant before recording or audit”. The HTTP test mocks membership, GivingService and audit; Firestore-emulator tests separately cover persisted cross-tenant payment and pledge isolation.
+
+
+## Scenario: Finance approver cannot reject a payment across tenant boundaries
+
+Given the active tenant context resolves to tenant A
+And the authenticated finance approver's membership belongs to tenant B
+When the approver requests rejection of a payment in tenant A
+Then the API returns HTTP 403 with a tenant-access-denied response
+And the payment rejection service is not invoked
+And no payment-rejected success audit event is recorded
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “POST /api/giving/payments/:paymentId/reject denies a finance approver whose membership belongs to another tenant before processing or audit”. The HTTP test mocks membership, GivingService and audit; Firestore-emulator tests separately cover persisted cross-tenant payment decision isolation.
