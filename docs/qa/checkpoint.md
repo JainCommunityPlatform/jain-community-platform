@@ -183,3 +183,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - Current branch `qa/website-media-upload-authorization` adds route-level denials for cross-tenant content managers and finance-only viewers uploading website media; assert HTTP 403 and no Storage or audit side effects.
 - Evidence boundary: mocked identity, Storage and audit in the real NestJS route/guard pipeline. Actual Firebase Storage and staging identity remain open.
 - Required next: inspect exact-head CI, fix genuine failures without weakening assertions, merge only if all required jobs pass and PR is mergeable; record post-merge CI when available, but do not wait to begin the next task. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — website media MIME security merged; empty multipart validation in progress (14 October 2026)
+
+- PR #209 merged as `c59f75163cf99e46d1996b16ccb28d32c51f8010` to reject MIME-spoofed non-image payloads. Post-merge [CI #882](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38596476095) passed repository validation, backend lint/tests/build, Flutter analyze/tests and merge gate; Android AAB was skipped by design.
+- Current branch `qa/reject-empty-multipart-website-image` adds HTTP-level validation for zero-byte multipart website image uploads, asserting 400 before Storage and audit side effects.
+- Evidence boundary: mocked Storage/audit route integration. Real Firebase Storage and staging/device behavior remain open.
+- Next: verify exact-head CI and merge only with all required checks green and mergeability confirmed; verify post-merge CI and continue the P0 persisted donation-to-receipt connected journey. Android build/upload remains manual/on-demand.
