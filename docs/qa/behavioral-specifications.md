@@ -1668,3 +1668,18 @@ And the Storage upload service is not invoked
 And no success audit event is recorded
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — “rejects an empty multipart website image before Storage upload or audit”. The HTTP test uses mocked Storage/audit; actual Firebase Storage and staging behavior remain separate verification layers.
+
+
+## Scenario: Finance viewer reads tenant-wide finance data only within the active tenant
+
+Given an authenticated finance viewer has read permission in the active tenant
+When they request tenant-wide payments, expenses, adjustments, receipts, pledges, the finance summary or reconciliation report
+Then each endpoint returns a successful response
+And each service receives the tenant ID resolved from the request host
+
+Given a finance user belongs to a different tenant than the active website tenant
+When they request any of those tenant-wide finance reads
+Then the API returns HTTP 403 before invoking the corresponding data service
+
+Executable regressions: `apps/api/test/app.e2e-spec.ts` — “finance viewers can read each tenant-scoped finance list and report”, “denies cross-tenant finance users access to tenant-wide giving read routes before data access”, and existing individual role-denial cases. These tests exercise the NestJS HTTP guard/controller pipeline with mocked identity, membership and finance services. Persisted Firestore isolation is covered separately by emulator tests; staging/device identity remains unverified.
+
