@@ -1644,3 +1644,16 @@ Then the service rejects the image with the empty-upload validation error
 And Firebase Storage is not contacted
 
 Executable regression: `apps/api/src/website/firebase-storage.service.spec.ts` — “rejects an empty image buffer before contacting Firebase Storage”. This is service-level validation; HTTP multipart behavior and real Firebase Storage/staging verification remain separate.
+
+
+## Scenario: Reject MIME-spoofed website media
+
+Given a client submits bytes that are not a recognized image while declaring `image/jpeg`
+When the website media Storage service validates the upload
+Then the service rejects the payload before contacting Firebase Storage
+
+Given a valid image whose detected format differs from the supplied MIME type
+When the image is accepted for storage
+Then the service derives the stored content type from the recognized image signature rather than the client declaration
+
+Executable regression: `apps/api/src/website/firebase-storage.service.spec.ts`. The service rejects disguised non-image bytes and persists detected MIME metadata for mismatched client MIME types. This does not prove real Storage or staging behavior.
