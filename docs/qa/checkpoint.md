@@ -175,3 +175,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - Current branch: `qa/platform-tenant-admin-route-authorization`. Adds HTTP denials for non-platform users across tenant list/create/get/update, tenant-admin list/add and custom-domain verification routes. It also updates the coverage inventory, behavioral specification and roadmap.
 - Required next: inspect exact-head CI, fix any real failures without weakening assertions, merge only if all required checks pass and the PR is mergeable, then record post-merge CI when available. Do not wait for post-merge CI to start the next task.
 - Evidence boundary: mocked identity/Firestore in the NestJS HTTP pipeline; persisted tenant onboarding and production/staging identity remain open. Android build/upload stays manual/on-demand.
+
+
+## Current execution — website media upload authorization (14 October 2026)
+
+- PR #199 merged as `785e0164c64fd348cf42e69d35dff7194cbb2eab`; exact-head CI #862 passed repository validation, backend lint/unit/integration/Firestore emulator/build, Flutter analyze/tests, and merge gate. Android AAB skipped as intended.
+- Current branch `qa/website-media-upload-authorization` adds route-level denials for cross-tenant content managers and finance-only viewers uploading website media; assert HTTP 403 and no Storage or audit side effects.
+- Evidence boundary: mocked identity, Storage and audit in the real NestJS route/guard pipeline. Actual Firebase Storage and staging identity remain open.
+- Required next: inspect exact-head CI, fix genuine failures without weakening assertions, merge only if all required jobs pass and PR is mergeable; record post-merge CI when available, but do not wait to begin the next task. Android build/upload remains manual/on-demand.

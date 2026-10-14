@@ -20,6 +20,7 @@ import { GivingService } from '../src/giving/giving.service';
 import { TenantMemberService } from '../src/tenant/tenant-member.service';
 import { FirestoreService } from '../src/database/firestore.service';
 import { WebsiteService } from '../src/website/website.service';
+import { FirebaseStorageService } from '../src/website/firebase-storage.service';
 
 describe('API endpoints (integration)', () => {
   let app: INestApplication;
@@ -57,6 +58,7 @@ describe('API endpoints (integration)', () => {
   };
   let firestore: { getTenantById: jest.Mock; recordAudit: jest.Mock };
   let website: { updateCurrent: jest.Mock; resetCurrent: jest.Mock };
+  let storage: { uploadTenantImage: jest.Mock };
 
   beforeAll(async () => {
     const authenticationGuard = {
@@ -256,6 +258,12 @@ describe('API endpoints (integration)', () => {
       updateCurrent: jest.fn().mockResolvedValue({ title: 'Updated tenant site' }),
       resetCurrent: jest.fn().mockResolvedValue({ title: 'Default tenant site' }),
     };
+    storage = { uploadTenantImage: jest.fn().mockResolvedValue({
+      path: 'tenants/00000000-0000-0000-0000-000000000001/website/hero.jpg',
+      url: 'https://example.test/hero.jpg',
+      contentType: 'image/jpeg',
+      size: 4,
+    }) };
     tenantMembers = {
       list: jest.fn().mockResolvedValue([{ id: 'membership-1', userId: '00000000-0000-4000-8000-000000000099', role: 'CONTENT_MANAGER', createdAt: new Date('2026-01-01T00:00:00.000Z') }]),
       get: jest.fn().mockResolvedValue({ id: 'membership-1', userId: '00000000-0000-4000-8000-000000000099', role: 'CONTENT_MANAGER', createdAt: new Date('2026-01-01T00:00:00.000Z') }),
@@ -287,6 +295,8 @@ describe('API endpoints (integration)', () => {
       .useValue(audit)
       .overrideProvider(WebsiteService)
       .useValue(website)
+      .overrideProvider(FirebaseStorageService)
+      .useValue(storage)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -353,6 +363,30 @@ describe('API endpoints (integration)', () => {
       .expect(403);
 
     expect(website.updateCurrent).not.toHaveBeenCalled();
+  });
+
+  it('denies website media uploads to cross-tenant content managers and finance-only users before storage or audit', async () => {
+    storage.uploadTenantImage.mockClear();
+    audit.record.mockClear();
+
+    const image = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
+
+    await request(app.getHttpServer())
+      .post('/api/website/media')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-cross-tenant-content')
+      .attach('file', image, { filename: 'hero.jpg', contentType: 'image/jpeg' })
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .post('/api/website/media')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-viewer')
+      .attach('file', image, { filename: 'hero.jpg', contentType: 'image/jpeg' })
+      .expect(403);
+
+    expect(storage.uploadTenantImage).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
   });
 
   it('GET /api/profile returns the canonical profile', async () => {
