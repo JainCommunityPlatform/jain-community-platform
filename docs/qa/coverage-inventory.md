@@ -168,6 +168,15 @@ Evidence boundaries:
 - PR #204 merged as `f9844577f71b4fd7611557176c83a784c5c29e03`: [empty image buffer regression](https://github.com/JainCommunityPlatform/jain-community-platform/pull/204).
 - Exact-head [CI #871](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38576707061) passed backend lint/unit/integration/Firestore emulator/build, Flutter analysis/tests, repository validation and merge gate. Android AAB was skipped under the manual/on-demand policy.
 - The Firebase Storage service regression rejects a zero-length buffer with the documented validation error and asserts Firebase Storage is not contacted.
-- Post-merge [CI #872](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38578721968) is still running at checkpoint time. Verify its final conclusion separately; do not infer a pass from PR CI.
+- Post-merge [CI #872](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38578721968) passed on merge commit `f9844577f71b4fd7611557176c83a784c5c29e03`; backend, Flutter, repository validation and merge gate succeeded. Android AAB was skipped by design.
 - Evidence boundary: service-level empty-buffer validation only. HTTP multipart empty-file behavior, real Firebase Storage persistence, website publish/reload, and staging/device behavior remain open. Continue P0 donation-to-receipt connected journey and role/route coverage.
+- Android build/upload remains manual/on-demand.
+
+
+## Execution note — empty website media checkpoint and MIME validation (14 October 2026)
+
+- PR #205 merged as `cdc39347203006b0b1584f1de300c3fafb3b7d37`: [QA evidence checkpoint](https://github.com/JainCommunityPlatform/jain-community-platform/pull/205). Exact-head [CI #873](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38578969208) passed all required jobs. Post-merge [CI #876](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38582209232) is still running at checkpoint time.
+- PR #206 [reject spoofed image content types](https://github.com/JainCommunityPlatform/jain-community-platform/pull/206) is open. Its first updated-head attempt [CI #875](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38579170908) failed one existing oversized-file assertion because signature validation ran before the 10 MB size guard. Validation order was corrected on head `ceb218535434995ec0f115ecd6f4929875f4f6fa`; exact-head [CI #877](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38582204179) is in progress. Do not merge until all required checks pass.
+- Security intent: reject non-image bytes even when the client claims `image/jpeg`; derive stored MIME type from recognized image bytes, while retaining empty-buffer and 10 MB size guard contracts.
+- Evidence boundary: service-level image signature checks and mocked Storage tests. Actual Firebase Storage, published website retrieval and staging/device behavior remain unverified.
 - Android build/upload remains manual/on-demand.
