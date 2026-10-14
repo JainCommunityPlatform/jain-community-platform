@@ -2256,4 +2256,39 @@ describe('API endpoints (integration)', () => {
     expect(firestore.recordAudit).not.toHaveBeenCalled();
   });
 
+
+  it('uploads website media for an authorized tenant admin and records tenant-scoped audit metadata', async () => {
+    storage.uploadTenantImage.mockClear();
+    audit.record.mockClear();
+    const image = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
+
+    await request(app.getHttpServer())
+      .post('/api/website/media')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .attach('file', image, { filename: 'hero.jpg', contentType: 'image/jpeg' })
+      .expect(201)
+      .expect((response) => {
+        expect(response.body).toMatchObject({
+          path: 'tenants/00000000-0000-0000-0000-000000000001/website/hero.jpg',
+          url: 'https://example.test/hero.jpg',
+          contentType: 'image/jpeg',
+          size: 4,
+        });
+      });
+
+    expect(storage.uploadTenantImage).toHaveBeenCalledWith({
+      tenantId: '00000000-0000-0000-0000-000000000001',
+      filename: 'hero.jpg',
+      contentType: 'image/jpeg',
+      buffer: image,
+    });
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'WEBSITE_MEDIA_UPLOADED',
+      entity: 'WebsiteMedia',
+      entityId: 'tenants/00000000-0000-0000-0000-000000000001/website/hero.jpg',
+      metadata: { contentType: 'image/jpeg', size: 4 },
+    }));
+  });
+
 });
