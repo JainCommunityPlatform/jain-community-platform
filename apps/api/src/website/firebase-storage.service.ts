@@ -46,12 +46,11 @@ export class FirebaseStorageService {
     // application/octet-stream. Trust a recognized image signature in that
     // case, but never allow an arbitrary non-image payload through.
     const detectedContentType = detectImageContentType(input.buffer);
-    const suppliedContentType = input.contentType.trim().toLowerCase().split(';')[0];
-    const contentType = suppliedContentType.startsWith('image/')
-      ? suppliedContentType
-      : detectedContentType;
+    // Never trust the client-provided MIME type by itself: non-image bytes can
+    // be mislabeled as image/jpeg and then stored with a public image URL.
+    const contentType = detectedContentType;
 
-    if (!contentType || !contentType.startsWith('image/')) {
+    if (!contentType) {
       throw new Error('Only image uploads are supported');
     }
 
