@@ -1622,3 +1622,15 @@ Then the API returns HTTP 403 before Firebase Storage is called
 And no website-media success audit event is recorded
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — “denies website media uploads to cross-tenant content managers and finance-only users before storage or audit”. Identity, Storage and audit dependencies are mocked; real Firebase Storage and staging verification remain open.
+
+
+## Scenario: Authorized tenant content manager uploads website media
+
+Given the request resolves the active tenant for the website
+And the authenticated user has content-management permission in that same tenant
+When the user uploads a valid image to `POST /api/website/media`
+Then the API passes the resolved tenant ID and upload metadata to the Storage service
+And the API records a `WEBSITE_MEDIA_UPLOADED` audit event with tenant-scoped path, content type and size
+And the API returns the upload metadata to the caller
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — the authorized website media upload HTTP contract test. It exercises the NestJS route/guard/controller pipeline with mocked identity, Storage and audit dependencies. It does not prove real Firebase Storage persistence, URL reachability, publish/reload, or staging/device behavior.
