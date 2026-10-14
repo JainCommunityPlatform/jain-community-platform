@@ -253,7 +253,7 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 ## Execution checkpoint — receipt refresh merged; cross-tenant payment approval denial (14 October 2026)
 
 - **Previous item merged:** [PR #190 — donor receipt after approval refresh](https://github.com/JainCommunityPlatform/jain-community-platform/pull/190), merge commit `56e8d986b96ac48027881148475dc98f9d6ad590`; exact-head [CI #835](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38502664984) passed all required checks; Android AAB skipped by design.
-- **Post-merge CI:** [CI #836](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38503267430) is still in progress. Repository validation and Flutter analyze/tests passed; backend checks are pending. Verify the final conclusion before marking complete.
+- **Post-merge CI:** [CI #836](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38503267430) passed backend lint/tests/build, Flutter analyze/tests, repository validation and merge gate. Android AAB was skipped by design.
 - **Current P0:** add a route-level negative test proving that a finance approver with a membership in another tenant cannot approve a payment and cannot emit a success audit event.
 - **Branch:** `qa/cross-tenant-payment-approval-denial`.
 - **Evidence boundary:** the route regression uses mocked membership, GivingService and audit; Firestore emulator covers persisted cross-tenant payment denial separately. Live staging/device evidence remains open.
