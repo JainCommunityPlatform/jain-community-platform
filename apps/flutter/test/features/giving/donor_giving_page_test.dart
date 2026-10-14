@@ -215,7 +215,13 @@ void main() {
     expect(receiptReads.last, hasLength(1));
     expect(find.text('JCP-2026-0001'), findsOneWidget);
     expect(find.text('₹500.00'), findsOneWidget);
-    expect(find.text('UPI • Oct 14, 2026'), findsOneWidget);
+    final receiptSubtitle = tester.widget<Text>(find.textContaining('UPI'));
+    final expectedIssueDate = MaterialLocalizations.of(
+      tester.element(find.text('JCP-2026-0001')),
+    ).formatMediumDate(
+      DateTime.parse('2026-10-14T12:00:00.000Z').toLocal(),
+    );
+    expect(receiptSubtitle.data, 'UPI • $expectedIssueDate');
     expect(tester.takeException(), isNull);
   });
 
