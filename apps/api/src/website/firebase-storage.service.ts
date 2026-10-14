@@ -42,6 +42,10 @@ export class FirebaseStorageService {
       );
     }
 
+    if (input.buffer.length === 0) {
+      throw new Error('The uploaded image is empty');
+    }
+
     // Mobile/browser file pickers sometimes label valid image bytes as
     // application/octet-stream. Trust a recognized image signature in that
     // case, but never allow an arbitrary non-image payload through.
@@ -52,10 +56,6 @@ export class FirebaseStorageService {
 
     if (!contentType) {
       throw new Error('Only image uploads are supported');
-    }
-
-    if (input.buffer.length === 0) {
-      throw new Error('The uploaded image is empty');
     }
 
     if (input.buffer.length > 10 * 1024 * 1024) {
