@@ -270,4 +270,47 @@ describe('FirebaseStorageService', () => {
     expect(getStorage).not.toHaveBeenCalled();
   });
 
+
+  it('rejects non-image bytes even when the client claims image/jpeg', async () => {
+    const service = new FirebaseStorageService(
+      { getFirebaseApp: jest.fn() } as never,
+      { get: jest.fn().mockReturnValue('bucket') } as never,
+    );
+
+    await expect(service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'disguised.jpg',
+      contentType: 'image/jpeg',
+      buffer: Buffer.from('this is not an image'),
+    })).rejects.toThrow('Only image uploads are supported');
+
+    expect(getStorage).not.toHaveBeenCalled();
+  });
+
+  it('uses the detected image format rather than a mismatched client MIME type', async () => {
+    const file = {
+      save: jest.fn().mockResolvedValue(undefined),
+      setMetadata: jest.fn().mockResolvedValue(undefined),
+    };
+    const bucket = { file: jest.fn().mockReturnValue(file) };
+    (getStorage as jest.Mock).mockReturnValue({ bucket: jest.fn().mockReturnValue(bucket) });
+    const service = new FirebaseStorageService(
+      { getFirebaseApp: jest.fn().mockReturnValue({}) } as never,
+      { get: jest.fn().mockReturnValue('bucket') } as never,
+    );
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
+
+    const result = await service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'mismatch.jpg',
+      contentType: 'image/jpeg',
+      buffer: png,
+    });
+
+    expect(result.contentType).toBe('image/png');
+    expect(file.save).toHaveBeenCalledWith(png, expect.objectContaining({
+      metadata: expect.objectContaining({ contentType: 'image/png' }),
+    }));
+  });
+
 });
