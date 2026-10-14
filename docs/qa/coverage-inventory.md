@@ -180,3 +180,10 @@ Evidence boundaries:
 - Security intent: reject non-image bytes even when the client claims `image/jpeg`; derive stored MIME type from recognized image bytes, while retaining empty-buffer and 10 MB size guard contracts.
 - Evidence boundary: service-level image signature checks and mocked Storage tests. Actual Firebase Storage, published website retrieval and staging/device behavior remain unverified.
 - Android build/upload remains manual/on-demand.
+
+
+## Execution note — empty multipart website image route validation (14 October 2026)
+
+- New regression on branch `qa/reject-empty-multipart-website-image`: a tenant content manager submits a zero-byte multipart file to `POST /api/website/media`; the route must return HTTP 400 before Storage upload or success audit.
+- The controller now validates the uploaded buffer before invoking the Storage adapter. Existing service-level empty-buffer and MIME-signature checks remain in place.
+- Evidence boundary: NestJS HTTP integration with mocked Storage/audit. Real Firebase Storage and staging verification remain open. Android build/upload remains manual/on-demand.
