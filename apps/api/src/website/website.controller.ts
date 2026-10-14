@@ -69,6 +69,7 @@ export class WebsiteController {
     const tenant = this.tenantContext.get();
     if (!tenant) throw new BadRequestException('Tenant context is required');
     if (!file) throw new BadRequestException('An image file is required');
+    if (file.buffer.length === 0) throw new BadRequestException('The uploaded image is empty');
 
     const uploaded = await this.storage.uploadTenantImage({
       tenantId: tenant.id,
