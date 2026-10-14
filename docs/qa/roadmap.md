@@ -257,4 +257,4 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Current P0:** add a route-level negative test proving that a finance approver with a membership in another tenant cannot approve a payment and cannot emit a success audit event.
 - **Branch:** `qa/cross-tenant-payment-approval-denial`.
 - **Evidence boundary:** the route regression uses mocked membership, GivingService and audit; Firestore emulator covers persisted cross-tenant payment denial separately. Live staging/device evidence remains open.
-- **Next:** wait for post-merge CI #836; inspect exact-head CI for this branch; repair genuine failures without weakening assertions; merge only when checks pass and mergeability is confirmed; then continue P0 inventory and persisted UI/API workflow evidence. Android build/upload remains manual/on-demand.
+- **Next:** inspect the newest exact-head CI for PR #191; repair genuine failures without weakening assertions; merge only when checks pass and mergeability is confirmed; then continue P0 inventory and persisted UI/API workflow evidence. Android build/upload remains manual/on-demand.
