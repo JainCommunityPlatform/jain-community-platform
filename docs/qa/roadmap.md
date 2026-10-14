@@ -310,3 +310,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Current branch adds route-level denials for cross-tenant website configuration update/reset and finance-viewer update attempts, asserting the website service is not called.
 - Mocked HTTP authorization evidence only; persisted configuration, actual media upload and staging verification remain open.
 - Next: verify exact-head CI and merge/post-merge gate this regression, then continue the protected-route matrix and persisted donation-to-receipt journey.
+
+
+## Execution checkpoint — platform tenant administration authorization (14 October 2026)
+
+- Current PR branch `qa/platform-tenant-admin-route-authorization` adds a non-platform denial matrix for all `PlatformController` tenant administration routes: list/create/get/update tenant, list/add tenant admins, and custom-domain verification.
+- Acceptance: each route returns 403 before tenant lookup or audit side effects; exact-head CI must pass before merge.
+- Evidence boundary: HTTP integration with mocked identity and Firestore adapter. Persisted onboarding and production/staging identity remain open.
+- Workflow rule: continue the next QA task while post-merge CI is pending; record the result when available. Android build/upload remains manual/on-demand.
