@@ -157,4 +157,66 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('donor sees a receipt after an approved payment appears on refresh',
+      (tester) async {
+    var paymentApproved = false;
+    final receiptReads = <List<dynamic>>[];
+    final client = MockClient((request) async {
+      switch ('${request.method} ${request.url.path}') {
+        case 'GET /api/giving/campaigns':
+        case 'GET /api/giving/my-pledges':
+        case 'GET /api/notifications':
+          return http.Response('[]', 200);
+        case 'GET /api/giving/my-receipts':
+          final receipts = paymentApproved
+              ? [
+                  {
+                    'id': 'receipt-1',
+                    'receiptNumber': 'JCP-2026-0001',
+                    'amountPaise': 50000,
+                    'method': 'UPI',
+                    'issuedAt': '2026-10-14T00:00:00.000Z',
+                  },
+                ]
+              : <Map<String, dynamic>>[];
+          receiptReads.add(receipts);
+          return http.Response(jsonEncode(receipts), 200);
+        default:
+          return http.Response(
+            jsonEncode({
+              'message': 'Unexpected request: ${request.method} ${request.url.path}',
+            }),
+            404,
+          );
+      }
+    });
+    final api = ApiClient(
+      baseUrl: Uri.parse('https://example.test/'),
+      client: client,
+    );
+
+    await tester.pumpWidget(MaterialApp(home: DonorGivingPage(api: api)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Receipts'));
+    await tester.pumpAndSettle();
+    expect(find.text('No receipts yet'), findsOneWidget);
+    expect(find.text('JCP-2026-0001'), findsNothing);
+
+    // The finance approval happens outside the donor screen. The next API
+    // read represents the server's persisted, approved receipt becoming visible.
+    paymentApproved = true;
+    await tester.tap(find.byTooltip('Refresh giving data'));
+    await tester.pumpAndSettle();
+
+    expect(receiptReads, hasLength(2));
+    expect(receiptReads.first, isEmpty);
+    expect(receiptReads.last, hasLength(1));
+    expect(find.text('JCP-2026-0001'), findsOneWidget);
+    expect(find.text('₹500.00'), findsOneWidget);
+    expect(find.text('UPI • 14 Oct 2026'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
 }
