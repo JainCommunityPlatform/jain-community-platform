@@ -263,3 +263,12 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Post-merge CI:** [run #928](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38745904260) passed on the merge commit; Android AAB skipped by design.
 - **Behavior:** if Firebase restores a cached user but backend session loading returns HTTP 401 (including revoked credentials), the controller signs Firebase out and ends in the signed-out state. Non-401 failures retain recoverable error handling.
 - **Next P0:** controlled staging/device verification of Firebase sign-in, token expiry/revocation, app restart/session restoration, role/membership propagation, tenant routing and donor receipt history. Unit tests and emulator tests are not production/device evidence. Android build/upload remains manual/on-demand.
+
+
+## Verified execution — persisted finance-role revocation (15 October 2026)
+
+- **Merged:** [PR #229](https://github.com/JainCommunityPlatform/jain-community-platform/pull/229) as `b1f06fa5f066b800ad8a6c5cbf074b0623708404`.
+- **Exact-head CI:** [#934](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38747984088) passed all applicable checks, including backend, Flutter, repository validation and merge gate.
+- **Post-merge CI:** [#935](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38748409681) passed on merge commit `b1f06fa5f066b800ad8a6c5cbf074b0623708404`; backend, Flutter, repository validation and merge gate passed; Android AAB skipped by design.
+- **Change:** the Firestore-emulator HTTP suite now uses the real `MembershipService`; it persists removal of `FINANCE_OPERATOR` while retaining `CONTENT_MANAGER`, then proves the next protected expenses request returns 403 before finance data access.
+- **Next P0:** production/staging identity and device verification of role/session propagation remains blocked on controlled Firebase configuration and a test device/session. Do not use production donor/financial data. Android build/upload remains manual/on-demand.

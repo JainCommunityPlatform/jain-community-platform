@@ -419,3 +419,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Exact-head CI:** [#927](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38745451933) passed; **post-merge CI:** [#928](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38745904260) passed.
 - **Behavior verified by regression test:** when a Firebase-cached identity is restored at startup but the backend returns HTTP 401, clear local Firebase credentials and leave the app signed out. Transient/non-401 failures remain recoverable.
 - **Current P0 environment gate:** controlled staging/device verification for sign-in, expiry/revocation, restart/session restoration, role/membership propagation, tenant routing and donor receipt history. This requires a controlled Firebase configuration and test device/session; never use production donor/financial data. Android build/upload remains manual/on-demand.
+
+
+## Verified execution — persisted finance-role revocation (15 October 2026)
+
+- **Completed:** [PR #229](https://github.com/JainCommunityPlatform/jain-community-platform/pull/229) merged as `b1f06fa5f066b800ad8a6c5cbf074b0623708404`.
+- **Exact-head CI:** [#934](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38747984088) passed; **post-merge CI #935** passed on merge commit `b1f06fa5f066b800ad8a6c5cbf074b0623708404`; Android AAB skipped by design.
+- **Coverage advanced:** the Firestore-emulator HTTP suite now proves persisted finance-role revocation with the real `MembershipService`, retaining the general content-manager role and denying the next finance read before service access.
+- **Next P0:** controlled staging/device identity and session verification (Firebase sign-in, expiry/revocation, restart, role/membership propagation, tenant routing and donor receipt history). Emulator results do not establish production/device behavior. Android build/upload remains manual/on-demand.
