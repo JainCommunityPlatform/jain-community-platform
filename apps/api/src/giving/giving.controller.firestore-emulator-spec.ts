@@ -313,6 +313,139 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
     ]));
   });
 
+  it('persists an approved refund adjustment and reconciles the reduced donor balance', async () => {
+    const host = 'giving-emulator.jcp.test';
+
+    const campaignResponse = await request(app.getHttpServer())
+      .post('/api/giving/campaigns')
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .send({
+        name: 'Refund adjustment reconciliation',
+        description: 'Persist adjustment and net-balance regression',
+        targetAmountPaise: 50000,
+      })
+      .expect(201);
+    const campaignId = campaignResponse.body.id as string;
+
+    await request(app.getHttpServer())
+      .patch(`/api/giving/campaigns/${campaignId}/status`)
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .send({ status: 'ACTIVE' })
+      .expect(200);
+
+    const pledgeResponse = await request(app.getHttpServer())
+      .post('/api/giving/pledges')
+      .set('Host', host)
+      .set('x-test-user', donorSubject)
+      .set('idempotency-key', `refund-pledge-${tenantId}`)
+      .send({ campaignId, pledgedAmountPaise: 30000 })
+      .expect(201);
+    const pledgeId = pledgeResponse.body.id as string;
+
+    const paymentResponse = await request(app.getHttpServer())
+      .post(`/api/giving/pledges/${pledgeId}/payments`)
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .set('idempotency-key', `refund-payment-${tenantId}`)
+      .send({ amountPaise: 20000, method: 'UPI', reference: 'refund-upi-ref' })
+      .expect(201);
+    const paymentId = paymentResponse.body.id as string;
+
+    const approvalResponse = await request(app.getHttpServer())
+      .post(`/api/giving/payments/${paymentId}/approve`)
+      .set('Host', host)
+      .set('x-test-user', approverSubject)
+      .expect(201);
+    expect(approvalResponse.body.status).toBe('VERIFIED');
+
+    const adjustmentResponse = await request(app.getHttpServer())
+      .post(`/api/giving/payments/${paymentId}/adjustments`)
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .set('idempotency-key', `refund-adjustment-${tenantId}`)
+      .send({
+        kind: 'REFUND',
+        amountPaise: 5000,
+        reason: 'Verified duplicate UPI amount',
+        reference: 'refund-reference-test',
+      })
+      .expect(201);
+    const adjustmentId = adjustmentResponse.body.id as string;
+    expect(adjustmentResponse.body).toMatchObject({
+      paymentId,
+      pledgeId,
+      amountPaise: 5000,
+      kind: 'REFUND',
+      status: 'PENDING_APPROVAL',
+    });
+
+    const approvedAdjustment = await request(app.getHttpServer())
+      .post(`/api/giving/adjustments/${adjustmentId}/approve`)
+      .set('Host', host)
+      .set('x-test-user', approverSubject)
+      .expect(201);
+    expect(approvedAdjustment.body).toMatchObject({
+      id: adjustmentId,
+      paymentId,
+      pledgeId,
+      amountPaise: 5000,
+      status: 'APPROVED',
+      approvedBy: approverId,
+    });
+    expect(approvedAdjustment.body.adjustmentNumber).toMatch(/^JCP-ADJ-/);
+
+    const persistedAdjustments = await firestore.listDonationAdjustmentsForTenant(tenantId);
+    expect(persistedAdjustments).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: adjustmentId,
+        status: 'APPROVED',
+        amountPaise: 5000,
+        kind: 'REFUND',
+        createdBy: operatorId,
+        approvedBy: approverId,
+      }),
+    ]));
+
+    const donorPledgesResponse = await request(app.getHttpServer())
+      .get('/api/giving/my-pledges')
+      .set('Host', host)
+      .set('x-test-user', donorSubject)
+      .expect(200);
+    expect(donorPledgesResponse.body).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: pledgeId,
+        paidAmountPaise: 15000,
+        status: 'PARTIALLY_PAID',
+      }),
+    ]));
+
+    const persistedReceipts = await firestore.listDonationReceiptsForTenant(tenantId);
+    expect(persistedReceipts).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        paymentId,
+        amountPaise: 20000,
+      }),
+    ]));
+
+    const reconciliation = await firestore.getDonationReconciliationReport(tenantId);
+    expect(reconciliation.receipts).toMatchObject({
+      issuedReceiptCount: 2,
+      missingReceiptPaymentIds: [],
+      orphanReceiptPaymentIds: [],
+      amountMismatchPaymentIds: [],
+      isBalanced: true,
+    });
+    expect(reconciliation.adjustments).toMatchObject({
+      approvedAmountPaise: 5000,
+      approvedCount: 1,
+      pendingAmountPaise: 0,
+      pendingCount: 0,
+    });
+    expect(reconciliation.netAfterApprovedExpensesAndAdjustmentsPaise).toBe(45000);
+  });
+
   it('persists finance-role revocation and denies the next protected HTTP request', async () => {
     const host = 'giving-emulator.jcp.test';
     const membershipService = app.get(MembershipService);
