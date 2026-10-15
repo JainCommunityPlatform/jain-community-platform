@@ -17,8 +17,11 @@ export class JwtAuthenticationService implements AuthenticationTokenVerifier {
     }
 
     try {
+      // Explicitly check revocation as well as signature and expiry. This keeps
+      // disabled/revoked Firebase sessions from remaining valid until token expiry.
       const decoded = await getAuth(this.firestore.getFirebaseApp()).verifyIdToken(
         token,
+        true,
       );
 
       if (!decoded.uid) {
