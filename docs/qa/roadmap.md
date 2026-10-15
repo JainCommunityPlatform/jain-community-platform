@@ -378,3 +378,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Post-merge CI:** [run #899](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38679831894) was queued on merge commit `339f30cefe7d6cfbc9abe7bd65ee01b7831662f0`; verify completion before calling post-merge validation green.
 - **Current P0:** bridge the donor Flutter screen to a controlled NestJS API + Firestore emulator environment, proving a persisted receipt appears after approval and remains absent after rejection/refresh. Existing Flutter widget tests use mocked HTTP; existing backend HTTP tests use the Firestore emulator. Neither alone proves the connected runtime bridge.
 - **Following:** controlled staging/device smoke and identity/session verification. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — connected Flutter/API/persistence regression (15 October 2026)
+
+- **Current P0:** [PR #219](https://github.com/JainCommunityPlatform/jain-community-platform/pull/219) establishes a controlled connected receipt journey: test-only NestJS server, Firestore emulator, real API requests to create and approve a payment, then Flutter widget reads and renders the persisted receipt over HTTP.
+- **Safety boundary:** authentication override exists only in the standalone test server used by CI; it is not a production API route or production configuration.
+- **Gate:** exact-head CI must demonstrate the connected test runs and passes. Fix real failures rather than skipping the test. Verify post-merge CI before marking CI green.
+- **Still open after this:** staging/device identity and session verification; this emulator-backed widget journey is not production evidence. Android build/upload remains manual/on-demand.
