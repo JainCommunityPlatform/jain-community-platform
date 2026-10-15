@@ -446,6 +446,171 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
     expect(reconciliation.netAfterApprovedExpensesAndAdjustmentsPaise).toBe(40000);
   });
 
+  it('rejects over-adjustment, releases rejected reservations, and persists a reversal', async () => {
+    const host = 'giving-emulator.jcp.test';
+
+    const campaignResponse = await request(app.getHttpServer())
+      .post('/api/giving/campaigns')
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .send({
+        name: 'Adjustment negative-path reconciliation',
+        description: 'Pending, rejected and reversal state regression',
+        targetAmountPaise: 50000,
+      })
+      .expect(201);
+    const campaignId = campaignResponse.body.id as string;
+
+    await request(app.getHttpServer())
+      .patch(`/api/giving/campaigns/${campaignId}/status`)
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .send({ status: 'ACTIVE' })
+      .expect(200);
+
+    const pledgeResponse = await request(app.getHttpServer())
+      .post('/api/giving/pledges')
+      .set('Host', host)
+      .set('x-test-user', donorSubject)
+      .set('idempotency-key', `negative-adjustment-pledge-${tenantId}`)
+      .send({ campaignId, pledgedAmountPaise: 30000 })
+      .expect(201);
+    const pledgeId = pledgeResponse.body.id as string;
+
+    const paymentResponse = await request(app.getHttpServer())
+      .post(`/api/giving/pledges/${pledgeId}/payments`)
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .set('idempotency-key', `negative-adjustment-payment-${tenantId}`)
+      .send({ amountPaise: 20000, method: 'UPI', reference: 'negative-adjustment-upi-ref' })
+      .expect(201);
+    const paymentId = paymentResponse.body.id as string;
+
+    await request(app.getHttpServer())
+      .post(`/api/giving/payments/${paymentId}/approve`)
+      .set('Host', host)
+      .set('x-test-user', approverSubject)
+      .expect(201);
+
+    const baselineReport = await firestore.getDonationReconciliationReport(tenantId);
+    const pendingAdjustmentResponse = await request(app.getHttpServer())
+      .post(`/api/giving/payments/${paymentId}/adjustments`)
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .set('idempotency-key', `pending-adjustment-${tenantId}`)
+      .send({
+        kind: 'REFUND',
+        amountPaise: 15000,
+        reason: 'Request refund pending review',
+      })
+      .expect(201);
+    const pendingAdjustmentId = pendingAdjustmentResponse.body.id as string;
+
+    const overAdjustmentResponse = await request(app.getHttpServer())
+      .post(`/api/giving/payments/${paymentId}/adjustments`)
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .set('idempotency-key', `over-adjustment-${tenantId}`)
+      .send({
+        kind: 'REFUND',
+        amountPaise: 6000,
+        reason: 'Must exceed the remaining payment balance',
+      })
+      .expect(422);
+    expect(overAdjustmentResponse.body.message).toContain('Adjustment exceeds the payment amount');
+
+    const adjustmentsAfterOverRequest = await firestore.listDonationAdjustmentsForTenant(tenantId);
+    expect(adjustmentsAfterOverRequest.filter((item) => item.paymentId === paymentId)).toHaveLength(1);
+    expect(adjustmentsAfterOverRequest).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: pendingAdjustmentId, status: 'PENDING_APPROVAL', amountPaise: 15000 }),
+    ]));
+
+    const rejectionResponse = await request(app.getHttpServer())
+      .post(`/api/giving/adjustments/${pendingAdjustmentId}/reject`)
+      .set('Host', host)
+      .set('x-test-user', approverSubject)
+      .send({ reason: 'Supporting refund evidence was insufficient' })
+      .expect(201);
+    expect(rejectionResponse.body).toMatchObject({
+      id: pendingAdjustmentId,
+      status: 'REJECTED',
+      amountPaise: 15000,
+      rejectionReason: 'Supporting refund evidence was insufficient',
+      approvedBy: approverId,
+    });
+
+    const reportAfterRejection = await firestore.getDonationReconciliationReport(tenantId);
+    expect(reportAfterRejection.adjustments).toMatchObject({
+      pendingAmountPaise: 0,
+      pendingCount: 0,
+      rejectedAmountPaise: 15000,
+      rejectedCount: 1,
+    });
+    expect(reportAfterRejection.netAfterApprovedExpensesAndAdjustmentsPaise)
+      .toBe(baselineReport.netAfterApprovedExpensesAndAdjustmentsPaise);
+
+    const reversalResponse = await request(app.getHttpServer())
+      .post(`/api/giving/payments/${paymentId}/adjustments`)
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .set('idempotency-key', `approved-reversal-${tenantId}`)
+      .send({
+        kind: 'REVERSAL',
+        amountPaise: 5000,
+        reason: 'Reverse the verified duplicate portion',
+      })
+      .expect(201);
+    const reversalId = reversalResponse.body.id as string;
+    expect(reversalResponse.body.status).toBe('PENDING_APPROVAL');
+
+    const approvedReversal = await request(app.getHttpServer())
+      .post(`/api/giving/adjustments/${reversalId}/approve`)
+      .set('Host', host)
+      .set('x-test-user', approverSubject)
+      .expect(201);
+    expect(approvedReversal.body).toMatchObject({
+      id: reversalId,
+      kind: 'REVERSAL',
+      status: 'APPROVED',
+      amountPaise: 5000,
+      approvedBy: approverId,
+    });
+
+    const persistedPayment = (await firestore.listDonationPaymentsForTenant(tenantId))
+      .find((payment) => payment.id === paymentId);
+    expect(persistedPayment).toMatchObject({
+      id: paymentId,
+      status: 'VERIFIED',
+      adjustedAmountPaise: 5000,
+      pendingAdjustmentAmountPaise: 0,
+    });
+
+    const donorPledgesResponse = await request(app.getHttpServer())
+      .get('/api/giving/my-pledges')
+      .set('Host', host)
+      .set('x-test-user', donorSubject)
+      .expect(200);
+    expect(donorPledgesResponse.body).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: pledgeId,
+        paidAmountPaise: 15000,
+        status: 'PARTIALLY_PAID',
+      }),
+    ]));
+
+    const finalReport = await firestore.getDonationReconciliationReport(tenantId);
+    expect(finalReport.adjustments).toMatchObject({
+      approvedAmountPaise: 10000,
+      approvedCount: 2,
+      pendingAmountPaise: 0,
+      pendingCount: 0,
+      rejectedAmountPaise: 15000,
+      rejectedCount: 1,
+    });
+    expect(finalReport.netAfterApprovedExpensesAndAdjustmentsPaise)
+      .toBe(baselineReport.netAfterApprovedExpensesAndAdjustmentsPaise - 5000);
+  });
+
   it('persists finance-role revocation and denies the next protected HTTP request', async () => {
     const host = 'giving-emulator.jcp.test';
     const membershipService = app.get(MembershipService);
