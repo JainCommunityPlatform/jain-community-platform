@@ -83,6 +83,47 @@ jobs:
         if: steps.frontend.outputs.available == 'true'
         working-directory: apps/flutter
         run: flutter test
+      - name: Set up Node.js for connected giving test
+        if: steps.frontend.outputs.available == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Install API dependencies for connected giving test
+        if: steps.frontend.outputs.available == 'true'
+        working-directory: apps/api
+        run: npm install --no-audit --no-fund
+      - name: Verify Flutter → NestJS → Firestore emulator receipt journey
+        if: steps.frontend.outputs.available == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-jcp '
+            set -euo pipefail
+            cd apps/api
+            NODE_ENV=test FIREBASE_PROJECT_ID=demo-jcp FIRESTORE_DATABASE_ID="(default)" JCP_CONNECTED_TEST_PORT=4317 npx ts-node test/connected-giving-server.ts > /tmp/jcp-connected-api.log 2>&1 &
+            server_pid=$!
+            trap "kill \\$server_pid 2>/dev/null || true" EXIT
+            ready=false
+            for attempt in $(seq 1 60); do
+              if curl --silent --show-error --fail -H "Authorization: Bearer connected-donor" -H "Host: connected-giving.jcp.test" http://127.0.0.1:4317/api/giving/my-receipts > /tmp/jcp-connected-receipts.json; then
+                ready=true
+                break
+              fi
+              if ! kill -0 "$server_pid" 2>/dev/null; then
+                cat /tmp/jcp-connected-api.log
+                exit 1
+              fi
+              sleep 2
+            done
+            if [ "$ready" != true ]; then
+              cat /tmp/jcp-connected-api.log
+              echo "Connected giving API did not become ready"
+              exit 1
+            fi
+            grep -q "receiptNumber" /tmp/jcp-connected-receipts.json
+            cd ../flutter
+            flutter test --dart-define=JCP_CONNECTED_API_URL=http://127.0.0.1:4317/ test/integration/connected_giving_api_test.dart
+          '
 
   backend:
     name: Backend - NestJS lint, test and build

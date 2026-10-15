@@ -1709,3 +1709,15 @@ And the retry action is no longer shown
 And the widget raises no exception
 
 Executable regression: `apps/flutter/test/features/giving/presentation/giving_workflow_test.dart` — “shows a recoverable receipt-history error and retries successfully”. This is a Flutter widget test using mocked HTTP. Live API/Firestore connectivity and staging/device verification remain open.
+
+
+## Scenario: Donor Flutter UI renders a receipt persisted through the live API
+
+Given the controlled NestJS test server is connected to the Firestore emulator
+And a donor pledge has a payment independently approved through API routes
+When the Flutter donor giving screen loads campaigns and receipt history over real local HTTP
+And the donor opens the Receipts tab
+Then the persisted receipt number and amount are displayed
+And the widget raises no exception
+
+Executable regression: `apps/flutter/test/integration/connected_giving_api_test.dart`, driven by `apps/api/test/connected-giving-server.ts` and the CI Firestore-emulator job. The auth override is isolated to the test server. Production Firebase, staging and device behavior remain separate evidence layers.

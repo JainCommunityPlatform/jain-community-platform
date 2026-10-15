@@ -38,7 +38,7 @@ Evidence boundaries:
 | QA-013 | Localization, accessibility and responsive layout | P1 | Flutter app-string test and at least a narrow-phone readability test are present in the test tree | Audit all screens for language completeness, mixed-language/error strings, text scaling, keyboard/focus/semantics, contrast and small/large screen layout | Baseline evidence only |
 | QA-014 | HTTP DTO validation and failure mapping | P1 | API controller, DTO, config and app E2E test suites exist | Build route-by-route positive/negative matrix: missing/invalid fields, authentication, permission, tenant context, not found, conflict, rate/size limits where relevant | Inventory incomplete |
 | QA-015 | Build/release and deployment readiness | P1 | CI workflow runs frontend analysis/tests and backend checks; Android workflow is separate/on-demand by policy | Document exact commit, CI run, environment/device smoke results, version/build artifact and release destination; verify Android packaging only when intentionally requested | CI evidence exists; release evidence tracked separately |
-| QA-016 | Automated UI-to-API-to-persistence E2E | P0 | API E2E test file exists at `apps/api/test/app.e2e-spec.ts`; existing Flutter widget tests cover selected mocked flows | Confirm actual test commands and environment setup; add a dedicated Flutter `integration_test/` suite if absent after branch recheck; establish controlled emulator-backed critical journeys and artifact capture | Open; do not assume broad E2E exists |
+| QA-016 | Automated UI-to-API-to-persistence E2E | P0 | Backend HTTP→Firestore emulator positive/rejection journeys; Flutter mocked-HTTP donor workflows | PR #219 adds a controlled connected Flutter widget → real NestJS HTTP → Firestore emulator receipt journey; exact-head CI and post-merge evidence pending | In progress; do not claim connected coverage until CI proves the test ran; staging/device remains open |
 | QA-017 | CI reliability and failure classification | P1 | `.github/workflows/ci.yml` and cleanup workflow exist; recent PR/master CI evidence available in Actions | For each failure capture failing job/test, exact head SHA, category (product/test/config/flaky), fix and rerun; ensure required checks cannot be bypassed and Android release remains manual | Process improvement needed |
 
 ## First execution queue
@@ -221,3 +221,10 @@ Evidence boundaries:
 - Post-merge default-branch run [CI #899](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38679831894) started on the merge commit. Its three applicable jobs were queued at the last check; post-merge verification is pending.
 - Donor receipt UI evidence now includes rejection/refresh and recoverable 503/retry widget tests, both using mocked HTTP. Backend HTTP→Firestore emulator positive and negative receipt paths are separate evidence layers.
 - Remaining P0: connected Flutter→NestJS API→Firestore-emulator receipt-history journey and staging/device verification. Do not mark environment verification complete based on widget or emulator tests alone. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — connected donor receipt journey in progress (15 October 2026)
+
+- PR [#219](https://github.com/JainCommunityPlatform/jain-community-platform/pull/219) adds a standalone test-only NestJS server with test-scoped authentication override, seeds an approved payment through API routes against the Firestore emulator, and exercises the donor Flutter widget against real local HTTP.
+- Evidence is pending exact-head CI. If CI fails, fix the harness or assertions; do not skip the connected test to make the pipeline green.
+- This test does not establish production Firebase, staging identity, or physical-device behavior. Those remain separate environment gates. Android build/upload remains manual/on-demand.
