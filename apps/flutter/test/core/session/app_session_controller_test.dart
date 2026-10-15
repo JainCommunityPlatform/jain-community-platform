@@ -121,6 +121,35 @@ void main() {
     controller.dispose();
   });
 
+  test('clears restored Firebase credentials when the backend rejects the session', () async {
+    final auth = FakeFirebaseAuthProvider();
+    final service = FakeAuthSessionService(
+      () async => throw const ApiException(
+        statusCode: 401,
+        message: 'Unauthorized',
+      ),
+    );
+    final controller = AppSessionController(
+      auth: auth,
+      sessionService: service,
+    );
+
+    await controller.initialize();
+    auth.emit(const FirebaseAuthUser(uid: 'restored-firebase-uid'));
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(auth.signOutCount, 1);
+    expect(auth.isSignedIn, isFalse);
+    expect(controller.status, AppSessionStatus.signedOut);
+    expect(controller.session, AppSession.signedOut);
+    expect(controller.error, isNull);
+
+    controller.dispose();
+    await auth.dispose();
+  });
+
   test('starts signed out when Firebase emits no user', () async {
     final auth = FakeFirebaseAuthProvider();
     final service = FakeAuthSessionService(
