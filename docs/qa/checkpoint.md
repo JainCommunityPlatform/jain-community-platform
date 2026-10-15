@@ -254,3 +254,12 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Change:** Firebase ID-token verification now calls `verifyIdToken(token, true)` so revoked tokens are rejected; unit tests assert the revocation-check flag and 401 behavior for a revoked token.
 - **Post-merge CI:** [run #918](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38743276237) passed on merge commit `708887ebe75f70675dc89adbd370c32ddd9da679`; Flutter analyze/tests, backend lint/tests/build, repository validation passed. Android AAB was skipped by design.
 - **Remaining P0:** controlled staging/device verification of sign-in, restart/session restore, expired/revoked token handling, role/membership propagation, tenant routing and donor receipt history. Unit tests do not prove live Firebase behavior. Android AAB build/upload remains manual/on-demand.
+
+
+## Verified execution — restored Firebase session rejection handled (15 October 2026)
+
+- **Merged:** [PR #225](https://github.com/JainCommunityPlatform/jain-community-platform/pull/225) as `1c93a488308840ee160ecec8c89d308ef22a660b`.
+- **Exact-head CI:** [run #927](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38745451933) passed backend lint/tests/build, Flutter analyze/tests, repository validation and merge gate.
+- **Post-merge CI:** [run #928](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38745904260) passed on the merge commit; Android AAB skipped by design.
+- **Behavior:** if Firebase restores a cached user but backend session loading returns HTTP 401 (including revoked credentials), the controller signs Firebase out and ends in the signed-out state. Non-401 failures retain recoverable error handling.
+- **Next P0:** controlled staging/device verification of Firebase sign-in, token expiry/revocation, app restart/session restoration, role/membership propagation, tenant routing and donor receipt history. Unit tests and emulator tests are not production/device evidence. Android build/upload remains manual/on-demand.
