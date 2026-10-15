@@ -28,6 +28,6 @@ void main() {
       expect(find.text('₹250.00'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
-    skip: apiUrl.isEmpty ? 'Set JCP_CONNECTED_API_URL to run the connected emulator journey' : false,
+    skip: apiUrl.isEmpty,
   );
 }
