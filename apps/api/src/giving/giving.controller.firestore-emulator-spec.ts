@@ -611,6 +611,103 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
       .toBe(baselineReport.netAfterApprovedExpensesAndAdjustmentsPaise - 5000);
   });
 
+  it('persists expense maker-checker decisions and reconciles approved versus rejected expenses', async () => {
+    const host = 'giving-emulator.jcp.test';
+    const baseline = await firestore.getDonationReconciliationReport(tenantId);
+
+    const approvedExpenseResponse = await request(app.getHttpServer())
+      .post('/api/giving/expenses')
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .set('idempotency-key', `approved-expense-${tenantId}`)
+      .send({
+        category: 'MAINTENANCE',
+        description: 'Emulator-approved temple maintenance',
+        amountPaise: 7000,
+        reference: 'maintenance-invoice-test',
+      })
+      .expect(201);
+    const approvedExpenseId = approvedExpenseResponse.body.id as string;
+    expect(approvedExpenseResponse.body).toMatchObject({
+      tenantId,
+      amountPaise: 7000,
+      status: 'PENDING_APPROVAL',
+      createdBy: operatorId,
+    });
+
+    await request(app.getHttpServer())
+      .post(`/api/giving/expenses/${approvedExpenseId}/approve`)
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .expect(403);
+
+    expect(await firestore.listDonationExpensesForTenant(tenantId)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: approvedExpenseId, status: 'PENDING_APPROVAL' }),
+      ]),
+    );
+
+    const approvedExpense = await request(app.getHttpServer())
+      .post(`/api/giving/expenses/${approvedExpenseId}/approve`)
+      .set('Host', host)
+      .set('x-test-user', approverSubject)
+      .expect(201);
+    expect(approvedExpense.body).toMatchObject({
+      id: approvedExpenseId,
+      status: 'APPROVED',
+      amountPaise: 7000,
+      approvedBy: approverId,
+    });
+
+    const rejectedExpenseResponse = await request(app.getHttpServer())
+      .post('/api/giving/expenses')
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .set('idempotency-key', `rejected-expense-${tenantId}`)
+      .send({
+        category: 'SUPPLIES',
+        description: 'Emulator-rejected supplies expense',
+        amountPaise: 3000,
+        reference: 'supplies-invoice-test',
+      })
+      .expect(201);
+    const rejectedExpenseId = rejectedExpenseResponse.body.id as string;
+
+    const rejectedExpense = await request(app.getHttpServer())
+      .post(`/api/giving/expenses/${rejectedExpenseId}/reject`)
+      .set('Host', host)
+      .set('x-test-user', approverSubject)
+      .send({ reason: 'Supporting invoice was not sufficient' })
+      .expect(201);
+    expect(rejectedExpense.body).toMatchObject({
+      id: rejectedExpenseId,
+      status: 'REJECTED',
+      amountPaise: 3000,
+      approvedBy: approverId,
+      rejectionReason: 'Supporting invoice was not sufficient',
+    });
+
+    const persistedExpenses = await firestore.listDonationExpensesForTenant(tenantId);
+    expect(persistedExpenses).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: approvedExpenseId, status: 'APPROVED', amountPaise: 7000 }),
+      expect.objectContaining({ id: rejectedExpenseId, status: 'REJECTED', amountPaise: 3000 }),
+    ]));
+
+    const reconciliation = await firestore.getDonationReconciliationReport(tenantId);
+    expect(reconciliation.expenses).toMatchObject({
+      approvedAmountPaise: 7000,
+      approvedCount: 1,
+      pendingAmountPaise: 0,
+      pendingCount: 0,
+      rejectedAmountPaise: 3000,
+      rejectedCount: 1,
+    });
+    expect(reconciliation.netAfterApprovedExpensesPaise)
+      .toBe(baseline.netAfterApprovedExpensesPaise - 7000);
+    expect(reconciliation.netAfterApprovedExpensesAndAdjustmentsPaise)
+      .toBe(baseline.netAfterApprovedExpensesAndAdjustmentsPaise - 7000);
+  });
+
   it('persists finance-role revocation and denies the next protected HTTP request', async () => {
     const host = 'giving-emulator.jcp.test';
     const membershipService = app.get(MembershipService);
