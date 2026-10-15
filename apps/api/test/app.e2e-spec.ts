@@ -1365,6 +1365,56 @@ describe('API endpoints (integration)', () => {
     }
   });
 
+  it('denies tenant administrators finance writes and decisions before service or audit side effects', async () => {
+    const routes = [
+      {
+        path: '/api/giving/pledges/pledge-1/payments',
+        service: giving.recordPayment,
+        body: { amountPaise: 5000, method: 'UPI' },
+      },
+      {
+        path: '/api/giving/expenses',
+        service: giving.createExpense,
+        body: { category: 'MAINTENANCE', description: 'Unauthorized expense', amountPaise: 5000 },
+      },
+      {
+        path: '/api/giving/payments/payment-1/adjustments',
+        service: giving.createAdjustment,
+        body: { kind: 'REFUND', amountPaise: 1000, reason: 'Unauthorized adjustment' },
+      },
+      {
+        path: '/api/giving/expenses/expense-1/reject',
+        service: giving.rejectExpense,
+        body: { reason: 'Unauthorized expense rejection' },
+      },
+      {
+        path: '/api/giving/adjustments/adjustment-1/reject',
+        service: giving.rejectAdjustment,
+        body: { reason: 'Unauthorized adjustment rejection' },
+      },
+    ];
+
+    audit.record.mockClear();
+    for (const [index, route] of routes.entries()) {
+      route.service.mockClear();
+      await request(app.getHttpServer())
+        .post(route.path)
+        .set('Host', 'badebabakharadi.com')
+        .set('x-test-user', 'user-a')
+        .set('idempotency-key', `tenant-admin-finance-write-${index}`)
+        .send(route.body)
+        .expect(403)
+        .expect({
+          statusCode: 403,
+          message: 'Permission denied',
+          error: 'Forbidden',
+        });
+
+      expect(route.service).not.toHaveBeenCalled();
+    }
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['GET', '/api/giving/receipts'],
     ['GET', '/api/giving/reports/summary'],
