@@ -1,6 +1,6 @@
 # JCP QA Coverage Inventory
 
-Last reviewed: 14 October 2026  
+Last reviewed: 15 October 2026  
 Status: **baseline inventory in progress** — this is not a claim that every screen, route, or workflow has been exhaustively audited.  
 Control issue: [#162 — QA Control Tower](https://github.com/JainCommunityPlatform/jain-community-platform/issues/162)  
 Roadmap: [QA Roadmap](roadmap.md)  
@@ -212,3 +212,12 @@ Evidence boundaries:
 - Added branch `qa/donor-receipt-load-retry`: Flutter workflow test makes `GET /api/giving/my-receipts` fail once with 503, checks recoverable error/no receipt, retries, and verifies receipt data is displayed after success.
 - Coverage layer: Flutter widget + mocked HTTP. This tests UI recovery, not real network connectivity or Firestore persistence.
 - Remaining P0: connected Flutter→NestJS API→Firestore-emulator journey and staging/device verification. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — donor receipt retry merged (15 October 2026)
+
+- PR [#217](https://github.com/JainCommunityPlatform/jain-community-platform/pull/217) merged as `339f30cefe7d6cfbc9abe7bd65ee01b7831662f0`.
+- Exact-head [CI #898](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38676951380) passed backend, Flutter, repository validation and merge gate; Android AAB was skipped by design.
+- Post-merge default-branch run [CI #899](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38679831894) started on the merge commit. Its three applicable jobs were queued at the last check; post-merge verification is pending.
+- Donor receipt UI evidence now includes rejection/refresh and recoverable 503/retry widget tests, both using mocked HTTP. Backend HTTP→Firestore emulator positive and negative receipt paths are separate evidence layers.
+- Remaining P0: connected Flutter→NestJS API→Firestore-emulator receipt-history journey and staging/device verification. Do not mark environment verification complete based on widget or emulator tests alone. Android build/upload remains manual/on-demand.
