@@ -1,8 +1,10 @@
-## Verified execution — finance-role revocation and refund reconciliation (15 October 2026)
+## Verified execution — persisted finance workflows and reconciliation (15 October 2026)
 
-- **PR #229 merged:** `b1f06fa5f066b800ad8a6c5cbf074b0623708404`; exact-head [CI #934](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38747984088) and post-merge [CI #935](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38748409681) passed. The Firestore-emulator HTTP suite uses real `MembershipService` and proves finance-role revocation persists before the next protected request.
-- **PR #231 merged:** `b92f06a5940c913ad65f6db82802e725add17212`; exact-head [CI #938](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38749529638) and post-merge [CI #939](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38749980056) passed. The persisted refund adjustment flow preserves the original receipt, reduces the donor pledge balance and updates net reconciliation.
-- **Next P0:** persisted negative-path coverage for rejected adjustments, over-adjustment and reversal. Production/staging Firebase/device verification and external UPI/bank settlement remain separate gates; Android build/upload stays manual/on-demand.
+- **PR #229:** persisted finance-role revocation with real Firestore-backed `MembershipService`; exact-head CI #934 and post-merge CI #935 passed.
+- **PR #231:** approved refund adjustment, persisted donor balance and net reconciliation; exact-head CI #938 and post-merge CI #939 passed.
+- **PR #234:** over-adjustment rejection, pending reservation release after rejection, and approved reversal; exact-head CI #943 passed.
+- **PR #235:** expense maker-checker, approval/rejection and reconciliation; exact-head CI #945 and post-merge CI #946 passed on `76dbbacf375b1e95ba96a7f7b09f44d9b13d4fbe`.
+- **Next P0:** remaining protected-route/write authorization matrix. Controlled production/staging/device identity verification and external UPI/bank settlement remain separate gates; emulator success does not establish either. Android build/upload remains manual/on-demand.
 
 ---
 
