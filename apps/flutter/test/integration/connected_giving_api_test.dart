@@ -25,12 +25,23 @@ void main() {
       );
 
       await tester.pumpWidget(MaterialApp(home: DonorGivingPage(api: api)));
-      await tester.pumpAndSettle(const Duration(milliseconds: 100));
-
-      expect(find.text('Connected API receipt journey'), findsOneWidget);
+      final campaignFinder = find.text('Connected API receipt journey');
+      for (var attempt = 0; attempt < 50 && campaignFinder.evaluate().isEmpty; attempt++) {
+        // Real socket I/O does not advance merely by pumping the widget-test clock.
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 100)),
+        );
+        await tester.pump();
+      }
+      expect(campaignFinder, findsOneWidget);
 
       await tester.tap(find.text('Receipts'));
-      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+      for (var attempt = 0; attempt < 50 && find.textContaining('JCP-').evaluate().isEmpty; attempt++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 100)),
+        );
+        await tester.pump();
+      }
 
       expect(find.textContaining('JCP-'), findsOneWidget);
       expect(find.text('₹250.00'), findsOneWidget);
