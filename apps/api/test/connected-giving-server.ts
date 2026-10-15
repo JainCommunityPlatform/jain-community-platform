@@ -3,11 +3,6 @@ import { Test } from '@nestjs/testing';
 import { deleteApp, getApps } from 'firebase-admin/app';
 import request from 'supertest';
 
-jest.mock('jose', () => ({
-  createRemoteJWKSet: jest.fn(),
-  jwtVerify: jest.fn(),
-}));
-
 import { AppModule } from '../src/app.module';
 import { AuthenticationGuard } from '../src/auth/authentication.guard';
 import { AuthenticatedRequest } from '../src/auth/authenticated-request';
