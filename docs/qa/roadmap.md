@@ -411,3 +411,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Regression:** Firebase token verification explicitly checks revocation and has a test proving revoked credentials return HTTP 401.
 - **Post-merge CI:** [run #918](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38743276237) passed on merge commit `708887ebe75f70675dc89adbd370c32ddd9da679`; Android AAB was skipped by design.
 - **Next P0:** controlled staging/device identity and session verification, including expired/revoked tokens, app restart, role/membership propagation, tenant routing and receipt history. Do not equate unit/emulator tests with environment verification. Android build/upload remains manual/on-demand.
+
+
+## Verified execution — startup restored-session 401 handled (15 October 2026)
+
+- **Completed:** [PR #225](https://github.com/JainCommunityPlatform/jain-community-platform/pull/225) merged as `1c93a488308840ee160ecec8c89d308ef22a660b`.
+- **Exact-head CI:** [#927](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38745451933) passed; **post-merge CI:** [#928](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38745904260) passed.
+- **Behavior verified by regression test:** when a Firebase-cached identity is restored at startup but the backend returns HTTP 401, clear local Firebase credentials and leave the app signed out. Transient/non-401 failures remain recoverable.
+- **Current P0 environment gate:** controlled staging/device verification for sign-in, expiry/revocation, restart/session restoration, role/membership propagation, tenant routing and donor receipt history. This requires a controlled Firebase configuration and test device/session; never use production donor/financial data. Android build/upload remains manual/on-demand.
