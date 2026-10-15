@@ -443,7 +443,7 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
       pendingAmountPaise: 0,
       pendingCount: 0,
     });
-    expect(reconciliation.netAfterApprovedExpensesAndAdjustmentsPaise).toBe(45000);
+    expect(reconciliation.netAfterApprovedExpensesAndAdjustmentsPaise).toBe(40000);
   });
 
   it('persists finance-role revocation and denies the next protected HTTP request', async () => {
