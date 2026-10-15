@@ -243,3 +243,12 @@ Evidence boundaries:
 - Exact-head [CI #910](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38690852215) passed backend, Flutter, repository validation and merge gate. The connected Flutter widget test ran and passed against the live local NestJS test server and Firestore emulator.
 - Post-merge default-branch [CI #911](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38691150536) passed all applicable jobs on the merge commit; Android AAB was skipped by policy.
 - Remaining evidence boundary: staging/device and production Firebase identity/session behavior remain unverified. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — revoked Firebase ID tokens rejected (15 October 2026)
+
+- **Merged:** [PR #222](https://github.com/JainCommunityPlatform/jain-community-platform/pull/222), merge commit `708887ebe75f70675dc89adbd370c32ddd9da679`.
+- **Exact-head CI:** [run #917](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38712069443) passed on head `aee8799630a563543e6c9942dfd1e118ff4929e0`.
+- **Automated coverage:** `JwtAuthenticationService` passes `checkRevoked: true` to Firebase Admin `verifyIdToken`; tests cover verifier invocation and revoked-token HTTP 401 handling.
+- **Post-merge CI:** [run #918](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38743276237) was in progress when recorded; status must be refreshed.
+- **Evidence boundary:** unit tests only; controlled staging/device behavior for real token revocation, session restart, tenant routing and role propagation remains unverified. Android build/upload remains manual/on-demand.
