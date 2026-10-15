@@ -85,10 +85,18 @@ class AppSessionController extends ChangeNotifier {
       }
     } catch (error) {
       _session = AppSession.signedOut;
-      _error = error is TimeoutException
-          ? error
-          : StateError('JCP session: $error');
-      _status = AppSessionStatus.error;
+      if (error is ApiException && error.statusCode == 401) {
+        // Firebase can restore a locally cached user before the backend
+        // rejects a revoked ID token. Clear that local credential too.
+        await _auth.signOut();
+        _error = null;
+        _status = AppSessionStatus.signedOut;
+      } else {
+        _error = error is TimeoutException
+            ? error
+            : StateError('JCP session: $error');
+        _status = AppSessionStatus.error;
+      }
     }
 
     notifyListeners();
