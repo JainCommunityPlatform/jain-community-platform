@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:jain_community_platform/core/api/api_client.dart';
+import 'package:jain_community_platform/core/api/api_exception.dart';
 import 'package:jain_community_platform/core/auth/firebase_auth_provider.dart';
 import 'package:jain_community_platform/core/i18n/app_language.dart';
 import 'package:jain_community_platform/core/routing/app_router.dart';
@@ -530,6 +531,69 @@ void main() {
 
     expect(router.state.uri.path, AppRoutes.member);
     expect(find.text('member'), findsOneWidget);
+    expect(find.text('finance'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    router.dispose();
+    appRouter.router.dispose();
+    controller.dispose();
+    await auth.dispose();
+  });
+
+  testWidgets('redirects a protected route to login after a revoked-session refresh',
+      (tester) async {
+    final auth = MutableFakeAuth();
+    var revoked = false;
+    const activeSession = AppSession(
+      isAuthenticated: true,
+      userId: 'user-1',
+      roles: ['FINANCE_OPERATOR'],
+    );
+    final controller = AppSessionController(
+      auth: auth,
+      sessionService: CallbackSessionService(() async {
+        if (revoked) {
+          throw const ApiException(statusCode: 401, message: 'Unauthorized');
+        }
+        return activeSession;
+      }),
+      initialSession: activeSession,
+    );
+    await controller.initialize();
+
+    final api = _apiClient();
+    final appRouter = AppRouter(
+      tenantSelection: TenantSelectionController(temple),
+      tenantRepository: TenantRepository(api),
+      sessionController: controller,
+      profileRepository: ProfileRepository(api),
+      api: api,
+    );
+    final router = GoRouter(
+      initialLocation: AppRoutes.finance,
+      refreshListenable: controller,
+      redirect: appRouter.redirect,
+      routes: [
+        GoRoute(path: AppRoutes.login, builder: (_, __) => const Scaffold(body: Text('login'))),
+        GoRoute(path: AppRoutes.member, builder: (_, __) => const Scaffold(body: Text('member'))),
+        GoRoute(path: AppRoutes.finance, builder: (_, __) => const Scaffold(body: Text('finance'))),
+      ],
+    );
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await _pumpRouter(tester);
+    expect(router.state.uri.path, AppRoutes.finance);
+    expect(find.text('finance'), findsOneWidget);
+    expect(auth.isSignedIn, isTrue);
+
+    revoked = true;
+    await controller.refreshCurrentSession();
+    await _pumpRouter(tester);
+
+    expect(auth.isSignedIn, isFalse);
+    expect(controller.status, AppSessionStatus.signedOut);
+    expect(router.state.uri.path, AppRoutes.login);
+    expect(find.text('login'), findsOneWidget);
     expect(find.text('finance'), findsNothing);
 
     await tester.pumpWidget(const SizedBox.shrink());
