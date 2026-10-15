@@ -280,3 +280,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Exact-head CI:** [#938](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38749529638) passed; **post-merge CI:** [#939](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38749980056) passed on the merge commit.
 - **Coverage:** the Firestore-emulator HTTP journey creates and approves a payment, requests and independently approves a refund adjustment, verifies the persisted adjustment, confirms the donor balance decreases while the original receipt remains unchanged, and checks net reconciliation totals.
 - **Next P0:** persisted rejected-adjustment, over-adjustment and reversal paths; external UPI/bank settlement and production/staging/device verification remain separate evidence gates. Android build/upload remains manual/on-demand.
+
+
+## Verified execution — expense maker-checker and reconciliation (15 October 2026)
+
+- **Merged:** [PR #235](https://github.com/JainCommunityPlatform/jain-community-platform/pull/235) as `76dbbacf375b1e95ba96a7f7b09f44d9b13d4fbe`.
+- **Exact-head CI:** [#945](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38752045254) passed; **post-merge CI:** [#946](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38752615989) passed on the merge commit.
+- **Coverage:** the Firestore-emulator HTTP suite verifies expense creation, maker-checker self-approval denial, independent approval, rejection, persisted states and reconciliation that subtracts only approved expenses.
+- **Next P0:** finish remaining protected-route/write authorization matrix and preserve controlled staging/device verification as a separate gate. Operational finance reports are not a general ledger; external UPI/bank settlement remains unverified. Android build/upload remains manual/on-demand.
