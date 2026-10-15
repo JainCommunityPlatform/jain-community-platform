@@ -3,19 +3,25 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:jain_community_platform/core/api/api_client.dart';
+import 'package:jain_community_platform/core/api/api_exception.dart';
 import 'package:jain_community_platform/core/auth/firebase_auth_provider.dart';
 import 'package:jain_community_platform/core/session/app_session.dart';
 import 'package:jain_community_platform/core/session/app_session_controller.dart';
 import 'package:jain_community_platform/core/session/auth_session_service.dart';
 
 class FakeFirebaseAuthProvider implements FirebaseAuthProvider {
-  FakeFirebaseAuthProvider({this.signInDelay = Duration.zero});
+  FakeFirebaseAuthProvider({
+    this.signInDelay = Duration.zero,
+    bool initiallySignedIn = false,
+  }) : _isSignedIn = initiallySignedIn;
 
   final Duration signInDelay;
   final controller = StreamController<FirebaseAuthUser?>.broadcast();
+  bool _isSignedIn;
+  int signOutCount = 0;
 
   @override
-  bool get isSignedIn => false;
+  bool get isSignedIn => _isSignedIn;
 
   @override
   Stream<FirebaseAuthUser?> authStateChanges() => controller.stream;
@@ -28,15 +34,17 @@ class FakeFirebaseAuthProvider implements FirebaseAuthProvider {
     if (signInDelay > Duration.zero) {
       await Future<void>.delayed(signInDelay);
     }
-    controller.add(const FirebaseAuthUser(uid: 'firebase-uid'));
+    emit(const FirebaseAuthUser(uid: 'firebase-uid'));
   }
 
   @override
   Future<void> signOut() async {
-    controller.add(null);
+    signOutCount++;
+    emit(null);
   }
 
   void emit(FirebaseAuthUser? user) {
+    _isSignedIn = user != null;
     controller.add(user);
   }
 
@@ -163,6 +171,46 @@ void main() {
     expect(controller.session.userId, 'user-123');
     expect(controller.session.tenantId, 'tenant-123');
     expect(controller.session.isAdmin, isTrue);
+
+    controller.dispose();
+    await auth.dispose();
+  });
+
+  test('clears Firebase credentials when refresh says the backend session is unauthorized', () async {
+    final auth = FakeFirebaseAuthProvider();
+    var loadCount = 0;
+    final service = FakeAuthSessionService(() async {
+      loadCount++;
+      if (loadCount == 1) {
+        return const AppSession(
+          isAuthenticated: true,
+          userId: 'user-123',
+          tenantId: 'tenant-123',
+          role: 'TENANT_ADMIN',
+        );
+      }
+      throw const ApiException(statusCode: 401, message: 'Unauthorized');
+    });
+    final controller = AppSessionController(
+      auth: auth,
+      sessionService: service,
+    );
+
+    await controller.initialize();
+    auth.emit(const FirebaseAuthUser(uid: 'firebase-uid'));
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.status, AppSessionStatus.authenticated);
+    expect(auth.isSignedIn, isTrue);
+
+    await controller.refreshCurrentSession();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(auth.signOutCount, 1);
+    expect(auth.isSignedIn, isFalse);
+    expect(controller.status, AppSessionStatus.signedOut);
+    expect(controller.session, AppSession.signedOut);
+    expect(controller.error, isNull);
 
     controller.dispose();
     await auth.dispose();
