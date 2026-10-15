@@ -386,3 +386,19 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Safety boundary:** authentication override exists only in the standalone test server used by CI; it is not a production API route or production configuration.
 - **Gate:** exact-head CI must demonstrate the connected test runs and passes. Fix real failures rather than skipping the test. Verify post-merge CI before marking CI green.
 - **Still open after this:** staging/device identity and session verification; this emulator-backed widget journey is not production evidence. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — Bearer authentication header parsing (15 October 2026)
+
+- **Current branch:** `qa/bearer-scheme-case-insensitive` adds case-insensitive Bearer scheme parsing plus regression assertions for missing credentials, empty Bearer credentials and unsupported authorization schemes.
+- **Security boundary:** malformed/missing credentials must fail before token verification; valid credentials continue through the existing Firebase token verifier. This does not change token trust or bypass authentication.
+- **Gate:** run focused authentication tests and full exact-head CI; merge only after required checks pass and GitHub reports mergeable, then verify post-merge CI.
+- **Evidence boundary:** unit-level guard behavior only. Firebase emulator, staging/device login, expiry, and membership/session propagation remain open. Android build/upload remains manual/on-demand.
+
+
+## Verified execution — connected donor journey complete; auth parsing next (15 October 2026)
+
+- **Completed:** [PR #219](https://github.com/JainCommunityPlatform/jain-community-platform/pull/219) merged as `268bcf9a80574baa254e14683e5c8919279ca69e`. Exact-head [CI #910](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38690852215) and post-merge [CI #911](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38691150536) passed. The connected Flutter→NestJS HTTP→Firestore-emulator receipt test explicitly ran and passed.
+- **Current PR:** [#220](https://github.com/JainCommunityPlatform/jain-community-platform/pull/220) covers case-insensitive Bearer scheme parsing and malformed/missing credential guard behavior. Verify exact-head CI before merge.
+- **Remaining P0 evidence:** staging/device login, Firebase token expiry/revocation, membership/session propagation, and device restart behavior. Emulator-backed widget tests do not close these environment gates.
+- Android build/upload remains manual/on-demand.
