@@ -8,7 +8,6 @@ import { AuthenticationGuard } from '../src/auth/authentication.guard';
 import { AuthenticatedRequest } from '../src/auth/authenticated-request';
 import { AuthenticatedUser } from '../src/auth/auth.types';
 import { MembershipService } from '../src/authorization/membership.service';
-import { FirestoreService } from '../src/database/firestore.service';
 import { UserIdentityService } from '../src/identity/user-identity.service';
 import { FirestoreTenantResolver } from '../src/tenant/firestore-tenant.resolver';
 
