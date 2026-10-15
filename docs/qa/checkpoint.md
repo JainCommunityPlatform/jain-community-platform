@@ -272,3 +272,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Post-merge CI:** [#935](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38748409681) passed on merge commit `b1f06fa5f066b800ad8a6c5cbf074b0623708404`; backend, Flutter, repository validation and merge gate passed; Android AAB skipped by design.
 - **Change:** the Firestore-emulator HTTP suite now uses the real `MembershipService`; it persists removal of `FINANCE_OPERATOR` while retaining `CONTENT_MANAGER`, then proves the next protected expenses request returns 403 before finance data access.
 - **Next P0:** production/staging identity and device verification of role/session propagation remains blocked on controlled Firebase configuration and a test device/session. Do not use production donor/financial data. Android build/upload remains manual/on-demand.
+
+
+## Verified execution — refund adjustment and reconciliation (15 October 2026)
+
+- **Merged:** [PR #231](https://github.com/JainCommunityPlatform/jain-community-platform/pull/231) as `b92f06a5940c913ad65f6db82802e725add17212`.
+- **Exact-head CI:** [#938](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38749529638) passed; **post-merge CI:** [#939](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38749980056) passed on the merge commit.
+- **Coverage:** the Firestore-emulator HTTP journey creates and approves a payment, requests and independently approves a refund adjustment, verifies the persisted adjustment, confirms the donor balance decreases while the original receipt remains unchanged, and checks net reconciliation totals.
+- **Next P0:** persisted rejected-adjustment, over-adjustment and reversal paths; external UPI/bank settlement and production/staging/device verification remain separate evidence gates. Android build/upload remains manual/on-demand.
