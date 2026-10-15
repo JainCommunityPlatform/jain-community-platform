@@ -223,6 +223,48 @@ void main() {
     });
   });
 
+
+    testWidgets('shows a recoverable receipt-history error and retries successfully',
+        (tester) async {
+      var receiptRequestCount = 0;
+      final client = MockClient((request) async {
+        if (request.url.path == '/api/giving/my-receipts') {
+          receiptRequestCount++;
+          if (receiptRequestCount == 1) {
+            return jsonResponse({'message': 'Receipt history temporarily unavailable'}, 503);
+          }
+          return jsonResponse([
+            {
+              'id': 'receipt-1',
+              'receiptNumber': 'JCP-RETRY-2026-0001',
+              'amountPaise': 50000,
+              'method': 'UPI',
+              'issuedAt': '2026-10-14T12:00:00.000Z',
+            }
+          ]);
+        }
+        return jsonResponse(emptyList());
+      });
+
+      await tester.pumpWidget(MaterialApp(home: DonorGivingPage(api: apiFor(client))));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Receipt history temporarily unavailable'), findsOneWidget);
+      expect(find.text('Retry'), findsOneWidget);
+      expect(find.text('JCP-RETRY-2026-0001'), findsNothing);
+
+      await tester.tap(find.text('Retry'));
+      await tester.pumpAndSettle();
+
+      expect(receiptRequestCount, 2);
+      await tester.tap(find.text('Receipts'));
+      await tester.pumpAndSettle();
+      expect(find.text('JCP-RETRY-2026-0001'), findsOneWidget);
+      expect(find.text('₹500.00'), findsOneWidget);
+      expect(find.text('Retry'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
   group('Finance console workflow', () {
     testWidgets('shows reconciled totals and supports switching to the reconciliation report',
         (tester) async {

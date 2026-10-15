@@ -360,3 +360,12 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Gate:** no merge until exact-head required CI passes and GitHub confirms mergeability; verify post-merge CI once available.
 - **Next P0:** connect the donor Flutter screen to a controlled API/Firestore test environment, then run staging/device verification. Current UI tests use mocked HTTP; backend emulator tests exercise real NestJS HTTP and Firestore emulator, but the full runtime bridge remains unverified.
 - Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — donor receipt retry regression (15 October 2026)
+
+- **Completed:** PR #216 rejection-side donor UI regression merged; exact-head CI #896 green. Post-merge CI #897 still pending at checkpoint.
+- **Current branch:** `qa/donor-receipt-load-retry` adds a recoverable 503 receipt-history failure followed by successful retry and receipt rendering.
+- **Merge gate:** wait for exact-head required CI, merge only if all checks pass and GitHub confirms mergeability, then verify post-merge CI.
+- **Next P0:** validate the connected donor Flutter→NestJS API→Firestore-emulator path and then stage/device behavior. Mocked HTTP widget tests alone do not establish this bridge.
+- Android build/upload remains manual/on-demand.

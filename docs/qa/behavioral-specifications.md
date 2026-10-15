@@ -1696,3 +1696,16 @@ And the UI does not raise an exception
 
 Executable regression: `apps/flutter/test/features/giving/donor_giving_page_test.dart` — “donor still has no receipt after a payment is rejected and data is refreshed”. This is a Flutter widget test with mocked HTTP. Backend rejection and persisted receipt non-creation are covered separately by the HTTP→Firestore emulator path; connected runtime and staging/device evidence remain open.
 
+
+
+## Scenario: Donor can retry receipt history after a temporary service failure
+
+Given the donor opens the giving screen
+And the receipt-history endpoint temporarily returns HTTP 503
+When the donor sees the recoverable error and retries
+And the endpoint returns receipt history successfully
+Then the receipt number and amount are displayed
+And the retry action is no longer shown
+And the widget raises no exception
+
+Executable regression: `apps/flutter/test/features/giving/presentation/giving_workflow_test.dart` — “shows a recoverable receipt-history error and retries successfully”. This is a Flutter widget test using mocked HTTP. Live API/Firestore connectivity and staging/device verification remain open.

@@ -204,3 +204,11 @@ Evidence boundaries:
 - Added on branch `qa/donor-rejected-payment-no-receipt`: a widget regression for a rejected payment followed by donor refresh. It asserts the receipt list remains empty and neither a receipt number nor paid amount appears.
 - Test layer: Flutter widget + mocked HTTP. This complements, but does not replace, the backend HTTP→Firestore emulator test for rejected payments.
 - Remaining: connected Flutter→live API→Firestore journey and staging/device verification. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — donor receipt retry regression (15 October 2026)
+
+- PR #216 merged; exact-head CI #896 passed all required checks. Post-merge CI #897 is pending and must be verified.
+- Added branch `qa/donor-receipt-load-retry`: Flutter workflow test makes `GET /api/giving/my-receipts` fail once with 503, checks recoverable error/no receipt, retries, and verifies receipt data is displayed after success.
+- Coverage layer: Flutter widget + mocked HTTP. This tests UI recovery, not real network connectivity or Firestore persistence.
+- Remaining P0: connected Flutter→NestJS API→Firestore-emulator journey and staging/device verification. Android build/upload remains manual/on-demand.

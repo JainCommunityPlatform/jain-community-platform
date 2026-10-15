@@ -199,3 +199,12 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - New regression branch `qa/donor-rejected-payment-no-receipt` adds a donor widget test for the rejection-side display contract: after finance rejects a payment, refreshing donor receipt history must continue to show “No receipts yet”, with no receipt number or paid amount.
 - Evidence boundary: this is a Flutter widget test using mocked HTTP; backend HTTP→Firestore emulator rejection persistence is covered separately by PR #215. Connected Flutter→live API and staging/device verification remain open.
 - Next: inspect exact-head CI, merge only if all required checks pass and GitHub confirms mergeability, record post-merge CI, then continue the next P0 in the connected donor journey. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — donor receipt retry regression (15 October 2026)
+
+- PR #216 merged as `3bf60e3c04f48158a349dc82a72bb6a54b35de17`. Exact-head CI #896 passed backend lint/tests/build, Flutter analyze/tests, repository validation and merge gate; Android AAB was skipped by design. Post-merge CI #897 is pending at this checkpoint and must be verified.
+- Current branch `qa/donor-receipt-load-retry` adds a Flutter workflow regression for receipt history returning HTTP 503 once and succeeding on retry.
+- Assertions cover visible recoverable error, no receipt before retry, a second receipt request, receipt number and amount after retry, and no widget exception.
+- Evidence boundary: mocked HTTP in Flutter widget tests. Backend emulator coverage and live connected Flutter→API→Firestore/staging/device verification are separate.
+- Android build/upload remains manual/on-demand.
