@@ -196,3 +196,11 @@ Evidence boundaries:
 - PR #210 post-merge [CI #884](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38609319670) passed all required jobs. Post-merge [CI #886](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38612960495) for PR #211 was still running at this checkpoint; backend and Flutter checks were in progress. Do not infer post-merge green until the run completes.
 - Existing Firestore emulator test `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — “persists partial payments, updates the pledge and issues distinct receipts transactionally” — verifies approved payments, persisted receipt records, donor pledge/receipt history and reconciliation from persisted state. Flutter donor tests still use mocked HTTP; the connected Flutter → live API → Firestore → refreshed donor receipt journey and staging/device verification remain open.
 - Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — donor UI rejection receipt regression (15 October 2026)
+
+- PR #215 merged as `6b8333fee554f19b2807bb57810f29ff235cbd51`; exact-head CI #892 and post-merge CI #893 passed all required jobs. Android AAB skipped by design.
+- Added on branch `qa/donor-rejected-payment-no-receipt`: a widget regression for a rejected payment followed by donor refresh. It asserts the receipt list remains empty and neither a receipt number nor paid amount appears.
+- Test layer: Flutter widget + mocked HTTP. This complements, but does not replace, the backend HTTP→Firestore emulator test for rejected payments.
+- Remaining: connected Flutter→live API→Firestore journey and staging/device verification. Android build/upload remains manual/on-demand.

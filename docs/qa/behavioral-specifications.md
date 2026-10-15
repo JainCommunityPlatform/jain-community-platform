@@ -1683,3 +1683,16 @@ Then the API returns HTTP 403 before invoking the corresponding data service
 
 Executable regressions: `apps/api/test/app.e2e-spec.ts` — “finance viewers can read each tenant-scoped finance list and report”, “denies cross-tenant finance users access to tenant-wide giving read routes before data access”, and existing individual role-denial cases. These tests exercise the NestJS HTTP guard/controller pipeline with mocked identity, membership and finance services. Persisted Firestore isolation is covered separately by emulator tests; staging/device identity remains unverified.
 
+
+
+## Scenario: Rejected payment never appears as a donor receipt after refresh
+
+Given the donor's receipt history is empty before a finance decision
+And finance rejects the pending payment
+When the donor refreshes receipt history
+Then the receipt list remains empty
+And no receipt number or paid amount is displayed
+And the UI does not raise an exception
+
+Executable regression: `apps/flutter/test/features/giving/donor_giving_page_test.dart` — “donor still has no receipt after a payment is rejected and data is refreshed”. This is a Flutter widget test with mocked HTTP. Backend rejection and persisted receipt non-creation are covered separately by the HTTP→Firestore emulator path; connected runtime and staging/device evidence remain open.
+
