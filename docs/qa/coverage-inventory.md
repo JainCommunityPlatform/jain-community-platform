@@ -252,3 +252,12 @@ Evidence boundaries:
 - **Automated coverage:** `JwtAuthenticationService` passes `checkRevoked: true` to Firebase Admin `verifyIdToken`; tests cover verifier invocation and revoked-token HTTP 401 handling.
 - **Post-merge CI:** [run #918](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38743276237) passed on merge commit `708887ebe75f70675dc89adbd370c32ddd9da679`; applicable backend, Flutter and repository validation jobs passed; Android AAB was skipped by design.
 - **Evidence boundary:** unit tests only; controlled staging/device behavior for real token revocation, session restart, tenant routing and role propagation remains unverified. Android build/upload remains manual/on-demand.
+
+
+## Verified execution — startup session 401 regression (15 October 2026)
+
+- **Merged:** [PR #225](https://github.com/JainCommunityPlatform/jain-community-platform/pull/225), merge commit `1c93a488308840ee160ecec8c89d308ef22a660b`.
+- **Exact-head CI:** [#927](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38745451933) passed; the new Flutter controller regression ran within the complete CI pipeline.
+- **Post-merge CI:** [#928](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38745904260) passed; Android AAB skipped by design.
+- **Coverage:** startup restoration now clears Firebase auth when backend session loading returns HTTP 401. The existing refresh path is also covered for unauthorized responses. Non-401 failures are not forced into sign-out.
+- **Evidence boundary:** automated controller coverage only. Real Firebase staging/device session revocation, restart, role propagation, tenant routing and receipt-history verification remain open. Android build/upload remains manual/on-demand.
