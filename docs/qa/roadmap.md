@@ -402,3 +402,12 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Current PR:** [#220](https://github.com/JainCommunityPlatform/jain-community-platform/pull/220) covers case-insensitive Bearer scheme parsing and malformed/missing credential guard behavior. Verify exact-head CI before merge.
 - **Remaining P0 evidence:** staging/device login, Firebase token expiry/revocation, membership/session propagation, and device restart behavior. Emulator-backed widget tests do not close these environment gates.
 - Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — Firebase revocation check merged (15 October 2026)
+
+- **Completed:** [PR #222](https://github.com/JainCommunityPlatform/jain-community-platform/pull/222) merged as `708887ebe75f70675dc89adbd370c32ddd9da679`.
+- **Exact-head CI:** [run #917](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38712069443) passed on `aee8799630a563543e6c9942dfd1e118ff4929e0`.
+- **Regression:** Firebase token verification explicitly checks revocation and has a test proving revoked credentials return HTTP 401.
+- **Post-merge CI:** [run #918](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38743276237) was still running at checkpoint time; update this record only after inspecting its terminal result.
+- **Next P0:** controlled staging/device identity and session verification, including expired/revoked tokens, app restart, role/membership propagation, tenant routing and receipt history. Do not equate unit/emulator tests with environment verification. Android build/upload remains manual/on-demand.
