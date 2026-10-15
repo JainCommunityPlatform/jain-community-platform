@@ -22,7 +22,7 @@ async function main() {
 
   const suffix = `connected-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const tenantId = `connected-giving-${suffix}`;
-  const donorSubject = `donor-${suffix}`;
+  const donorSubject = 'connected-donor';
   const operatorSubject = `operator-${suffix}`;
   const approverSubject = `approver-${suffix}`;
   let operatorId = '';
