@@ -18,12 +18,9 @@ export class AuthenticationGuard implements CanActivate {
     const request =
       context.switchToHttp().getRequest<AuthenticatedRequest>();
     const authorization = request.header('authorization');
+    const match = authorization?.match(/^Bearer\s+(.+)$/i);
+    const token = match?.[1]?.trim();
 
-    if (!authorization?.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Bearer authentication is required');
-    }
-
-    const token = authorization.slice('Bearer '.length).trim();
     if (!token) {
       throw new UnauthorizedException('Bearer authentication is required');
     }
