@@ -1,14 +1,22 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/io_client.dart';
 import 'package:jain_community_platform/core/api/api_client.dart';
 import 'package:jain_community_platform/features/giving/presentation/donor_giving_page.dart';
 
 void main() {
-  // Use a live clock/network binding: AutomatedTestWidgetsFlutterBinding replaces
-  // HttpClient with a fake 400 response and cannot verify a real local API.
+  // Construct the IOClient outside the widget-test zone. Flutter's widget-test
+  // binding overrides HttpClient inside that zone and otherwise replaces network
+  // calls with synthetic 400 responses. The pre-created client keeps real sockets.
+  final connectedHttpClient = IOClient(HttpClient());
+
   LiveTestWidgetsFlutterBinding.ensureInitialized();
 
   const apiUrl = String.fromEnvironment('JCP_CONNECTED_API_URL');
+
+  tearDownAll(connectedHttpClient.close);
 
   testWidgets(
     'renders a Firestore-persisted receipt from the live NestJS API',
@@ -18,6 +26,7 @@ void main() {
         accessTokenProvider: () async => 'connected-donor',
         tenantIdProvider: () => 'connected-giving-test',
         requestTimeout: const Duration(seconds: 5),
+        client: connectedHttpClient,
       );
 
       await tester.pumpWidget(MaterialApp(home: DonorGivingPage(api: api)));
