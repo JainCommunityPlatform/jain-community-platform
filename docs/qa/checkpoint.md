@@ -226,3 +226,12 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Expected path:** create campaign and pledge, record and approve payment through API routes, persist receipt in Firestore emulator, then load and render the receipt in the Flutter donor UI.
 - **CI gate:** exact-head CI is authoritative; do not merge if the connected test is skipped or failing. Fix the underlying issue, then verify post-merge CI.
 - **Evidence boundary:** local emulator only. Staging/device and production Firebase remain unverified. Android build/upload remains manual/on-demand.
+
+
+## Latest execution — PR #219 merged and post-merge CI green (15 October 2026)
+
+- **Merged:** [PR #219 — connected donor Flutter/API/Firestore-emulator receipt journey](https://github.com/JainCommunityPlatform/jain-community-platform/pull/219), merge commit `268bcf9a80574baa254e14683e5c8919279ca69e`.
+- **Exact-head CI:** [run #910](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38690852215) passed on `48c03386ca196910215d93987576ea690d7750c8`. Backend lint/tests/build, Flutter analyze/tests, repository validation and merge gate all passed. Android AAB skipped by design.
+- **Post-merge CI:** [run #911](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38691150536) completed successfully on the merge commit. Backend, Flutter, repository validation and merge gate passed; Android AAB skipped.
+- **Coverage now evidenced:** a standalone test-only NestJS server uses Firestore emulator-backed routes to create/approve a payment; Flutter uses real local HTTP and renders the persisted receipt. Test auth override is confined to this test server.
+- **Next P0:** controlled staging/device identity and session verification, tenant routing, and donor receipt-history smoke tests. Production Firebase/staging/device behavior is not established by emulator CI. Android build/upload remains manual/on-demand.
