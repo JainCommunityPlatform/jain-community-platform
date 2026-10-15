@@ -208,3 +208,13 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - Assertions cover visible recoverable error, no receipt before retry, a second receipt request, receipt number and amount after retry, and no widget exception.
 - Evidence boundary: mocked HTTP in Flutter widget tests. Backend emulator coverage and live connected Flutter→API→Firestore/staging/device verification are separate.
 - Android build/upload remains manual/on-demand.
+
+
+## Latest execution — PR #217 merged; post-merge CI pending (15 October 2026)
+
+- **Merged:** [PR #217 — test donor receipt-history retry](https://github.com/JainCommunityPlatform/jain-community-platform/pull/217), merge commit `339f30cefe7d6cfbc9abe7bd65ee01b7831662f0`.
+- **Exact-head CI:** [run #898](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38676951380) passed all required checks on head `25e3264318b9599f3b5c10af1017deb481e62ed6`. Android AAB was skipped as designed.
+- **Post-merge:** [run #899](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38679831894) started on the merge commit; all three applicable jobs were queued when checked. Continue polling and record the actual terminal result.
+- **Completed coverage:** donor rejection + refresh keeps receipt history empty; temporary HTTP 503 shows a recoverable error, and retry renders the receipt number and amount. Both are Flutter widget tests with mocked HTTP.
+- **Next P0:** establish a connected Flutter→NestJS API→Firestore-emulator donor receipt journey, then perform controlled staging/device verification. Keep evidence layers separate and do not infer live connectivity from mocks.
+- **Release policy:** Android build/upload remains manual/on-demand.
