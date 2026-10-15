@@ -13,6 +13,7 @@ import { AuthenticationGuard } from '../auth/authentication.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-request';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { MembershipService } from '../authorization/membership.service';
+import { GivingService } from './giving.service';
 import { FirestoreService } from '../database/firestore.service';
 import { UserIdentityService } from '../identity/user-identity.service';
 import { FirestoreTenantResolver } from '../tenant/firestore-tenant.resolver';
@@ -62,29 +63,6 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
       }),
     };
 
-    const membership = {
-      resolve: async (userId: string, requestedTenantId: string) => {
-        if (requestedTenantId !== tenantId) return null;
-        if (userId === operatorId) {
-          return {
-            userId,
-            tenantId,
-            role: 'FINANCE_OPERATOR',
-            roles: ['FINANCE_OPERATOR'],
-          };
-        }
-        if (userId === approverId) {
-          return {
-            userId,
-            tenantId,
-            role: 'FINANCE_APPROVER',
-            roles: ['FINANCE_APPROVER'],
-          };
-        }
-        return null;
-      },
-    };
-
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
@@ -92,8 +70,6 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
       .useValue(authenticationGuard)
       .overrideProvider(FirestoreTenantResolver)
       .useValue(tenantResolver)
-      .overrideProvider(MembershipService)
-      .useValue(membership)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -112,6 +88,21 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
     await identity.resolve({ subject: donorSubject, email: `${donorSubject}@example.test` } as AuthenticatedUser);
     operatorId = operator.id;
     approverId = approver.id;
+
+    // Use real Firestore-backed membership resolution in this emulator suite.
+    // The operator keeps a general role when its finance permission is revoked.
+    await firestore.createMembership({
+      userId: operatorId,
+      tenantId,
+      role: 'CONTENT_MANAGER',
+      roles: ['CONTENT_MANAGER', 'FINANCE_OPERATOR'],
+    });
+    await firestore.createMembership({
+      userId: approverId,
+      tenantId,
+      role: 'FINANCE_APPROVER',
+      roles: ['FINANCE_APPROVER'],
+    });
   });
 
   afterAll(async () => {
@@ -320,6 +311,47 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
     expect(persistedReceipts).not.toEqual(expect.arrayContaining([
       expect.objectContaining({ paymentId }),
     ]));
+  });
+
+  it('persists finance-role revocation and denies the next protected HTTP request', async () => {
+    const host = 'giving-emulator.jcp.test';
+    const membershipService = app.get(MembershipService);
+    const giving = app.get(GivingService);
+    const listExpenses = jest.spyOn(giving, 'listTenantExpenses');
+
+    await request(app.getHttpServer())
+      .get('/api/giving/expenses')
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .expect(200);
+    expect(listExpenses).toHaveBeenCalledTimes(1);
+    expect(listExpenses).toHaveBeenCalledWith(tenantId);
+
+    listExpenses.mockClear();
+    await membershipService.revokeFinancialRole(
+      operatorId,
+      tenantId,
+      'FINANCE_OPERATOR',
+    );
+
+    await expect(firestore.getMembership(operatorId, tenantId)).resolves.toMatchObject({
+      userId: operatorId,
+      tenantId,
+      role: 'CONTENT_MANAGER',
+      roles: ['CONTENT_MANAGER'],
+    });
+
+    await request(app.getHttpServer())
+      .get('/api/giving/expenses')
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .expect(403)
+      .expect((response) => {
+        expect(response.body.message).toBe('Permission denied');
+      });
+
+    // Authorization must reject before the finance service reads persisted data.
+    expect(listExpenses).not.toHaveBeenCalled();
   });
 
 });
