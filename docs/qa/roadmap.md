@@ -386,3 +386,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Safety boundary:** authentication override exists only in the standalone test server used by CI; it is not a production API route or production configuration.
 - **Gate:** exact-head CI must demonstrate the connected test runs and passes. Fix real failures rather than skipping the test. Verify post-merge CI before marking CI green.
 - **Still open after this:** staging/device identity and session verification; this emulator-backed widget journey is not production evidence. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — Bearer authentication header parsing (15 October 2026)
+
+- **Current branch:** `qa/bearer-scheme-case-insensitive` adds case-insensitive Bearer scheme parsing plus regression assertions for missing credentials, empty Bearer credentials and unsupported authorization schemes.
+- **Security boundary:** malformed/missing credentials must fail before token verification; valid credentials continue through the existing Firebase token verifier. This does not change token trust or bypass authentication.
+- **Gate:** run focused authentication tests and full exact-head CI; merge only after required checks pass and GitHub reports mergeable, then verify post-merge CI.
+- **Evidence boundary:** unit-level guard behavior only. Firebase emulator, staging/device login, expiry, and membership/session propagation remain open. Android build/upload remains manual/on-demand.
