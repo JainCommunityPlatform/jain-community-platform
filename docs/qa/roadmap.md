@@ -386,3 +386,12 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Safety boundary:** authentication override exists only in the standalone test server used by CI; it is not a production API route or production configuration.
 - **Gate:** exact-head CI must demonstrate the connected test runs and passes. Fix real failures rather than skipping the test. Verify post-merge CI before marking CI green.
 - **Still open after this:** staging/device identity and session verification; this emulator-backed widget journey is not production evidence. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — PR #219 merged; staging/device verification next (15 October 2026)
+
+- **Completed:** [PR #219](https://github.com/JainCommunityPlatform/jain-community-platform/pull/219) merged as `268bcf9a80574baa254e14683e5c8919279ca69e`.
+- **Exact-head CI:** [run #910](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38690852215) passed all required checks on `48c03386ca196910215d93987576ea690d7750c8`; Android AAB skipped by design.
+- **Post-merge CI:** [run #911](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38691150536) passed on the merge commit. Backend, Flutter, repository validation and merge gate succeeded; Android AAB skipped.
+- **Evidence completed:** connected donor Flutter widget → real local HTTP → NestJS API → Firestore emulator persisted receipt path.
+- **Next P0:** controlled staging/device identity, session, tenant routing and donor receipt-history smoke verification. Record environment/device/build details and actual results; do not infer this from emulator tests. Android build/upload remains manual/on-demand.
