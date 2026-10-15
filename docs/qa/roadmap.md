@@ -351,3 +351,12 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Coverage added:** finance viewers can read tenant-wide payments, expenses, adjustments, receipts, pledges, summary and reconciliation; each controller passes the resolved tenant ID to its service.
 - **Next P0:** connected donor journey from Flutter pledge submission through authorized payment approval and persisted Firestore receipt to refreshed donor receipt history. Existing Firestore emulator tests prove persistence/service behavior, and Flutter widget tests prove mocked HTTP/UI transitions; neither alone proves the connected runtime journey.
 - **Evidence boundary:** current PR is HTTP integration with mocked identity/membership/service dependencies. No staging/device claim. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — donor UI rejection receipt regression (15 October 2026)
+
+- **Previous P0 completed:** [PR #214](https://github.com/JainCommunityPlatform/jain-community-platform/pull/214) added the positive HTTP→Firestore emulator receipt journey; [PR #215](https://github.com/JainCommunityPlatform/jain-community-platform/pull/215) added the negative rejection path. Exact-head and post-merge CI #893 are green.
+- **Current branch:** `qa/donor-rejected-payment-no-receipt` adds a Flutter widget regression that a rejected payment remains absent from donor receipt history after refresh.
+- **Gate:** no merge until exact-head required CI passes and GitHub confirms mergeability; verify post-merge CI once available.
+- **Next P0:** connect the donor Flutter screen to a controlled API/Firestore test environment, then run staging/device verification. Current UI tests use mocked HTTP; backend emulator tests exercise real NestJS HTTP and Firestore emulator, but the full runtime bridge remains unverified.
+- Android build/upload remains manual/on-demand.
