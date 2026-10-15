@@ -162,7 +162,6 @@ void main() {
       (tester) async {
     var paymentApproved = false;
     final receiptReads = <List<dynamic>>[];
-    final rejectionStateAtReceiptRead = <bool>[];
     final client = MockClient((request) async {
       switch ('${request.method} ${request.url.path}') {
         case 'GET /api/giving/campaigns':
@@ -182,7 +181,6 @@ void main() {
                 ]
               : <Map<String, dynamic>>[];
           receiptReads.add(receipts);
-          rejectionStateAtReceiptRead.add(paymentRejected);
           return http.Response(jsonEncode(receipts), 200);
         default:
           return http.Response(
@@ -232,6 +230,7 @@ void main() {
       (tester) async {
     var paymentRejected = false;
     final receiptReads = <List<dynamic>>[];
+    final rejectionStateAtReceiptRead = <bool>[];
     final client = MockClient((request) async {
       switch ('${request.method} ${request.url.path}') {
         case 'GET /api/giving/campaigns':
@@ -245,6 +244,7 @@ void main() {
               ? <Map<String, dynamic>>[]
               : <Map<String, dynamic>>[];
           receiptReads.add(receipts);
+          rejectionStateAtReceiptRead.add(paymentRejected);
           return http.Response(jsonEncode(receipts), 200);
         default:
           return http.Response(
