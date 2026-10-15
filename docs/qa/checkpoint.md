@@ -226,3 +226,12 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Expected path:** create campaign and pledge, record and approve payment through API routes, persist receipt in Firestore emulator, then load and render the receipt in the Flutter donor UI.
 - **CI gate:** exact-head CI is authoritative; do not merge if the connected test is skipped or failing. Fix the underlying issue, then verify post-merge CI.
 - **Evidence boundary:** local emulator only. Staging/device and production Firebase remain unverified. Android build/upload remains manual/on-demand.
+
+
+
+## Current execution — Bearer authentication header parsing (15 October 2026)
+
+- **Current branch:** `qa/bearer-scheme-case-insensitive` updates `AuthenticationGuard` to parse the Bearer authentication scheme case-insensitively, matching HTTP authentication scheme semantics.
+- **Tests added:** reject missing token, unsupported authorization scheme and empty Bearer credentials before verifier calls; accept mixed-case Bearer scheme and pass the trimmed token to the existing verifier.
+- **Exact-head CI:** pending. Do not merge until focused tests and all required CI checks pass on the latest head SHA.
+- **Evidence boundary:** code-level guard unit tests only. Real Firebase token expiry/revocation, staging/device login and membership/session propagation remain open. Android build/upload remains manual/on-demand.
