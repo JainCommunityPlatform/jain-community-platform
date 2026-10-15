@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../api/api_exception.dart';
 import '../auth/firebase_auth_provider.dart';
 import 'app_session.dart';
 import 'auth_session_service.dart';
@@ -104,7 +105,17 @@ class AppSessionController extends ChangeNotifier {
           ? AppSessionStatus.authenticated
           : AppSessionStatus.signedOut;
     } catch (error) {
-      _setError(error);
+      // A 401 means the backend no longer accepts this Firebase identity
+      // (for example, the ID token was revoked). Clear the local Firebase
+      // session as well; transient failures must not force a sign-out.
+      if (error is ApiException && error.statusCode == 401) {
+        await _auth.signOut();
+        _session = AppSession.signedOut;
+        _error = null;
+        _status = AppSessionStatus.signedOut;
+      } else {
+        _setError(error);
+      }
     }
     notifyListeners();
   }
