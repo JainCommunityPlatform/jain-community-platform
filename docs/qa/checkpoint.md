@@ -191,3 +191,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - Current branch `qa/reject-empty-multipart-website-image` adds HTTP-level validation for zero-byte multipart website image uploads, asserting 400 before Storage and audit side effects.
 - Evidence boundary: mocked Storage/audit route integration. Real Firebase Storage and staging/device behavior remain open.
 - Next: verify exact-head CI and merge only with all required checks green and mergeability confirmed; verify post-merge CI and continue the P0 persisted donation-to-receipt connected journey. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — donor UI rejection receipt regression (15 October 2026)
+
+- PR #215 merged as `6b8333fee554f19b2807bb57810f29ff235cbd51`; exact-head CI #892 and post-merge default-branch CI #893 passed backend, Flutter, repository validation and merge gate. Android AAB was skipped as intended.
+- New regression branch `qa/donor-rejected-payment-no-receipt` adds a donor widget test for the rejection-side display contract: after finance rejects a payment, refreshing donor receipt history must continue to show “No receipts yet”, with no receipt number or paid amount.
+- Evidence boundary: this is a Flutter widget test using mocked HTTP; backend HTTP→Firestore emulator rejection persistence is covered separately by PR #215. Connected Flutter→live API and staging/device verification remain open.
+- Next: inspect exact-head CI, merge only if all required checks pass and GitHub confirms mergeability, record post-merge CI, then continue the next P0 in the connected donor journey. Android build/upload remains manual/on-demand.
