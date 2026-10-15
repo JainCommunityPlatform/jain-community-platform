@@ -1721,3 +1721,16 @@ Then the persisted receipt number and amount are displayed
 And the widget raises no exception
 
 Executable regression: `apps/flutter/test/integration/connected_giving_api_test.dart`, driven by `apps/api/test/connected-giving-server.ts` and the CI Firestore-emulator job. The auth override is isolated to the test server. Production Firebase, staging and device behavior remain separate evidence layers.
+
+
+## Scenario: Parse Bearer authentication scheme case-insensitively
+
+Given an API request carries an Authorization header
+When the scheme is Bearer regardless of letter casing and includes a non-empty token
+Then the guard extracts the token and delegates it to the configured token verifier
+
+Given the header is missing, uses another authorization scheme, or contains an empty Bearer credential
+When the request reaches the authentication guard
+Then the guard rejects it with HTTP 401 before invoking token verification
+
+Executable regression: `apps/api/src/auth/authentication.guard.spec.ts` — “accepts the bearer authentication scheme case-insensitively”, “rejects a missing bearer token”, “rejects a non-Bearer authorization scheme before token verification”, and “rejects a bearer scheme without a token”. Token validity remains the responsibility of `JwtAuthenticationService`; these tests do not prove Firebase/staging/device behavior.
