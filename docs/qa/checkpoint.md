@@ -218,3 +218,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Completed coverage:** donor rejection + refresh keeps receipt history empty; temporary HTTP 503 shows a recoverable error, and retry renders the receipt number and amount. Both are Flutter widget tests with mocked HTTP.
 - **Next P0:** establish a connected Flutter→NestJS API→Firestore-emulator donor receipt journey, then perform controlled staging/device verification. Keep evidence layers separate and do not infer live connectivity from mocks.
 - **Release policy:** Android build/upload remains manual/on-demand.
+
+
+## Latest execution — connected donor UI/API/emulator journey in progress (15 October 2026)
+
+- **Current PR:** [#219](https://github.com/JainCommunityPlatform/jain-community-platform/pull/219) adds a test-only NestJS server using the Firestore emulator and a Flutter widget test using real HTTP rather than `MockClient`.
+- **Expected path:** create campaign and pledge, record and approve payment through API routes, persist receipt in Firestore emulator, then load and render the receipt in the Flutter donor UI.
+- **CI gate:** exact-head CI is authoritative; do not merge if the connected test is skipped or failing. Fix the underlying issue, then verify post-merge CI.
+- **Evidence boundary:** local emulator only. Staging/device and production Firebase remain unverified. Android build/upload remains manual/on-demand.
