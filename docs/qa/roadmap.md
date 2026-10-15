@@ -1,9 +1,8 @@
-## Execution checkpoint — cross-tenant rejection merged; finance revocation matrix next (14 October 2026)
+## Verified execution — finance-role revocation and refund reconciliation (15 October 2026)
 
-- PR #194 merged at `1cf74488f16e643aca4835c222102d3b0f63a867`; exact-head CI #853 passed all required checks. Post-merge default-branch CI remains UNKNOWN because the available commit workflow lookup returned no run.
-- Current P0 branch `qa/finance-role-revocation-protected-route-matrix` expands the role-revocation regression from expenses alone to seven protected finance reads (expenses, payments, adjustments, pledges, receipts, summary and reconciliation), asserting denial and zero service calls after revocation.
-- The test uses mocked membership state; persisted Firestore revocation and staging identity propagation remain open. Keep these evidence types separate.
-- Next sequence: verify exact-head CI and merge this focused regression if all required checks pass; then resume the protected-route × role matrix and persisted donor UI → API → Firestore lifecycle. Android build/upload remains manual/on-demand.
+- **PR #229 merged:** `b1f06fa5f066b800ad8a6c5cbf074b0623708404`; exact-head [CI #934](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38747984088) and post-merge [CI #935](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38748409681) passed. The Firestore-emulator HTTP suite uses real `MembershipService` and proves finance-role revocation persists before the next protected request.
+- **PR #231 merged:** `b92f06a5940c913ad65f6db82802e725add17212`; exact-head [CI #938](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38749529638) and post-merge [CI #939](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38749980056) passed. The persisted refund adjustment flow preserves the original receipt, reduces the donor pledge balance and updates net reconciliation.
+- **Next P0:** persisted negative-path coverage for rejected adjustments, over-adjustment and reversal. Production/staging Firebase/device verification and external UPI/bank settlement remain separate gates; Android build/upload stays manual/on-demand.
 
 ---
 
