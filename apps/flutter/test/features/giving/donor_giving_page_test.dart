@@ -225,4 +225,57 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+
+  testWidgets('donor still has no receipt after a payment is rejected and data is refreshed',
+      (tester) async {
+    var paymentRejected = false;
+    final receiptReads = <List<dynamic>>[];
+    final client = MockClient((request) async {
+      switch ('${request.method} ${request.url.path}') {
+        case 'GET /api/giving/campaigns':
+        case 'GET /api/giving/my-pledges':
+        case 'GET /api/notifications':
+          return http.Response('[]', 200);
+        case 'GET /api/giving/my-receipts':
+          // A rejected payment must not create a persisted donor receipt.
+          // Refreshing after the finance decision therefore returns no receipt.
+          final receipts = paymentRejected
+              ? <Map<String, dynamic>>[]
+              : <Map<String, dynamic>>[];
+          receiptReads.add(receipts);
+          return http.Response(jsonEncode(receipts), 200);
+        default:
+          return http.Response(
+            jsonEncode({
+              'message': 'Unexpected request: ${request.method} ${request.url.path}',
+            }),
+            404,
+          );
+      }
+    });
+    final api = ApiClient(
+      baseUrl: Uri.parse('https://example.test/'),
+      client: client,
+    );
+
+    await tester.pumpWidget(MaterialApp(home: DonorGivingPage(api: api)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Receipts'));
+    await tester.pumpAndSettle();
+    expect(find.text('No receipts yet'), findsOneWidget);
+
+    // Finance rejects the payment outside the donor screen.
+    paymentRejected = true;
+    await tester.tap(find.byTooltip('Refresh giving data'));
+    await tester.pumpAndSettle();
+
+    expect(receiptReads, hasLength(2));
+    expect(receiptReads, everyElement(isEmpty));
+    expect(find.text('No receipts yet'), findsOneWidget);
+    expect(find.text('JCP-2026-0001'), findsNothing);
+    expect(find.text('₹500.00'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
 }
