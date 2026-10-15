@@ -245,3 +245,12 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Post-merge CI:** [#911](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38691150536) passed on merge commit `268bcf9a80574baa254e14683e5c8919279ca69e`; backend, Flutter, repository validation and merge gate succeeded. Android AAB was skipped as intended.
 - **Current P0:** [PR #220](https://github.com/JainCommunityPlatform/jain-community-platform/pull/220) adds case-insensitive Bearer scheme parsing and guard tests for missing, empty and unsupported credentials. Exact-head CI is running/pending.
 - **Still open:** Firebase emulator/staging/device authentication, token expiry/revocation, membership/session propagation and device restart. Android build/upload remains manual/on-demand.
+
+
+## Latest execution — Firebase revoked-token rejection merged (15 October 2026)
+
+- **Merged:** [PR #222](https://github.com/JainCommunityPlatform/jain-community-platform/pull/222) as `708887ebe75f70675dc89adbd370c32ddd9da679`.
+- **Exact-head CI:** [run #917](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38712069443) passed on `aee8799630a563543e6c9942dfd1e118ff4929e0`.
+- **Change:** Firebase ID-token verification now calls `verifyIdToken(token, true)` so revoked tokens are rejected; unit tests assert the revocation-check flag and 401 behavior for a revoked token.
+- **Post-merge CI:** [run #918](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38743276237) passed on merge commit `708887ebe75f70675dc89adbd370c32ddd9da679`; Flutter analyze/tests, backend lint/tests/build, repository validation passed. Android AAB was skipped by design.
+- **Remaining P0:** controlled staging/device verification of sign-in, restart/session restore, expired/revoked token handling, role/membership propagation, tenant routing and donor receipt history. Unit tests do not prove live Firebase behavior. Android AAB build/upload remains manual/on-demand.
