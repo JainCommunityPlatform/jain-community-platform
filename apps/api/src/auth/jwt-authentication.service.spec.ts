@@ -17,7 +17,7 @@ describe('JwtAuthenticationService', () => {
     (getAuth as jest.Mock).mockReturnValue({ verifyIdToken });
   });
 
-  it('verifies a Firebase ID token and maps optional claims', async () => {
+  it('verifies a Firebase ID token with revocation checking and maps optional claims', async () => {
     verifyIdToken.mockResolvedValue({
       uid: 'subject-a',
       email: 'a@test',
@@ -35,7 +35,7 @@ describe('JwtAuthenticationService', () => {
       displayName: 'A',
     });
     expect(getAuth).toHaveBeenCalledWith({ name: '[DEFAULT]' });
-    expect(verifyIdToken).toHaveBeenCalledWith('token');
+    expect(verifyIdToken).toHaveBeenCalledWith('token', true);
   });
 
   it('rejects a token without a subject', async () => {
@@ -44,6 +44,7 @@ describe('JwtAuthenticationService', () => {
     await expect(
       new JwtAuthenticationService(firestore).verify('token'),
     ).rejects.toMatchObject({ status: 401 });
+    expect(verifyIdToken).toHaveBeenCalledWith('token', true);
   });
 
   it('rejects an invalid Firebase token', async () => {
@@ -52,6 +53,20 @@ describe('JwtAuthenticationService', () => {
     await expect(
       new JwtAuthenticationService(firestore).verify('token'),
     ).rejects.toMatchObject({ status: 401 });
+    expect(verifyIdToken).toHaveBeenCalledWith('token', true);
+  });
+
+  it('rejects a revoked Firebase token', async () => {
+    verifyIdToken.mockRejectedValue(
+      Object.assign(new Error('Firebase ID token has been revoked'), {
+        code: 'auth/id-token-revoked',
+      }),
+    );
+
+    await expect(
+      new JwtAuthenticationService(firestore).verify('token'),
+    ).rejects.toMatchObject({ status: 401 });
+    expect(verifyIdToken).toHaveBeenCalledWith('token', true);
   });
 
   it('rejects an empty bearer token', async () => {
