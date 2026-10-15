@@ -38,7 +38,7 @@ Evidence boundaries:
 | QA-013 | Localization, accessibility and responsive layout | P1 | Flutter app-string test and at least a narrow-phone readability test are present in the test tree | Audit all screens for language completeness, mixed-language/error strings, text scaling, keyboard/focus/semantics, contrast and small/large screen layout | Baseline evidence only |
 | QA-014 | HTTP DTO validation and failure mapping | P1 | API controller, DTO, config and app E2E test suites exist | Build route-by-route positive/negative matrix: missing/invalid fields, authentication, permission, tenant context, not found, conflict, rate/size limits where relevant | Inventory incomplete |
 | QA-015 | Build/release and deployment readiness | P1 | CI workflow runs frontend analysis/tests and backend checks; Android workflow is separate/on-demand by policy | Document exact commit, CI run, environment/device smoke results, version/build artifact and release destination; verify Android packaging only when intentionally requested | CI evidence exists; release evidence tracked separately |
-| QA-016 | Automated UI-to-API-to-persistence E2E | P0 | Backend HTTP→Firestore emulator positive/rejection journeys; Flutter mocked-HTTP donor workflows | PR #219 adds a controlled connected Flutter widget → real NestJS HTTP → Firestore emulator receipt journey; exact-head CI and post-merge evidence pending | In progress; do not claim connected coverage until CI proves the test ran; staging/device remains open |
+| QA-016 | Automated UI-to-API-to-persistence E2E | P0 | Backend HTTP→Firestore emulator positive/rejection journeys; Flutter mocked-HTTP donor workflows | PR #219 adds a controlled connected Flutter widget → real NestJS HTTP → Firestore emulator receipt journey; exact-head CI #910 and post-merge default-branch CI #911 passed; staging/device remains open | Connected emulator-backed journey automated and verified in CI #910/#911; staging/device remains open |
 | QA-017 | CI reliability and failure classification | P1 | `.github/workflows/ci.yml` and cleanup workflow exist; recent PR/master CI evidence available in Actions | For each failure capture failing job/test, exact head SHA, category (product/test/config/flaky), fix and rerun; ensure required checks cannot be bypassed and Android release remains manual | Process improvement needed |
 
 ## First execution queue
@@ -235,3 +235,11 @@ Evidence boundaries:
 - Branch `qa/bearer-scheme-case-insensitive` adds a focused authentication-guard regression: RFC case-insensitive Bearer scheme parsing is accepted; missing token, empty Bearer credentials, and non-Bearer schemes are rejected before token verification.
 - The guard now extracts the token using a case-insensitive scheme match and still delegates all token validity checks to Firebase token verification.
 - Exact-head CI and review/merge are pending. This is code-level parsing coverage, not Firebase emulator, staging, or device authentication evidence. Android build/upload remains manual/on-demand.
+
+
+## Verified checkpoint — connected donor receipt journey (15 October 2026)
+
+- PR [#219](https://github.com/JainCommunityPlatform/jain-community-platform/pull/219) merged as `268bcf9a80574baa254e14683e5c8919279ca69e`.
+- Exact-head [CI #910](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38690852215) passed backend, Flutter, repository validation and merge gate. The connected Flutter widget test ran and passed against the live local NestJS test server and Firestore emulator.
+- Post-merge default-branch [CI #911](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38691150536) passed all applicable jobs on the merge commit; Android AAB was skipped by policy.
+- Remaining evidence boundary: staging/device and production Firebase identity/session behavior remain unverified. Android build/upload remains manual/on-demand.
