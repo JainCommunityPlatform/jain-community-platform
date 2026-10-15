@@ -162,6 +162,7 @@ void main() {
       (tester) async {
     var paymentApproved = false;
     final receiptReads = <List<dynamic>>[];
+    final rejectionStateAtReceiptRead = <bool>[];
     final client = MockClient((request) async {
       switch ('${request.method} ${request.url.path}') {
         case 'GET /api/giving/campaigns':
@@ -181,6 +182,7 @@ void main() {
                 ]
               : <Map<String, dynamic>>[];
           receiptReads.add(receipts);
+          rejectionStateAtReceiptRead.add(paymentRejected);
           return http.Response(jsonEncode(receipts), 200);
         default:
           return http.Response(
@@ -272,6 +274,7 @@ void main() {
 
     expect(receiptReads, hasLength(2));
     expect(receiptReads, everyElement(isEmpty));
+    expect(rejectionStateAtReceiptRead, [false, true]);
     expect(find.text('No receipts yet'), findsOneWidget);
     expect(find.text('JCP-2026-0001'), findsNothing);
     expect(find.text('₹500.00'), findsNothing);
