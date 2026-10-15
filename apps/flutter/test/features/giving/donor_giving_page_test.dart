@@ -240,9 +240,7 @@ void main() {
         case 'GET /api/giving/my-receipts':
           // A rejected payment must not create a persisted donor receipt.
           // Refreshing after the finance decision therefore returns no receipt.
-          final receipts = paymentRejected
-              ? <Map<String, dynamic>>[]
-              : <Map<String, dynamic>>[];
+          final receipts = <Map<String, dynamic>>[];
           receiptReads.add(receipts);
           rejectionStateAtReceiptRead.add(paymentRejected);
           return http.Response(jsonEncode(receipts), 200);
