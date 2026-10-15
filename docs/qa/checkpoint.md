@@ -235,3 +235,13 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Tests added:** reject missing token, unsupported authorization scheme and empty Bearer credentials before verifier calls; accept mixed-case Bearer scheme and pass the trimmed token to the existing verifier.
 - **Exact-head CI:** pending. Do not merge until focused tests and all required CI checks pass on the latest head SHA.
 - **Evidence boundary:** code-level guard unit tests only. Real Firebase token expiry/revocation, staging/device login and membership/session propagation remain open. Android build/upload remains manual/on-demand.
+
+
+
+## Verified post-merge — connected donor receipt journey (15 October 2026)
+
+- **Merged:** [PR #219](https://github.com/JainCommunityPlatform/jain-community-platform/pull/219) as `268bcf9a80574baa254e14683e5c8919279ca69e`.
+- **Exact-head CI:** [#910](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38690852215) passed backend lint/tests/build, Flutter analyze/tests, repository validation and merge gate. Connected test “renders a Firestore-persisted receipt from the live NestJS API” ran and passed (1 test).
+- **Post-merge CI:** [#911](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38691150536) passed on merge commit `268bcf9a80574baa254e14683e5c8919279ca69e`; backend, Flutter, repository validation and merge gate succeeded. Android AAB was skipped as intended.
+- **Current P0:** [PR #220](https://github.com/JainCommunityPlatform/jain-community-platform/pull/220) adds case-insensitive Bearer scheme parsing and guard tests for missing, empty and unsupported credentials. Exact-head CI is running/pending.
+- **Still open:** Firebase emulator/staging/device authentication, token expiry/revocation, membership/session propagation and device restart. Android build/upload remains manual/on-demand.
