@@ -2,7 +2,7 @@
 
 - **PR #229:** persisted finance-role revocation with real Firestore-backed `MembershipService`; exact-head CI #934 and post-merge CI #935 passed.
 - **PR #231:** approved refund adjustment, persisted donor balance and net reconciliation; exact-head CI #938 and post-merge CI #939 passed.
-- **PR #234:** over-adjustment rejection, pending reservation release after rejection, and approved reversal; exact-head CI #943 passed.
+- **PR #234:** over-adjustment rejection, pending reservation release after rejection, and approved reversal; exact-head CI #943 and post-merge CI #944 passed.
 - **PR #235:** expense maker-checker, approval/rejection and reconciliation; exact-head CI #945 and post-merge CI #946 passed on `76dbbacf375b1e95ba96a7f7b09f44d9b13d4fbe`.
 - **Next P0:** remaining protected-route/write authorization matrix. Controlled production/staging/device identity verification and external UPI/bank settlement remain separate gates; emulator success does not establish either. Android build/upload remains manual/on-demand.
 
