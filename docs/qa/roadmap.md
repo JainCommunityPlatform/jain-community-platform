@@ -369,3 +369,12 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Merge gate:** wait for exact-head required CI, merge only if all checks pass and GitHub confirms mergeability, then verify post-merge CI.
 - **Next P0:** validate the connected donor Flutter→NestJS API→Firestore-emulator path and then stage/device behavior. Mocked HTTP widget tests alone do not establish this bridge.
 - Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — PR #217 merged; connected donor journey next (15 October 2026)
+
+- **Merged:** [PR #217 — donor receipt-history retry](https://github.com/JainCommunityPlatform/jain-community-platform/pull/217), merge commit `339f30cefe7d6cfbc9abe7bd65ee01b7831662f0`.
+- **Exact-head CI:** [run #898](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38676951380) passed backend, Flutter, repository validation and merge gate on `25e3264318b9599f3b5c10af1017deb481e62ed6`. Android AAB skipped by design.
+- **Post-merge CI:** [run #899](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38679831894) was queued on merge commit `339f30cefe7d6cfbc9abe7bd65ee01b7831662f0`; verify completion before calling post-merge validation green.
+- **Current P0:** bridge the donor Flutter screen to a controlled NestJS API + Firestore emulator environment, proving a persisted receipt appears after approval and remains absent after rejection/refresh. Existing Flutter widget tests use mocked HTTP; existing backend HTTP tests use the Firestore emulator. Neither alone proves the connected runtime bridge.
+- **Following:** controlled staging/device smoke and identity/session verification. Android build/upload remains manual/on-demand.
