@@ -228,3 +228,12 @@ Evidence boundaries:
 - PR [#219](https://github.com/JainCommunityPlatform/jain-community-platform/pull/219) adds a standalone test-only NestJS server with test-scoped authentication override, seeds an approved payment through API routes against the Firestore emulator, and exercises the donor Flutter widget against real local HTTP.
 - Evidence is pending exact-head CI. If CI fails, fix the harness or assertions; do not skip the connected test to make the pipeline green.
 - This test does not establish production Firebase, staging identity, or physical-device behavior. Those remain separate environment gates. Android build/upload remains manual/on-demand.
+
+
+## Execution checkpoint — connected donor receipt journey merged (15 October 2026)
+
+- **Merged:** [PR #219](https://github.com/JainCommunityPlatform/jain-community-platform/pull/219), merge commit `268bcf9a80574baa254e14683e5c8919279ca69e`.
+- **Exact-head CI:** [run #910](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38690852215) passed backend lint/tests/build, Flutter analyze/tests, repository validation and merge gate on head `48c03386ca196910215d93987576ea690d7750c8`. Android AAB was skipped by design.
+- **Post-merge CI:** [run #911](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38691150536) passed on merge commit `268bcf9a80574baa254e14683e5c8919279ca69e`; Android AAB remained skipped.
+- **Completed coverage:** connected Flutter donor UI → real local NestJS HTTP routes → Firestore emulator receipt persistence/read. The test-scoped auth override exists only in the standalone CI test server.
+- **Remaining P0:** controlled staging/device identity and session verification, including a real configured environment. Emulator-backed CI does not prove production Firebase or device behavior. Android build/upload remains manual/on-demand.
