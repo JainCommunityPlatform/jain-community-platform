@@ -431,6 +431,10 @@ describe('API endpoints (integration)', () => {
   });
 
   it('GET /api/profile/registration-context returns the authenticated profile and participation context', async () => {
+    const profiles = app.get(ProfileService);
+    const registrationContext = jest.spyOn(profiles, 'registrationContext');
+    registrationContext.mockClear();
+
     await request(app.getHttpServer())
       .get('/api/profile/registration-context')
       .set('x-test-user', 'user-a')
@@ -442,10 +446,14 @@ describe('API endpoints (integration)', () => {
         ]);
       });
 
-    expect(profile.registrationContext).toHaveBeenCalledWith(expect.objectContaining({ subject: 'user-a' }));
+    expect(registrationContext).toHaveBeenCalledWith(expect.objectContaining({ subject: 'user-a' }));
   });
 
   it('POST /api/profile/contact links contact data to the authenticated identity, not a caller-selected user', async () => {
+    const profiles = app.get(ProfileService);
+    const linkCurrentContact = jest.spyOn(profiles, 'linkCurrentContact');
+    linkCurrentContact.mockClear();
+
     await request(app.getHttpServer())
       .post('/api/profile/contact')
       .set('x-test-user', 'user-a')
@@ -456,11 +464,13 @@ describe('API endpoints (integration)', () => {
         expect(response.body.primaryPhone).toBe('9876543210');
       });
 
-    expect(profile.linkCurrentContact).toHaveBeenCalledWith(expect.objectContaining({ subject: 'user-a' }), '9876543210');
+    expect(linkCurrentContact).toHaveBeenCalledWith(expect.objectContaining({ subject: 'user-a' }), '9876543210');
   });
 
   it('POST /api/profile/contact rejects caller-supplied identity fields before linking a contact', async () => {
-    profile.linkCurrentContact.mockClear();
+    const profiles = app.get(ProfileService);
+    const linkCurrentContact = jest.spyOn(profiles, 'linkCurrentContact');
+    linkCurrentContact.mockClear();
 
     await request(app.getHttpServer())
       .post('/api/profile/contact')
@@ -468,7 +478,7 @@ describe('API endpoints (integration)', () => {
       .send({ value: '9876543210', userId: 'user-victim' })
       .expect(400);
 
-    expect(profile.linkCurrentContact).not.toHaveBeenCalled();
+    expect(linkCurrentContact).not.toHaveBeenCalled();
   });
 
   it('GET /api/notifications scopes notification history to the authenticated identity and active tenant', async () => {
