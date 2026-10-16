@@ -53,10 +53,12 @@ describe('API endpoints (integration)', () => {
   let membership: {
     resolve: jest.Mock;
     listTenantMemberships: jest.Mock;
+    assignRolesByEmail: jest.Mock;
+    assignRoles: jest.Mock;
     grantFinancialRoleByEmail: jest.Mock;
     revokeFinancialRole: jest.Mock;
   };
-  let firestore: { getTenantById: jest.Mock; recordAudit: jest.Mock };
+  let firestore: { getTenantById: jest.Mock; recordAudit: jest.Mock; findUserByEmail: jest.Mock; getMembership: jest.Mock };
   let website: { updateCurrent: jest.Mock; resetCurrent: jest.Mock };
   let storage: { uploadTenantImage: jest.Mock };
 
@@ -167,6 +169,14 @@ describe('API endpoints (integration)', () => {
           user: { email: 'content@example.test', displayName: 'Content User', primaryPhone: null },
         },
       ]),
+      assignRolesByEmail: jest.fn().mockResolvedValue({
+        id: 'user-target-membership', userId: 'user-target', tenantId: '00000000-0000-0000-0000-000000000001',
+        role: 'CONTENT_MANAGER', roles: ['CONTENT_MANAGER'],
+      }),
+      assignRoles: jest.fn().mockResolvedValue({
+        id: 'user-target-membership', userId: 'user-target', tenantId: '00000000-0000-0000-0000-000000000001',
+        role: 'CONTENT_MANAGER', roles: ['CONTENT_MANAGER'],
+      }),
       grantFinancialRoleByEmail: jest.fn().mockResolvedValue({
         id: 'finance-target-membership',
         userId: 'finance-target',
@@ -185,6 +195,8 @@ describe('API endpoints (integration)', () => {
       }),
     };
     firestore = {
+      findUserByEmail: jest.fn().mockResolvedValue(null),
+      getMembership: jest.fn().mockResolvedValue(null),
       getTenantById: jest.fn(async (tenantId: string) =>
         tenantId === 'tenant-finance-a' ? { id: tenantId, name: 'Finance Test Tenant' } : null,
       ),
@@ -2382,6 +2394,110 @@ describe('API endpoints (integration)', () => {
     }));
   });
 
+
+  it('membership administration routes deny finance viewers and cross-tenant administrators before service or audit side effects', async () => {
+    const routes = [
+      { method: 'get', path: '/api/memberships' },
+      { method: 'post', path: '/api/memberships/roles', body: { email: 'target@example.test', roles: ['CONTENT_MANAGER'] } },
+      { method: 'put', path: '/api/memberships/user-target/roles', body: { roles: ['CONTENT_MANAGER'] } },
+    ] as const;
+
+    membership.listTenantMemberships.mockClear();
+    membership.assignRolesByEmail.mockClear();
+    membership.assignRoles.mockClear();
+    firestore.findUserByEmail.mockClear();
+    firestore.getMembership.mockClear();
+    firestore.recordAudit.mockClear();
+
+    for (const user of ['user-viewer', 'user-cross-tenant-admin']) {
+      for (const route of routes) {
+        const call = request(app.getHttpServer())[route.method](route.path)
+          .set('Host', 'badebabakharadi.com')
+          .set('x-test-user', user);
+        if ('body' in route) call.send(route.body);
+        await call.expect(403);
+      }
+    }
+
+    expect(membership.listTenantMemberships).not.toHaveBeenCalled();
+    expect(membership.assignRolesByEmail).not.toHaveBeenCalled();
+    expect(membership.assignRoles).not.toHaveBeenCalled();
+    expect(firestore.findUserByEmail).not.toHaveBeenCalled();
+    expect(firestore.getMembership).not.toHaveBeenCalled();
+    expect(firestore.recordAudit).not.toHaveBeenCalled();
+  });
+
+  it('prevents tenant administrators from granting or replacing financial roles through general membership routes', async () => {
+    membership.assignRolesByEmail.mockClear();
+    membership.assignRoles.mockClear();
+    firestore.findUserByEmail.mockClear();
+    firestore.getMembership.mockClear();
+    firestore.recordAudit.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/memberships/roles')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .send({ email: 'target@example.test', roles: ['FINANCE_OPERATOR'] })
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .put('/api/memberships/user-target/roles')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .send({ roles: ['FINANCE_APPROVER'] })
+      .expect(403);
+
+    firestore.getMembership.mockResolvedValueOnce({
+      id: 'user-target-membership',
+      userId: 'user-target',
+      tenantId: '00000000-0000-0000-0000-000000000001',
+      role: 'FINANCE_VIEWER',
+      roles: ['FINANCE_VIEWER'],
+    });
+    await request(app.getHttpServer())
+      .put('/api/memberships/user-target/roles')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .send({ roles: ['CONTENT_MANAGER'] })
+      .expect(403);
+
+    expect(membership.assignRolesByEmail).not.toHaveBeenCalled();
+    expect(membership.assignRoles).not.toHaveBeenCalled();
+    expect(firestore.recordAudit).not.toHaveBeenCalled();
+  });
+
+  it('allows a tenant administrator to assign a non-financial membership role through the protected HTTP route', async () => {
+    membership.assignRolesByEmail.mockClear();
+    firestore.findUserByEmail.mockClear();
+    firestore.recordAudit.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/memberships/roles')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .send({ email: 'target@example.test', roles: ['CONTENT_MANAGER'] })
+      .expect(201)
+      .expect((response) => {
+        expect(response.body).toMatchObject({
+          userId: 'user-target',
+          tenantId: '00000000-0000-0000-0000-000000000001',
+          roles: ['CONTENT_MANAGER'],
+        });
+      });
+
+    expect(membership.assignRolesByEmail).toHaveBeenCalledWith(
+      'target@example.test',
+      '00000000-0000-0000-0000-000000000001',
+      ['CONTENT_MANAGER'],
+    );
+    expect(firestore.recordAudit).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: '00000000-0000-0000-0000-000000000001',
+      userId: 'user-a',
+      action: 'TENANT_MEMBERSHIP_ROLES_UPDATED',
+      entity: 'TenantMembership',
+    }));
+  });
 
   it('denies finance viewers every financial write and decision route before service or audit side effects', async () => {
     const routes: Array<{
