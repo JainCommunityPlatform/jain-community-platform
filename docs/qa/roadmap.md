@@ -451,3 +451,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Verified PR #239 (CI #952/#953), PR #240 (CI #954/#955), and PR #241 (CI #957/#958).
 - The remaining route-level gaps found in the current pass are profile registration/contact identity handling and HTTP-level tenant/user scoping for notification list/preferences/read endpoints. These are grouped into one test MR rather than split by route.
 - Environment acceptance is still separate: controlled Firebase staging/device session and role propagation, actual Storage/notification provider behavior, and external UPI/bank settlement are not proven by emulator or mocked HTTP tests.
+
+
+## Persisted cross-tenant finance isolation — 16 October 2026
+
+- The HTTP authorization route audit is consolidated through PR #242; exact-head CI #961 and post-merge CI #962 passed.
+- The next risk-based gap is persisted membership isolation: an operator with a real Firestore membership in tenant B must not read or mutate finance data in tenant A. This is being added to the existing Firestore-emulator HTTP suite, not a mocked membership-only test.
+- Broader persisted tenant-data isolation and production/staging identity/device checks remain separate evidence gates. Android AAB remains manual/on-demand.
