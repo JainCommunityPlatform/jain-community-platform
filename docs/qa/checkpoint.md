@@ -311,3 +311,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Current branch:** `qa/p0-profile-identity-route-closure` adds HTTP integration tests for profile registration-context and contact-linking identity boundaries, rejects caller-supplied profile identity fields, and covers all four notification HTTP routes for authenticated-user and active-tenant scoping.
 - **Tests use mocked identity/services:** they prove HTTP guard/interceptor/controller argument scoping, not persisted profile/notification delivery or production Firebase/device behavior.
 - **Next:** run exact-head CI, repair genuine failures without weakening assertions, then reconcile the P0 route inventory and record any remaining environment-gated items. Keep Android AAB manual/on-demand.
+
+
+## Persisted cross-tenant finance isolation — in progress (16 October 2026)
+
+- Baseline: PR #242 merged as ab4c3f83a062595fff0aa5c884f1b944d6464544; exact-head CI #961 and post-merge CI #962 passed. Android AAB skipped by policy.
+- Current branch: qa/p0-persisted-cross-tenant-finance-isolation adds a Firestore-emulator HTTP regression using real persisted memberships: a finance operator assigned only to tenant B must be denied tenant A's payments read and expense creation before the financial service is invoked.
+- Evidence boundary: controlled tenant resolver plus Firestore emulator; production Firebase/staging/device identity remains unverified. This strengthens, but does not claim to exhaust, every possible cross-tenant data query.
+- Next: exact-head CI, repair genuine failures without weakening assertions, merge only when green/mergeable, verify post-merge CI, then reconcile the final deterministic P0 route and persisted-isolation coverage.

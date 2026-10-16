@@ -1795,3 +1795,14 @@ Then the API passes the active tenant ID and authenticated user ID to the notifi
 And a caller cannot select another user or tenant through request data
 
 Executable regressions: `apps/api/test/app.e2e-spec.ts` — “GET /api/notifications scopes notification history to the authenticated identity and active tenant”, “GET /api/notifications/preferences scopes preferences to the authenticated identity and active tenant”, “PUT /api/notifications/preferences updates only the authenticated identity preferences in the active tenant”, and “POST /api/notifications/:notificationId/read scopes read updates to the authenticated identity and active tenant”. Service dependencies are mocked; persisted notification delivery, retries and staging remain open.
+
+
+## Scenario: Persisted finance membership from another tenant cannot access active-tenant finance routes
+
+Given a finance operator has a persisted FINANCE_OPERATOR membership in tenant B and no membership in tenant A
+And the HTTP request resolves tenant A from its host
+When the operator requests tenant A's payments list or attempts to create a tenant A expense
+Then both requests return HTTP 403
+And the payment list and expense creation services are not invoked
+
+Executable regression: apps/api/src/giving/giving.controller.firestore-emulator-spec.ts — “denies a persisted finance membership from another tenant before financial reads or writes”. The test uses the Firestore emulator and real membership/authorization resolution, with a controlled tenant resolver. It proves persisted membership isolation for these read/write routes, not every possible cross-tenant data query or production Firebase identity propagation.

@@ -26,8 +26,11 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
   let donorSubject: string;
   let operatorSubject: string;
   let approverSubject: string;
+  let crossTenantFinanceSubject: string;
+  let otherTenantId: string;
   let operatorId: string;
   let approverId: string;
+  let crossTenantFinanceId: string;
 
   beforeAll(async () => {
     if (!process.env.FIRESTORE_EMULATOR_HOST) {
@@ -40,9 +43,11 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
 
     const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     tenantId = `emulator-http-giving-${suffix}`;
+    otherTenantId = `${tenantId}-other`;
     donorSubject = `donor-${suffix}`;
     operatorSubject = `operator-${suffix}`;
     approverSubject = `approver-${suffix}`;
+    crossTenantFinanceSubject = `cross-tenant-finance-${suffix}`;
 
     const authenticationGuard = {
       canActivate: (context: ExecutionContext): boolean => {
@@ -85,9 +90,11 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
     identity = app.get(UserIdentityService);
     const operator = await identity.resolve({ subject: operatorSubject, email: `${operatorSubject}@example.test` } as AuthenticatedUser);
     const approver = await identity.resolve({ subject: approverSubject, email: `${approverSubject}@example.test` } as AuthenticatedUser);
+    const crossTenantFinance = await identity.resolve({ subject: crossTenantFinanceSubject, email: `${crossTenantFinanceSubject}@example.test` } as AuthenticatedUser);
     await identity.resolve({ subject: donorSubject, email: `${donorSubject}@example.test` } as AuthenticatedUser);
     operatorId = operator.id;
     approverId = approver.id;
+    crossTenantFinanceId = crossTenantFinance.id;
 
     // Use real Firestore-backed membership resolution in this emulator suite.
     // The operator keeps a general role when its finance permission is revoked.
@@ -103,12 +110,49 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
       role: 'FINANCE_APPROVER',
       roles: ['FINANCE_APPROVER'],
     });
+    // This finance operator has a real persisted role only in tenant B.
+    await firestore.createMembership({
+      userId: crossTenantFinanceId,
+      tenantId: otherTenantId,
+      role: 'FINANCE_OPERATOR',
+      roles: ['FINANCE_OPERATOR'],
+    });
   });
 
   afterAll(async () => {
     if (app) await app.close();
     const firebaseApp = getApps().find((candidate) => candidate.name === '[DEFAULT]');
     if (firebaseApp) await deleteApp(firebaseApp);
+  });
+
+  it('denies a persisted finance membership from another tenant before financial reads or writes', async () => {
+    const host = 'giving-emulator.jcp.test';
+    const giving = app.get(GivingService);
+    const listTenantPayments = jest.spyOn(giving, 'listTenantPayments');
+    const createExpense = jest.spyOn(giving, 'createExpense');
+
+    expect(await firestore.getMembership(crossTenantFinanceId, otherTenantId)).toMatchObject({
+      userId: crossTenantFinanceId,
+      tenantId: otherTenantId,
+      role: 'FINANCE_OPERATOR',
+    });
+    await expect(firestore.getMembership(crossTenantFinanceId, tenantId)).resolves.toBeNull();
+
+    await request(app.getHttpServer())
+      .get('/api/giving/payments')
+      .set('Host', host)
+      .set('x-test-user', crossTenantFinanceSubject)
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .post('/api/giving/expenses')
+      .set('Host', host)
+      .set('x-test-user', crossTenantFinanceSubject)
+      .send({ category: 'Repairs', amountPaise: 1000, note: 'cross-tenant isolation regression' })
+      .expect(403);
+
+    expect(listTenantPayments).not.toHaveBeenCalled();
+    expect(createExpense).not.toHaveBeenCalled();
   });
 
   it('creates a pledge, records and approves a payment, then serves the persisted receipt to the donor', async () => {
