@@ -327,3 +327,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Current branch:** `qa/p0-finance-console-widget-coverage` adds Flutter widget tests for finance overview loading and refresh, recoverable report failure/retry, and valid expense submission with paise conversion and an idempotency key.
 - **Evidence boundary:** fake API client only; these tests do not prove persisted finance state, approval/rejection decisions, or staging/device behavior.
 - **Next:** run exact-head CI and repair failures without weakening assertions; then decide from evidence whether additional finance-console widget scenarios belong in the same bounded P0 UI closure.
+
+
+## Finance-console decision interactions — in progress (17 October 2026)
+
+- **Merged baseline:** PR #244 — finance overview/refresh, report error/retry, and valid expense submission; exact-head CI #965 and post-merge CI #966 passed.
+- **Current branch:** `qa/p0-finance-console-decision-journeys` adds Flutter widget tests for payment verify/reject, expense approve/reject, and adjustment approve/reject, including rejection reasons and exact API decision paths.
+- **Evidence boundary:** fake API client only. Backend authorization, persisted maker-checker decisions/reconciliation, production/staging identity and external UPI/bank settlement remain separate evidence gates.
+- **Next:** exact-head CI, repair real failures without weakening assertions, merge only when required checks are green/mergeable, then verify post-merge CI and reconcile the remaining P0 inventory. Android AAB remains manual/on-demand.
