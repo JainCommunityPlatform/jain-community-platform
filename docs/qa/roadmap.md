@@ -428,3 +428,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Exact-head CI:** [#934](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38747984088) passed; **post-merge CI #935** passed on merge commit `b1f06fa5f066b800ad8a6c5cbf074b0623708404`; Android AAB skipped by design.
 - **Coverage advanced:** the Firestore-emulator HTTP suite now proves persisted finance-role revocation with the real `MembershipService`, retaining the general content-manager role and denying the next finance read before service access.
 - **Next P0:** controlled staging/device identity and session verification (Firebase sign-in, expiry/revocation, restart, role/membership propagation, tenant routing and donor receipt history). Emulator results do not establish production/device behavior. Android build/upload remains manual/on-demand.
+
+
+## P0 route-audit checkpoint — general tenant membership authorization (16 October 2026)
+
+- The post-merge CI for PR #239 passed, so the finance-viewer giving mutation matrix is green on master.
+- The route audit found one additional deterministic P0 boundary that was not explicitly exercised through the HTTP pipeline: the general `/api/memberships` list/assign/update routes. Unit tests existed, but they did not prove guard/interceptor behavior or prevent a future route wiring regression.
+- The consolidated follow-up MR adds three HTTP integration scenarios: denied finance-viewer/cross-tenant membership administration, denied financial-role escalation through general membership routes (including overwriting an existing financial membership), and a positive non-financial role assignment with tenant-scoped audit.
+- Remaining P0 environment gates are unchanged: real Firebase sign-in/revocation/role propagation and app restart on a controlled device; no production donor data. External UPI/bank settlement is not represented by emulator tests. Android AAB remains manual/on-demand.
