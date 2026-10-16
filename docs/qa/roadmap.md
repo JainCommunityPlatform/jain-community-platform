@@ -8,7 +8,7 @@
 
 ---
 
-# JCP QA Roadmap
+# JCP QA Roadmap\n\n## Consolidated P0 closure pass — 16 October 2026\n\nThe remaining deterministic P0 authorization assertions are being consolidated into one MR rather than split into one-role/one-route MRs. The MR adds the missing finance-viewer negative matrix across payment, expense and adjustment writes and all approval/rejection actions, with no-service/no-audit assertions. Closure requires exact-head CI green, default-branch post-merge CI green, and inventory/checkpoint reconciliation. Remaining controlled Firebase staging/device verification and external UPI/bank settlement are explicitly separate gates; they must not be reported as complete from emulator or mocked HTTP tests. Android AAB build/upload remains manual/on-demand.\n\n
 
 Last reviewed: 12 October 2026  
 Programme tracker: [QA Control Tower issue #162](https://github.com/JainCommunityPlatform/jain-community-platform/issues/162)  
