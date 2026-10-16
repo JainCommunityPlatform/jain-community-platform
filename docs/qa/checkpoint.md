@@ -319,3 +319,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - Current branch: qa/p0-persisted-cross-tenant-finance-isolation adds a Firestore-emulator HTTP regression using real persisted memberships: a finance operator assigned only to tenant B must be denied tenant A's payments read and expense creation before the financial service is invoked.
 - Evidence boundary: controlled tenant resolver plus Firestore emulator; production Firebase/staging/device identity remains unverified. This strengthens, but does not claim to exhaust, every possible cross-tenant data query.
 - Next: exact-head CI, repair genuine failures without weakening assertions, merge only when green/mergeable, verify post-merge CI, then reconcile the final deterministic P0 route and persisted-isolation coverage.
+
+
+## Finance console critical widget coverage — in progress (16 October 2026)
+
+- **Baseline:** PR #243 merged as `9e49119740ceb3479a9e0b6ff7e50352188a7198`; exact-head CI #963 and post-merge CI #964 passed. Android AAB skipped by policy.
+- **Current branch:** `qa/p0-finance-console-widget-coverage` adds Flutter widget tests for finance overview loading and refresh, recoverable report failure/retry, and valid expense submission with paise conversion and an idempotency key.
+- **Evidence boundary:** fake API client only; these tests do not prove persisted finance state, approval/rejection decisions, or staging/device behavior.
+- **Next:** run exact-head CI and repair failures without weakening assertions; then decide from evidence whether additional finance-console widget scenarios belong in the same bounded P0 UI closure.

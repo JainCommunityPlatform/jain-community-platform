@@ -1806,3 +1806,21 @@ Then both requests return HTTP 403
 And the payment list and expense creation services are not invoked
 
 Executable regression: apps/api/src/giving/giving.controller.firestore-emulator-spec.ts — “denies a persisted finance membership from another tenant before financial reads or writes”. The test uses the Firestore emulator and real membership/authorization resolution, with a controlled tenant resolver. It proves persisted membership isolation for these read/write routes, not every possible cross-tenant data query or production Firebase identity propagation.
+
+
+## Scenario: Finance console loads, recovers from report failures, and submits a valid expense
+
+Given an authorized finance user opens the finance workspace
+When the summary and reconciliation endpoints succeed
+Then the overview renders the financial totals and refresh reloads the reports
+
+When a finance report request temporarily fails
+Then the workspace displays a recoverable error and a retry action
+And a successful retry restores the overview
+
+When the user records an expense with a valid positive amount
+Then the app converts rupees to paise
+And sends the expense to the API with an idempotency key
+And displays the submission confirmation only after the API succeeds
+
+Executable regressions: `apps/flutter/test/features/giving/finance_console_page_test.dart` — “loads finance overview and refreshes tenant-scoped reports”, “shows a recoverable report error and retries successfully”, and “records a valid expense in paise with an idempotency key”. These are Flutter widget tests with a fake API client; they verify UI/request contracts, not persisted Firestore state or production finance approval.
