@@ -18,6 +18,7 @@ class FakeFinanceApiClient extends ApiClient {
 
   final calls = <FinanceCall>[];
   int summaryFailuresRemaining = 0;
+  final listResponses = <String, List<dynamic>>{};
 
   @override
   Future<Map<String, dynamic>> getObject(String path) async {
@@ -52,7 +53,7 @@ class FakeFinanceApiClient extends ApiClient {
   @override
   Future<List<dynamic>> getList(String path) async {
     calls.add(FinanceCall('GET', path));
-    return <dynamic>[];
+    return listResponses[path] ?? <dynamic>[];
   }
 
   @override
@@ -120,6 +121,109 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Tenant finance overview'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('verifies and rejects pending payments with the correct decision routes', (tester) async {
+    final api = FakeFinanceApiClient()
+      ..listResponses['/api/giving/payments'] = [
+        {'id': 'payment-verify', 'amountPaise': 2500, 'method': 'UPI', 'status': 'PENDING_APPROVAL', 'pledgeId': 'pledge-1'},
+        {'id': 'payment-reject', 'amountPaise': 1500, 'method': 'CASH', 'status': 'PENDING_APPROVAL', 'pledgeId': 'pledge-2'},
+      ];
+
+    await tester.pumpWidget(MaterialApp(home: FinanceConsolePage(api: api)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Payments').first);
+    await tester.pumpAndSettle();
+
+    final menus = find.byType(PopupMenuButton<String>);
+    expect(menus, findsNWidgets(2));
+    await tester.tap(menus.at(0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Verify'));
+    await tester.pumpAndSettle();
+
+    expect(api.calls.any((call) => call.method == 'POST' && call.path == '/api/giving/payments/payment-verify/approve'), isTrue);
+    expect(find.text('Decision saved.'), findsOneWidget);
+
+    await tester.tap(find.byType(PopupMenuButton<String>).at(1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Reject'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), 'Duplicate payment');
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    final rejection = api.calls.lastWhere((call) => call.method == 'POST' && call.path == '/api/giving/payments/payment-reject/reject');
+    expect(rejection.body, containsPair('reason', 'Duplicate payment'));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('approves and rejects pending expenses and includes a rejection reason', (tester) async {
+    final api = FakeFinanceApiClient()
+      ..listResponses['/api/giving/expenses'] = [
+        {'id': 'expense-approve', 'amountPaise': 5000, 'category': 'Repairs', 'description': 'Roof repair', 'status': 'PENDING_APPROVAL'},
+        {'id': 'expense-reject', 'amountPaise': 3000, 'category': 'Supplies', 'description': 'Stationery', 'status': 'PENDING_APPROVAL'},
+      ];
+
+    await tester.pumpWidget(MaterialApp(home: FinanceConsolePage(api: api)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Expenses').first);
+    await tester.pumpAndSettle();
+
+    final menus = find.byType(PopupMenuButton<String>);
+    expect(menus, findsNWidgets(2));
+    await tester.tap(menus.at(0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Approve'));
+    await tester.pumpAndSettle();
+
+    expect(api.calls.any((call) => call.method == 'POST' && call.path == '/api/giving/expenses/expense-approve/approve'), isTrue);
+
+    await tester.tap(find.byType(PopupMenuButton<String>).at(1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Reject'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), 'Missing receipt');
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    final rejection = api.calls.lastWhere((call) => call.method == 'POST' && call.path == '/api/giving/expenses/expense-reject/reject');
+    expect(rejection.body, containsPair('reason', 'Missing receipt'));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('approves and rejects pending adjustments with decision reasons', (tester) async {
+    final api = FakeFinanceApiClient()
+      ..listResponses['/api/giving/adjustments'] = [
+        {'id': 'adjustment-approve', 'amountPaise': 1200, 'kind': 'REFUND', 'reason': 'Overpayment', 'status': 'PENDING_APPROVAL'},
+        {'id': 'adjustment-reject', 'amountPaise': 800, 'kind': 'REVERSAL', 'reason': 'Incorrect entry', 'status': 'PENDING_APPROVAL'},
+      ];
+
+    await tester.pumpWidget(MaterialApp(home: FinanceConsolePage(api: api)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Adjustments').first);
+    await tester.pumpAndSettle();
+
+    final menus = find.byType(PopupMenuButton<String>);
+    expect(menus, findsNWidgets(2));
+    await tester.tap(menus.at(0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Approve'));
+    await tester.pumpAndSettle();
+
+    expect(api.calls.any((call) => call.method == 'POST' && call.path == '/api/giving/adjustments/adjustment-approve/approve'), isTrue);
+
+    await tester.tap(find.byType(PopupMenuButton<String>).at(1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Reject'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), 'Unsupported adjustment');
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    final rejection = api.calls.lastWhere((call) => call.method == 'POST' && call.path == '/api/giving/adjustments/adjustment-reject/reject');
+    expect(rejection.body, containsPair('reason', 'Unsupported adjustment'));
     expect(tester.takeException(), isNull);
   });
 
