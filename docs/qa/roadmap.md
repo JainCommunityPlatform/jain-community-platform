@@ -444,3 +444,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - The final consolidated route-audit follow-up adds missing/wrong-token denials and valid-token positive requests for profile provisioning and activity recording, asserting protected services are not invoked on denial.
 - The test validates route/header wiring with a mocked profile service. Deployment secret configuration/rotation and caller identity are operational controls; Firebase/device verification and external UPI/bank settlement remain separate gates.
 - Android AAB build/upload remains manual/on-demand.
+
+
+## Consolidated API route audit — 16 October 2026
+
+- Verified PR #239 (CI #952/#953), PR #240 (CI #954/#955), and PR #241 (CI #957/#958).
+- The remaining route-level gaps found in the current pass are profile registration/contact identity handling and HTTP-level tenant/user scoping for notification list/preferences/read endpoints. These are grouped into one test MR rather than split by route.
+- Environment acceptance is still separate: controlled Firebase staging/device session and role propagation, actual Storage/notification provider behavior, and external UPI/bank settlement are not proven by emulator or mocked HTTP tests.
