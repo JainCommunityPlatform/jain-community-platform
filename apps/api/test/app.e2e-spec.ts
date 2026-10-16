@@ -450,7 +450,7 @@ describe('API endpoints (integration)', () => {
       .post('/api/profile/contact')
       .set('x-test-user', 'user-a')
       .send({ value: '9876543210' })
-      .expect(200)
+      .expect(201)
       .expect((response) => {
         expect(response.body.id).toBe('user-a');
         expect(response.body.primaryPhone).toBe('9876543210');
