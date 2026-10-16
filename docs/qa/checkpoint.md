@@ -288,3 +288,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Exact-head CI:** [#945](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38752045254) passed; **post-merge CI:** [#946](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38752615989) passed on the merge commit.
 - **Coverage:** the Firestore-emulator HTTP suite verifies expense creation, maker-checker self-approval denial, independent approval, rejection, persisted states and reconciliation that subtracts only approved expenses.
 - **Next P0:** finish remaining protected-route/write authorization matrix and preserve controlled staging/device verification as a separate gate. Operational finance reports are not a general ledger; external UPI/bank settlement remains unverified. Android build/upload remains manual/on-demand.
+
+
+## Consolidated P0 route audit — follow-up MR (16 October 2026)
+
+- **Baseline:** PR #239 merged as `5749f9016fe51ac649764a0af97f233878ee784f`; exact-head CI #952 and post-merge CI #953 passed. Android AAB was skipped by design.
+- **Audit finding:** the dedicated `TenantMembershipController` endpoints for listing, assigning-by-email, and updating roles had unit tests but lacked an explicit HTTP-level authorization/escalation matrix.
+- **Current work:** branch `qa/p0-membership-role-http-authorization` adds route-level denials for finance viewers and cross-tenant tenant administrators; prevents financial-role grants or replacement through the general membership endpoints; and verifies an authorized non-financial assignment remains successful and audited.
+- **Next:** inspect exact-head CI and fix genuine failures; do not weaken assertions. Merge only when required checks pass and GitHub confirms mergeability, then verify post-merge CI and continue the P0 route audit. Production/staging Firebase/device and external UPI/bank settlement remain environment/provider gates. Android build/upload stays manual/on-demand.
