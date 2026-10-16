@@ -105,7 +105,7 @@
 - **Superseded branch:** `qa/session-signout-route-refresh` was 37 commits behind master; its sign-out redirect behavior is already covered by `apps/flutter/test/widget_test.dart` test `redirects an open protected route to login when Firebase signs out`. Do not merge the stale branch.
 - **Next:** continue to the next highest-priority unfinished P0 gap in issue #162 and the QA inventory. Device/emulator restart and production API verification remain open. Android build/upload remains manual/on-demand.
 
-# JCP Autonomous QA Checkpoint
+# JCP Autonomous QA Checkpoint\n\n## Consolidated P0 closure MR — 16 October 2026\n\n- Branch: `qa/p0-consolidated-authorization-closure`.\n- Scope: add the missing finance-viewer HTTP denial matrix for all nine financial write/decision routes; assert 403 and no financial service or success-audit side effects.\n- Closure gate: exact-head CI and post-merge default-branch CI must both pass. Reconcile the P0 inventory after evidence is available.\n- Explicitly not claimed: production/staging Firebase identity and device/session verification, external UPI/bank settlement, or full P1/P2 roadmap completion. Android AAB remains manual/on-demand.\n\n
 
 Date: 13 October 2026
 Repository: [JainCommunityPlatform/jain-community-platform](https://github.com/JainCommunityPlatform/jain-community-platform)

@@ -2382,4 +2382,55 @@ describe('API endpoints (integration)', () => {
     }));
   });
 
+
+  it('denies finance viewers every financial write and decision route before service or audit side effects', async () => {
+    const routes: Array<{
+      path: string;
+      service: jest.Mock;
+      body: Record<string, unknown>;
+    }> = [
+      {
+        path: '/api/giving/pledges/pledge-1/payments',
+        service: giving.recordPayment,
+        body: { amountPaise: 5000, method: 'UPI' },
+      },
+      {
+        path: '/api/giving/expenses',
+        service: giving.createExpense,
+        body: { category: 'MAINTENANCE', amountPaise: 5000, description: 'Viewer write attempt' },
+      },
+      {
+        path: '/api/giving/payments/payment-1/adjustments',
+        service: giving.createAdjustment,
+        body: { kind: 'REFUND', amountPaise: 1000, reason: 'Viewer write attempt' },
+      },
+      { path: '/api/giving/payments/payment-1/approve', service: giving.approvePayment, body: {} },
+      { path: '/api/giving/payments/payment-1/reject', service: giving.rejectPayment, body: { reason: 'Viewer decision attempt' } },
+      { path: '/api/giving/expenses/expense-1/approve', service: giving.approveExpense, body: {} },
+      { path: '/api/giving/expenses/expense-1/reject', service: giving.rejectExpense, body: { reason: 'Viewer decision attempt' } },
+      { path: '/api/giving/adjustments/adjustment-1/approve', service: giving.approveAdjustment, body: {} },
+      { path: '/api/giving/adjustments/adjustment-1/reject', service: giving.rejectAdjustment, body: { reason: 'Viewer decision attempt' } },
+    ];
+
+    audit.record.mockClear();
+    for (const [index, route] of routes.entries()) {
+      route.service.mockClear();
+      await request(app.getHttpServer())
+        .post(route.path)
+        .set('Host', 'badebabakharadi.com')
+        .set('x-test-user', 'user-viewer')
+        .set('idempotency-key', `finance-viewer-denied-${index}`)
+        .send(route.body)
+        .expect(403)
+        .expect({
+          statusCode: 403,
+          message: 'Permission denied',
+          error: 'Forbidden',
+        });
+
+      expect(route.service).not.toHaveBeenCalled();
+    }
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
 });
