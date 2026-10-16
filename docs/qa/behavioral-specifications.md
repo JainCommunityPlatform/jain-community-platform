@@ -1766,3 +1766,32 @@ Then the corresponding profile service is invoked with the request payload
 And the route returns the expected success response
 
 Executable regression (consolidated P0 route-audit follow-up): `apps/api/test/app.e2e-spec.ts` — “requires the configured internal token for both profile migration HTTP routes”. This exercises header binding and rejection through the NestJS HTTP pipeline with mocked profile-service dependencies; it does not validate production secret storage, secret rotation, or the identity of the calling deployment.
+
+
+## Scenario: Profile registration context is scoped to the authenticated identity
+
+Given a user is authenticated and the active tenant context is resolved
+When the user requests `GET /api/profile/registration-context`
+Then the API returns that user's profile and participation context
+And the controller passes the authenticated identity to the profile service
+And the request cannot select a different user's profile through caller-controlled input
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — “GET /api/profile/registration-context returns the authenticated profile and participation context”. The HTTP test uses mocked identity and profile service dependencies; persisted profile data and staging/device identity remain separate evidence layers.
+
+## Scenario: Contact linking uses the authenticated identity and rejects caller-selected identity
+
+Given a user is authenticated
+When the user submits `POST /api/profile/contact` with a contact value
+Then the API links the contact through the authenticated identity
+And caller-supplied identity fields are rejected before the profile service is invoked
+
+Executable regressions: `apps/api/test/app.e2e-spec.ts` — “POST /api/profile/contact links contact data to the authenticated identity, not a caller-selected user” and “POST /api/profile/contact rejects caller-supplied identity fields before linking a contact”. The HTTP tests use mocked profile service dependencies; actual Firestore contact-link conflicts and device behavior remain separate.
+
+## Scenario: Notification routes scope personal data and state changes to the authenticated user and active tenant
+
+Given a user is authenticated in the active tenant
+When the user lists notifications, reads or updates preferences, or marks one notification as read
+Then the API passes the active tenant ID and authenticated user ID to the notification service
+And a caller cannot select another user or tenant through request data
+
+Executable regressions: `apps/api/test/app.e2e-spec.ts` — “GET /api/notifications scopes notification history to the authenticated identity and active tenant”, “GET /api/notifications/preferences scopes preferences to the authenticated identity and active tenant”, “PUT /api/notifications/preferences updates only the authenticated identity preferences in the active tenant”, and “POST /api/notifications/:notificationId/read scopes read updates to the authenticated identity and active tenant”. Service dependencies are mocked; persisted notification delivery, retries and staging remain open.

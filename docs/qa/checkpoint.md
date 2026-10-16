@@ -303,3 +303,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Finding:** `ProfileMigrationController` unit tests verified the token check, but the HTTP pipeline did not explicitly prove that the `x-jcp-internal-token` header is bound and enforced for both provisioning and activity-recording routes.
 - **Current MR:** branch `qa/p0-internal-migration-token-http-coverage` adds missing/wrong-token 401 assertions and valid-token success assertions for both routes, with service side-effect checks.
 - **Validation:** run exact-head CI and fix any genuine failures without weakening assertions. Merge only with all required checks green and mergeability confirmed; verify post-merge CI. Deployment secret management/rotation, Firebase/device verification and external UPI/bank settlement remain separate environment/provider gates. Android AAB stays manual/on-demand.
+
+
+## Consolidated profile and notification route audit — in progress (16 October 2026)
+
+- **Prior verified merges:** PR #239 exact-head CI #952/post-merge #953; PR #240 exact-head CI #954/post-merge #955; PR #241 exact-head CI #957/post-merge #958 all passed. Android AAB remained skipped by policy.
+- **Current branch:** `qa/p0-profile-identity-route-closure` adds HTTP integration tests for profile registration-context and contact-linking identity boundaries, rejects caller-supplied profile identity fields, and covers all four notification HTTP routes for authenticated-user and active-tenant scoping.
+- **Tests use mocked identity/services:** they prove HTTP guard/interceptor/controller argument scoping, not persisted profile/notification delivery or production Firebase/device behavior.
+- **Next:** run exact-head CI, repair genuine failures without weakening assertions, then reconcile the P0 route inventory and record any remaining environment-gated items. Keep Android AAB manual/on-demand.
