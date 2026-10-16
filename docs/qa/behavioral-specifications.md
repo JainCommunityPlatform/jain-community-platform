@@ -1752,3 +1752,17 @@ When the same administrator assigns a non-financial role to a member in the acti
 Then the API accepts the assignment and records the tenant-scoped audit event
 
 Executable regression (added in the consolidated P0 route-audit MR): `apps/api/test/app.e2e-spec.ts` — “membership administration routes deny finance viewers and cross-tenant administrators before service or audit side effects”, “prevents tenant administrators from granting or replacing financial roles through general membership routes”, and “allows a tenant administrator to assign a non-financial membership role through the protected HTTP route”. These exercise the NestJS HTTP guard/interceptor/controller pipeline with mocked membership and Firestore dependencies; persisted role propagation and Firebase staging/device verification remain separate evidence layers.
+
+
+## Scenario: Profile migration endpoints reject absent or incorrect internal integration tokens
+
+Given the profile migration API is configured with an internal integration token
+When a caller submits profile provisioning or activity recording without the token or with an incorrect token
+Then both HTTP routes return 401
+And neither profile provisioning nor activity persistence is invoked
+
+When the caller submits either request with the configured token
+Then the corresponding profile service is invoked with the request payload
+And the route returns the expected success response
+
+Executable regression (consolidated P0 route-audit follow-up): `apps/api/test/app.e2e-spec.ts` — “requires the configured internal token for both profile migration HTTP routes”. This exercises header binding and rejection through the NestJS HTTP pipeline with mocked profile-service dependencies; it does not validate production secret storage, secret rotation, or the identity of the calling deployment.

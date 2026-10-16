@@ -436,3 +436,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - The route audit found one additional deterministic P0 boundary that was not explicitly exercised through the HTTP pipeline: the general `/api/memberships` list/assign/update routes. Unit tests existed, but they did not prove guard/interceptor behavior or prevent a future route wiring regression.
 - The consolidated follow-up MR adds three HTTP integration scenarios: denied finance-viewer/cross-tenant membership administration, denied financial-role escalation through general membership routes (including overwriting an existing financial membership), and a positive non-financial role assignment with tenant-scoped audit.
 - Remaining P0 environment gates are unchanged: real Firebase sign-in/revocation/role propagation and app restart on a controlled device; no production donor data. External UPI/bank settlement is not represented by emulator tests. Android AAB remains manual/on-demand.
+
+
+## P0 route-audit checkpoint — internal profile migration token (16 October 2026)
+
+- The controller audit found that `ProfileMigrationController` had unit tests for its internal-token check but no HTTP integration test proving the configured header is enforced on both mutating routes.
+- The final consolidated route-audit follow-up adds missing/wrong-token denials and valid-token positive requests for profile provisioning and activity recording, asserting protected services are not invoked on denial.
+- The test validates route/header wiring with a mocked profile service. Deployment secret configuration/rotation and caller identity are operational controls; Firebase/device verification and external UPI/bank settlement remain separate gates.
+- Android AAB build/upload remains manual/on-demand.

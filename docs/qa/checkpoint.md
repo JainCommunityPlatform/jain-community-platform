@@ -296,3 +296,10 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Audit finding:** the dedicated `TenantMembershipController` endpoints for listing, assigning-by-email, and updating roles had unit tests but lacked an explicit HTTP-level authorization/escalation matrix.
 - **Current work:** branch `qa/p0-membership-role-http-authorization` adds route-level denials for finance viewers and cross-tenant tenant administrators; prevents financial-role grants or replacement through the general membership endpoints; and verifies an authorized non-financial assignment remains successful and audited.
 - **Next:** inspect exact-head CI and fix genuine failures; do not weaken assertions. Merge only when required checks pass and GitHub confirms mergeability, then verify post-merge CI and continue the P0 route audit. Production/staging Firebase/device and external UPI/bank settlement remain environment/provider gates. Android build/upload stays manual/on-demand.
+
+
+## P0 route-audit follow-up — internal profile migration token (16 October 2026)
+
+- **Finding:** `ProfileMigrationController` unit tests verified the token check, but the HTTP pipeline did not explicitly prove that the `x-jcp-internal-token` header is bound and enforced for both provisioning and activity-recording routes.
+- **Current MR:** branch `qa/p0-internal-migration-token-http-coverage` adds missing/wrong-token 401 assertions and valid-token success assertions for both routes, with service side-effect checks.
+- **Validation:** run exact-head CI and fix any genuine failures without weakening assertions. Merge only with all required checks green and mergeability confirmed; verify post-merge CI. Deployment secret management/rotation, Firebase/device verification and external UPI/bank settlement remain separate environment/provider gates. Android AAB stays manual/on-demand.

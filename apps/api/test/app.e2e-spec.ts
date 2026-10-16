@@ -113,6 +113,7 @@ describe('API endpoints (integration)', () => {
       }]),
       linkCurrentContact: jest.fn(),
       adminSetContact: jest.fn(),
+      provisionByContact: jest.fn(),
       recordActivity: jest.fn(),
     };
 
@@ -2394,6 +2395,78 @@ describe('API endpoints (integration)', () => {
     }));
   });
 
+
+  it('requires the configured internal token for both profile migration HTTP routes', async () => {
+    const previousToken = process.env.JCP_INTERNAL_TOKEN;
+    process.env.JCP_INTERNAL_TOKEN = 'integration-token-for-http-test';
+    const profiles = app.get(ProfileService) as unknown as {
+      provisionByContact: jest.Mock;
+      recordActivity: jest.Mock;
+    };
+    profiles.provisionByContact.mockClear();
+    profiles.recordActivity.mockClear();
+
+    const routes = [
+      {
+        path: '/api/profile-migrations/provision',
+        body: { value: '9876543210', displayName: 'Migrated Member' },
+        service: profiles.provisionByContact,
+      },
+      {
+        path: '/api/profile-migrations/activities',
+        body: {
+          userId: 'user-target',
+          eventType: 'KSHAMAWANI',
+          eventId: 'event-1',
+          title: 'Community Event',
+          participatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        service: profiles.recordActivity,
+      },
+    ] as const;
+
+    try {
+      for (const route of routes) {
+        route.service.mockClear();
+        await request(app.getHttpServer())
+          .post(route.path)
+          .send(route.body)
+          .expect(401);
+        await request(app.getHttpServer())
+          .post(route.path)
+          .set('x-jcp-internal-token', 'wrong-integration-token')
+          .send(route.body)
+          .expect(401);
+        expect(route.service).not.toHaveBeenCalled();
+      }
+
+      profiles.provisionByContact.mockResolvedValueOnce({ id: 'user-provisioned' });
+      profiles.recordActivity.mockResolvedValueOnce(undefined);
+
+      await request(app.getHttpServer())
+        .post('/api/profile-migrations/provision')
+        .set('x-jcp-internal-token', 'integration-token-for-http-test')
+        .send(routes[0].body)
+        .expect(201)
+        .expect({ id: 'user-provisioned' });
+
+      await request(app.getHttpServer())
+        .post('/api/profile-migrations/activities')
+        .set('x-jcp-internal-token', 'integration-token-for-http-test')
+        .send(routes[1].body)
+        .expect(201)
+        .expect({ recorded: true });
+
+      expect(profiles.provisionByContact).toHaveBeenCalledWith(routes[0].body);
+      expect(profiles.recordActivity).toHaveBeenCalledWith(routes[1].body);
+    } finally {
+      if (previousToken === undefined) {
+        delete process.env.JCP_INTERNAL_TOKEN;
+      } else {
+        process.env.JCP_INTERNAL_TOKEN = previousToken;
+      }
+    }
+  });
 
   it('membership administration routes deny finance viewers and cross-tenant administrators before service or audit side effects', async () => {
     const routes = [
