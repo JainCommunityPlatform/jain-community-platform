@@ -21,6 +21,7 @@ import { TenantMemberService } from '../src/tenant/tenant-member.service';
 import { FirestoreService } from '../src/database/firestore.service';
 import { WebsiteService } from '../src/website/website.service';
 import { FirebaseStorageService } from '../src/website/firebase-storage.service';
+import { NotificationsService } from '../src/notifications/notifications.service';
 
 describe('API endpoints (integration)', () => {
   let app: INestApplication;
@@ -61,6 +62,7 @@ describe('API endpoints (integration)', () => {
   let firestore: { getTenantById: jest.Mock; recordAudit: jest.Mock; findUserByEmail: jest.Mock; getMembership: jest.Mock };
   let website: { updateCurrent: jest.Mock; resetCurrent: jest.Mock };
   let storage: { uploadTenantImage: jest.Mock };
+  let notifications: { listForUser: jest.Mock; getPreferences: jest.Mock; updatePreferences: jest.Mock; markRead: jest.Mock };
 
   beforeAll(async () => {
     const authenticationGuard = {
@@ -86,6 +88,10 @@ describe('API endpoints (integration)', () => {
     };
 
     const profile = {
+      registrationContext: jest.fn(async () => ({
+        profile: { id: 'user-a', displayName: 'Test Member', email: 'test@example.com' },
+        activities: [{ id: 'activity-1', eventType: 'KSHAMAWANI', eventId: 'kshamawani-2026', title: 'Kshamawani 2026', participatedAt: '2026-09-05T00:00:00.000Z', tenantId: '00000000-0000-0000-0000-000000000001' }],
+      })),
       getCurrent: jest.fn(async () => ({
         id: 'user-a',
         displayName: 'Test Member',
@@ -111,7 +117,10 @@ describe('API endpoints (integration)', () => {
         title: 'Kshamawani 2026',
         participatedAt: '2026-09-05T00:00:00.000Z',
       }]),
-      linkCurrentContact: jest.fn(),
+      linkCurrentContact: jest.fn(async () => ({
+        id: 'user-a', displayName: 'Test Member', email: 'test@example.com',
+        primaryPhone: '9876543210', phoneNumbers: ['9876543210'], needsPhoneLink: false,
+      })),
       adminSetContact: jest.fn(),
       provisionByContact: jest.fn(),
       recordActivity: jest.fn(),
@@ -277,6 +286,12 @@ describe('API endpoints (integration)', () => {
       contentType: 'image/jpeg',
       size: 4,
     }) };
+    notifications = {
+      listForUser: jest.fn().mockResolvedValue([{ id: 'notification-1', tenantId: '00000000-0000-0000-0000-000000000001', userId: 'user-a', readAt: null }]),
+      getPreferences: jest.fn().mockResolvedValue({ tenantId: '00000000-0000-0000-0000-000000000001', userId: 'user-a', email: false, whatsapp: true, push: false }),
+      updatePreferences: jest.fn().mockResolvedValue({ tenantId: '00000000-0000-0000-0000-000000000001', userId: 'user-a', email: true, whatsapp: false, push: true }),
+      markRead: jest.fn().mockResolvedValue({ id: 'notification-1', readAt: '2026-10-16T00:00:00.000Z' }),
+    };
     tenantMembers = {
       list: jest.fn().mockResolvedValue([{ id: 'membership-1', userId: '00000000-0000-4000-8000-000000000099', role: 'CONTENT_MANAGER', createdAt: new Date('2026-01-01T00:00:00.000Z') }]),
       get: jest.fn().mockResolvedValue({ id: 'membership-1', userId: '00000000-0000-4000-8000-000000000099', role: 'CONTENT_MANAGER', createdAt: new Date('2026-01-01T00:00:00.000Z') }),
@@ -310,6 +325,8 @@ describe('API endpoints (integration)', () => {
       .useValue(website)
       .overrideProvider(FirebaseStorageService)
       .useValue(storage)
+      .overrideProvider(NotificationsService)
+      .useValue(notifications)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -411,6 +428,103 @@ describe('API endpoints (integration)', () => {
         expect(response.body.primaryPhone).toBe('9876543210');
         expect(response.body.needsPhoneLink).toBe(false);
       });
+  });
+
+  it('GET /api/profile/registration-context returns the authenticated profile and participation context', async () => {
+    await request(app.getHttpServer())
+      .get('/api/profile/registration-context')
+      .set('x-test-user', 'user-a')
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.profile.id).toBe('user-a');
+        expect(response.body.activities).toEqual([
+          expect.objectContaining({ id: 'activity-1', eventId: 'kshamawani-2026' }),
+        ]);
+      });
+
+    expect(profile.registrationContext).toHaveBeenCalledWith(expect.objectContaining({ subject: 'user-a' }));
+  });
+
+  it('POST /api/profile/contact links contact data to the authenticated identity, not a caller-selected user', async () => {
+    await request(app.getHttpServer())
+      .post('/api/profile/contact')
+      .set('x-test-user', 'user-a')
+      .send({ value: '9876543210' })
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.id).toBe('user-a');
+        expect(response.body.primaryPhone).toBe('9876543210');
+      });
+
+    expect(profile.linkCurrentContact).toHaveBeenCalledWith(expect.objectContaining({ subject: 'user-a' }), '9876543210');
+  });
+
+  it('POST /api/profile/contact rejects caller-supplied identity fields before linking a contact', async () => {
+    profile.linkCurrentContact.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/profile/contact')
+      .set('x-test-user', 'user-a')
+      .send({ value: '9876543210', userId: 'user-victim' })
+      .expect(400);
+
+    expect(profile.linkCurrentContact).not.toHaveBeenCalled();
+  });
+
+  it('GET /api/notifications scopes notification history to the authenticated identity and active tenant', async () => {
+    notifications.listForUser.mockClear();
+
+    await request(app.getHttpServer())
+      .get('/api/notifications')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toEqual([
+          expect.objectContaining({ id: 'notification-1', userId: 'user-a' }),
+        ]);
+      });
+
+    expect(notifications.listForUser).toHaveBeenCalledWith('00000000-0000-0000-0000-000000000001', 'user-a');
+  });
+
+  it('GET /api/notifications/preferences scopes preferences to the authenticated identity and active tenant', async () => {
+    await request(app.getHttpServer())
+      .get('/api/notifications/preferences')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .expect(200)
+      .expect({ tenantId: '00000000-0000-0000-0000-000000000001', userId: 'user-a', email: false, whatsapp: true, push: false });
+
+    expect(notifications.getPreferences).toHaveBeenCalledWith('00000000-0000-0000-0000-000000000001', 'user-a');
+  });
+
+  it('PUT /api/notifications/preferences updates only the authenticated identity preferences in the active tenant', async () => {
+    notifications.updatePreferences.mockClear();
+
+    await request(app.getHttpServer())
+      .put('/api/notifications/preferences')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .send({ email: true, whatsapp: false, push: true })
+      .expect(200)
+      .expect({ tenantId: '00000000-0000-0000-0000-000000000001', userId: 'user-a', email: true, whatsapp: false, push: true });
+
+    expect(notifications.updatePreferences).toHaveBeenCalledWith({
+      email: true, whatsapp: false, push: true,
+      tenantId: '00000000-0000-0000-0000-000000000001', userId: 'user-a',
+    });
+  });
+
+  it('POST /api/notifications/:notificationId/read scopes read updates to the authenticated identity and active tenant', async () => {
+    await request(app.getHttpServer())
+      .post('/api/notifications/notification-1/read')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .expect(201)
+      .expect({ id: 'notification-1', readAt: '2026-10-16T00:00:00.000Z' });
+
+    expect(notifications.markRead).toHaveBeenCalledWith('00000000-0000-0000-0000-000000000001', 'user-a', 'notification-1');
   });
 
   it('PATCH /api/profile updates editable profile fields without accepting phone fields', async () => {
