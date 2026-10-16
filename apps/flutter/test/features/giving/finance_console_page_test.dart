@@ -87,7 +87,7 @@ void main() {
 
     expect(find.text('Finance workspace'), findsOneWidget);
     expect(find.text('Tenant finance overview'), findsOneWidget);
-    expect(find.text('₹100.00'), findsOneWidget);
+    expect(find.text('₹100.00'), findsNWidgets(2));
     expect(
       api.calls.where((call) => call.path == '/api/giving/reports/summary'),
       hasLength(1),
