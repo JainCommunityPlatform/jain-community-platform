@@ -113,6 +113,7 @@ describe('API endpoints (integration)', () => {
       }]),
       linkCurrentContact: jest.fn(),
       adminSetContact: jest.fn(),
+      provisionByContact: jest.fn(),
       recordActivity: jest.fn(),
     };
 
