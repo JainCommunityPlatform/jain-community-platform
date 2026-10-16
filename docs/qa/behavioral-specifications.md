@@ -1734,3 +1734,21 @@ When the request reaches the authentication guard
 Then the guard rejects it with HTTP 401 before invoking token verification
 
 Executable regression: `apps/api/src/auth/authentication.guard.spec.ts` — “accepts the bearer authentication scheme case-insensitively”, “rejects a missing bearer token”, “rejects a non-Bearer authorization scheme before token verification”, and “rejects a bearer scheme without a token”. Token validity remains the responsibility of `JwtAuthenticationService`; these tests do not prove Firebase/staging/device behavior.
+
+
+## Scenario: General tenant membership routes cannot bypass tenant-management authorization or finance-team controls
+
+Given an authenticated finance viewer or a tenant administrator whose membership belongs to a different active tenant
+When the user lists memberships, assigns roles by email, or updates a member's roles through the general membership API
+Then each request is denied with HTTP 403 before membership reads/writes or audit events
+
+Given an authorized tenant administrator manages a member in the active tenant
+When the administrator attempts to grant a financial role through the general membership API, or overwrite/remove an existing financial membership through that API
+Then the request is denied with HTTP 403
+And no role-assignment service is invoked
+And no success audit event is recorded
+
+When the same administrator assigns a non-financial role to a member in the active tenant
+Then the API accepts the assignment and records the tenant-scoped audit event
+
+Executable regression (added in the consolidated P0 route-audit MR): `apps/api/test/app.e2e-spec.ts` — “membership administration routes deny finance viewers and cross-tenant administrators before service or audit side effects”, “prevents tenant administrators from granting or replacing financial roles through general membership routes”, and “allows a tenant administrator to assign a non-financial membership role through the protected HTTP route”. These exercise the NestJS HTTP guard/interceptor/controller pipeline with mocked membership and Firestore dependencies; persisted role propagation and Firebase staging/device verification remain separate evidence layers.
