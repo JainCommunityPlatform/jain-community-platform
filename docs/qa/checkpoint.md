@@ -361,3 +361,12 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Current branch:** `qa/p1-website-media-upload-failure-paths` strengthens controller regressions for missing/empty files, storage failure without a success audit, tenant-scoped upload context, and deterministic tenant mock reset between tests.
 - **Evidence boundary:** controller unit tests only. Real Firebase Storage, MIME/size enforcement through the HTTP multipart pipeline, retry/progress UI, and device rendering remain open.
 - **Next:** exact-head CI; fix genuine failures without weakening assertions; merge only when all required checks pass and mergeability is confirmed. Then continue the grouped P1 website editor/media journey and retain environment verification as an explicit gate. Android AAB remains manual/on-demand.
+
+
+## Website multipart upload size regression — 17 October 2026
+
+- **Previous item merged:** [PR #249](https://github.com/JainCommunityPlatform/jain-community-platform/pull/249), merge commit `88f02e79c633989fdcba81f492999a982ff8b43a`; exact-head CI [#974](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39001358277) passed Flutter analysis/tests and connected giving journey, backend lint/unit/integration/Firestore emulator/build, repository validation, and merge gate. Android AAB was skipped by design.
+- **Post-merge CI:** UNKNOWN; commit workflow lookup returned no PR-triggered runs for the merge SHA.
+- **Current branch:** `qa/p1-website-multipart-size-rejection` adds an HTTP multipart integration regression sending a file one byte above the 10 MB limit; expects HTTP 413 and asserts neither Storage nor success audit is invoked.
+- **Evidence boundary:** HTTP pipeline test uses mocked Storage. Existing storage unit tests cover image-signature validation and the 10 MB service limit; real Firebase Storage, client retry/progress and device rendering remain open.
+- **Next:** verify exact-head CI, fix genuine failures without weakening assertions, merge only after all required checks pass and mergeability is confirmed, verify post-merge CI where exposed, then continue the next highest-priority uncovered website/editor workflow. Android AAB remains manual/on-demand.

@@ -1893,3 +1893,14 @@ Then storage receives that tenant ID
 And missing tenant context prevents storage writes
 
 Executable regressions: `apps/api/src/website/website.controller.spec.ts` — missing/empty file rejection, storage failure without success audit, tenant-scoped upload and stable mock setup. These are controller unit tests and do not prove real Firebase Storage, HTTP multipart file-size enforcement, client retry/progress, or device rendering.
+
+
+## Scenario: Oversized website media is rejected at the HTTP multipart boundary
+
+Given an authorized tenant content manager uploads a website image larger than 10 MB
+When the multipart request is processed
+Then the API responds with HTTP 413 Payload Too Large
+And Firebase Storage is not called
+And no successful media-upload audit is recorded
+
+Executable regression: `apps/api/test/app.e2e-spec.ts` — sends a multipart payload one byte above the 10 MB limit and asserts rejection before storage/audit. This is HTTP pipeline coverage with mocked Storage; it does not verify real Firebase Storage or client retry/progress behaviour.
