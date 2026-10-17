@@ -1855,3 +1855,22 @@ When a decision succeeds
 Then finance lists are reloaded before the success confirmation is presented
 
 Executable regressions: `apps/flutter/test/features/giving/finance_console_page_test.dart` — “requires a rejection reason and cancellation makes no decision request”, “shows decision API failure without a false success message”, and “reloads finance lists after a successful approval”. These use a fake API client and do not establish persisted financial outcomes.
+
+
+## Scenario: Website edits persist, preserve untouched sections and fail without false success audit
+
+Given a tenant website has an existing saved configuration
+When an editor updates only the hero section
+Then unrelated saved sections remain unchanged
+And the website version increments
+And the updated configuration can be read back from Firestore for that tenant
+
+When persistence fails while saving an edit
+Then the update request fails
+And no successful website-update audit event is emitted
+
+Given two tenants have separate website configurations
+When each tenant saves and reloads its own configuration
+Then each receives its own saved content and never the other tenant's content
+
+Executable regressions: `apps/api/src/website/website.service.spec.ts` — partial-update preservation/versioning and no-success-audit-on-write-failure; `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — persisted website save/reload and tenant isolation. These tests do not yet prove the full Flutter editor publish/reopen journey, Firebase Storage reachability, or staging/device rendering.

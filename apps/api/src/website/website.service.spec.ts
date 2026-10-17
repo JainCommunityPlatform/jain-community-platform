@@ -100,4 +100,35 @@ describe('WebsiteService', () => {
       hero: { title: '   ' },
     })).rejects.toThrow('Website hero title is required');
   });
+
+  it('preserves unrelated published fields and increments the version on a partial update', async () => {
+    const current = defaultWebsiteConfig('tenant-1', 'Temple One');
+    current.gallery.items = [{ id: 'existing-gallery-item', imageUrl: 'https://example.test/existing.jpg' }];
+    firestore.getWebsiteConfig.mockResolvedValue(current);
+    const service = new WebsiteService(firestore as never, tenantContext as never, audit as never);
+
+    const result = await service.updateCurrent({ hero: { title: 'New hero title' } });
+
+    expect(result.hero.title).toBe('New hero title');
+    expect(result.gallery.items).toEqual(current.gallery.items);
+    expect(result.version).toBe(current.version + 1);
+    expect(firestore.setWebsiteConfig).toHaveBeenCalledWith('tenant-1', result);
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'WEBSITE_CONFIG_UPDATED',
+      entityId: 'tenant-1',
+      metadata: expect.objectContaining({ version: result.version }),
+    }));
+  });
+
+  it('does not record a successful website update when persistence fails', async () => {
+    firestore.getWebsiteConfig.mockResolvedValue(defaultWebsiteConfig('tenant-1', 'Temple One'));
+    firestore.setWebsiteConfig.mockRejectedValueOnce(new Error('Firestore write failed'));
+    const service = new WebsiteService(firestore as never, tenantContext as never, audit as never);
+
+    await expect(service.updateCurrent({ hero: { title: 'Unpersisted title' } }))
+      .rejects.toThrow('Firestore write failed');
+
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
 });

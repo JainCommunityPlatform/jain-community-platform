@@ -466,3 +466,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - The next consolidated widget test change covers payment verify/reject, expense approve/reject, and adjustment approve/reject, asserting decision endpoints and rejection reasons.
 - These widget tests use a fake API client. They do not replace persisted backend/emulator maker-checker tests or staging/device/external-settlement verification.
 - Android AAB remains manual/on-demand.
+
+
+## Execution checkpoint — grouped website persistence tests (17 October 2026)
+
+- **Prior merge:** PR #247 merged as `1e40a10ce1f211957eff90b53a73d530f466bb69`; exact-head CI #970 passed. Post-merge CI is UNKNOWN because the available connector lookup exposes PR-triggered runs/statuses but no default-branch run for the merge commit.
+- **Current branch:** `qa/p1-website-save-reload-persistence` groups API service and Firestore-emulator tests for partial-update preservation/versioning, persistence failure without false success audit, and tenant-isolated save/reload.
+- **Next:** exact-head CI, fix actual failures without weakening assertions, merge only if required checks pass and mergeability is confirmed, then verify post-merge CI where available. Full Flutter editor publish/reopen, real Storage and staging/device verification remain open.
