@@ -335,3 +335,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Current branch:** `qa/p0-finance-console-decision-journeys` adds Flutter widget tests for payment verify/reject, expense approve/reject, and adjustment approve/reject, including rejection reasons and exact API decision paths.
 - **Evidence boundary:** fake API client only. Backend authorization, persisted maker-checker decisions/reconciliation, production/staging identity and external UPI/bank settlement remain separate evidence gates.
 - **Next:** exact-head CI, repair real failures without weakening assertions, merge only when required checks are green/mergeable, then verify post-merge CI and reconcile the remaining P0 inventory. Android AAB remains manual/on-demand.
+
+
+## Consolidated finance-console decision resilience — 17 October 2026
+
+- **Baseline:** PR #246 merged as `217f2ee5137bed17b9206afd056f6b113e38a825`; the available workflow-run/status lookup did not expose post-merge CI for that merge commit, so post-merge CI is **UNKNOWN**, not assumed green.
+- **Current branch:** `qa/p0-finance-console-decision-resilience` extends the existing finance-console widget suite with three grouped scenarios: required rejection reason and cancel/no-submit behavior across payments, expenses and adjustments; decision API failure shows recoverable error without false success; successful approval reloads finance lists.
+- **Evidence boundary:** fake API client/widget tests only; no claim of persisted decision state, maker-checker authorization, staging/device behavior or external UPI/bank settlement.
+- **Next:** inspect exact-head CI, fix genuine failures without weakening assertions, merge only when all required checks pass and the PR is mergeable; verify post-merge CI if the run is exposed, otherwise record UNKNOWN. Then reconcile the P0 inventory and batch remaining related P1 workflow tests into a single appropriately scoped MR. Android AAB remains manual/on-demand.
