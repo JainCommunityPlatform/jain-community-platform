@@ -200,11 +200,25 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.site['hero'], containsPair('title', 'Published title'));
+    final listView = find.byType(ListView).first;
+    final editorScrollable = find.descendant(
+      of: listView,
+      matching: find.byType(Scrollable),
+    ).first;
+    await tester.drag(editorScrollable, const Offset(0, 1000));
+    await tester.pumpAndSettle();
     expect(find.text('वेबसाइट अपडेट प्रकाशित हो गई।'), findsOneWidget);
 
     repository.failUpdate = true;
+    await tester.scrollUntilVisible(
+      heroTitle,
+      240,
+      scrollable: editorScrollable,
+    );
     await tester.enterText(heroTitle, 'Unpublished edit');
     await tester.tap(find.text('Save & Publish Website'));
+    await tester.pumpAndSettle();
+    await tester.drag(editorScrollable, const Offset(0, 1000));
     await tester.pumpAndSettle();
 
     expect(find.text('सहेजना विफल: Bad state: simulated save failure'), findsOneWidget);
