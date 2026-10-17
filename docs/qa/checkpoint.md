@@ -370,3 +370,13 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Current branch:** `qa/p1-website-multipart-size-rejection` adds an HTTP multipart integration regression sending a file one byte above the 10 MB limit; expects HTTP 413 and asserts neither Storage nor success audit is invoked.
 - **Evidence boundary:** HTTP pipeline test uses mocked Storage. Existing storage unit tests cover image-signature validation and the 10 MB service limit; real Firebase Storage, client retry/progress and device rendering remain open.
 - **Next:** verify exact-head CI, fix genuine failures without weakening assertions, merge only after all required checks pass and mergeability is confirmed, verify post-merge CI where exposed, then continue the next highest-priority uncovered website/editor workflow. Android AAB remains manual/on-demand.
+
+
+## Website multipart limit merged; editor publish recovery next — 17 October 2026
+
+- **Merged:** [PR #250](https://github.com/JainCommunityPlatform/jain-community-platform/pull/250), merge commit `5c85faf4816faa23312300bc6eade5ab2e6d2839`.
+- **Exact-head CI:** [run #976](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39002602406) passed backend lint/unit/integration/Firestore-emulator/build, Flutter analysis/tests/connected giving journey, repository validation and merge gate.
+- **Post-merge CI:** [run #977](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39002795266) passed the same applicable checks on the default branch. Android AAB was skipped by design.
+- **Current branch:** `qa/p1-website-editor-save-failure-reopen` adds a Flutter widget regression: after a successful publish, a simulated later save failure must not replace persisted output; reopening the editor must load the last successful title.
+- **Evidence boundary:** the new test uses a stateful fake repository. Backend service and Firestore-emulator persistence tests are separate evidence; this does not prove the complete real Flutter → API → Firestore journey or staging/device rendering.
+- **Next:** exact-head CI, fix genuine failures without weakening assertions, merge only when required checks pass and the PR is mergeable, verify post-merge CI, then continue remaining website/media UI gaps. Android AAB remains manual/on-demand.
