@@ -1941,3 +1941,16 @@ When the content manager cancels the file picker
 Then no upload is started
 
 Executable regressions: `apps/flutter/test/features/website/presentation/website_gallery_workflow_test.dart` — widget tests cover oversized bytes, missing bytes, picker cancellation, visible validation, and zero upload attempts. This is fake-repository UI evidence and does not prove device picker behaviour.
+
+
+## Scenario: Gallery upload shows progress and prevents duplicate actions
+
+Given a content manager has selected a valid gallery image
+When the image upload is still pending
+Then the editor shows an uploading label and progress indicator
+And the upload button, dialog cancel action, and dialog save action are disabled
+And no duplicate upload attempt is started
+When the upload completes
+Then the editor shows the successful-upload message and re-enables the dialog actions
+
+Executable regression: `apps/flutter/test/features/website/presentation/website_gallery_workflow_test.dart` — holds the fake upload future open to assert progress and disabled controls, then completes it and checks a single upload attempt. This does not establish actual network progress percentage or device rendering.
