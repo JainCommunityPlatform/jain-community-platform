@@ -19,6 +19,7 @@ class RecordingWebsiteRepository extends WebsiteRepository {
   bool failUpdate = false;
   bool failNextUpload = false;
   int uploadAttempts = 0;
+  String uploadUrl = 'https://cdn.example.test/gallery/uploaded.jpg';
   Completer<String>? uploadCompleter;
 
   @override
@@ -46,7 +47,7 @@ class RecordingWebsiteRepository extends WebsiteRepository {
     }
     final pendingUpload = uploadCompleter;
     if (pendingUpload != null) return pendingUpload.future;
-    return 'https://cdn.example.test/gallery/uploaded.jpg';
+    return uploadUrl;
   }
 }
 
@@ -497,6 +498,56 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Image uploaded. Save this item, then Save & Publish Website.'), findsOneWidget);
+    expect(repository.uploadAttempts, 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('invalid upload URL is rejected and dialog remains recoverable',
+      (tester) async {
+    final site = <String, dynamic>{
+      'tenantId': 'tenant-1',
+      'theme': {'primary': '#F57C00', 'secondary': '#8B2E1B', 'background': '#FFF4DE', 'surface': '#FFFDF8', 'accent': '#E65100'},
+      'header': {'languages': ['हिन्दी']},
+      'hero': {'title': 'Bade Baba Kharadi', 'imageUrl': ''},
+      'about': {}, 'contact': {},
+      'templeDirectory': {'enabled': true, 'limit': 6},
+      'events': {'enabled': true, 'items': []},
+      'gallery': {'enabled': true, 'title': 'मंदिर गैलरी', 'items': []},
+      'seva': {'enabled': true, 'items': []},
+      'quickInfo': [],
+    };
+    final repository = RecordingWebsiteRepository(site)
+      ..uploadUrl = 'javascript:alert(1)';
+    await tester.pumpWidget(MaterialApp(
+      home: WebsiteEditorPage(
+        repository: repository,
+        tenantName: 'Bade Baba Kharadi',
+        imagePicker: () async => FilePickerResult([
+          PlatformFile(
+            name: 'gallery.jpg',
+            size: 4,
+            bytes: Uint8List.fromList([0xff, 0xd8, 0xff, 0xd9]),
+          ),
+        ]),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final listView = find.byType(ListView).first;
+    final editorScrollable = find.descendant(of: listView, matching: find.byType(Scrollable)).first;
+    await tester.scrollUntilVisible(find.text('मंदिर गैलरी'), 240, scrollable: editorScrollable);
+    final galleryCard = find.ancestor(of: find.text('मंदिर गैलरी'), matching: find.byType(Card)).first;
+    await tester.tap(find.descendant(of: galleryCard, matching: find.text('Add')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byWidgetPredicate((w) => w is TextField && w.decoration?.labelText == 'title'), 'Main temple');
+    await tester.enterText(find.byWidgetPredicate((w) => w is TextField && w.decoration?.labelText == 'Alt text'), 'Main entrance');
+
+    await tester.tap(find.text('Upload'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Upload failed: FormatException: Upload returned an invalid image URL'), findsOneWidget);
+    expect(find.text('Image uploaded. Save this item, then Save & Publish Website.'), findsNothing);
+    expect(find.text('Save'), findsOneWidget);
     expect(repository.uploadAttempts, 1);
     expect(tester.takeException(), isNull);
   });
