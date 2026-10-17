@@ -3,6 +3,7 @@ import { deleteApp, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { FirestoreService } from './firestore.service';
 import { MembershipService } from '../authorization/membership.service';
+import { defaultWebsiteConfig } from '../website/website.types';
 
 describe('FirestoreService against the Firestore emulator', () => {
   const tenantId = 'emulator-tenant-giving-flow';
@@ -1956,5 +1957,35 @@ describe('FirestoreService against the Firestore emulator', () => {
     expect(await service.listDonationReceiptsForTenant(isolatedTenantId)).toHaveLength(0);
   }, 15000);
 
+
+
+  it('persists website edits and keeps saved configurations isolated by tenant', async () => {
+    const suffix = `emulator-website-save-reload-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tenantA = `${tenantId}-website-a-${suffix}`;
+    const tenantB = `${tenantId}-website-b-${suffix}`;
+    const configA = defaultWebsiteConfig(tenantA, 'Temple A');
+    const configB = defaultWebsiteConfig(tenantB, 'Temple B');
+    configA.hero.title = 'Published Temple A';
+    configA.version += 1;
+    configB.hero.title = 'Published Temple B';
+    configB.version += 1;
+
+    await service.setWebsiteConfig(tenantA, configA);
+    await service.setWebsiteConfig(tenantB, configB);
+
+    await expect(service.getWebsiteConfig(tenantA)).resolves.toMatchObject({
+      tenantId: tenantA,
+      hero: { title: 'Published Temple A' },
+      version: configA.version,
+    });
+    await expect(service.getWebsiteConfig(tenantB)).resolves.toMatchObject({
+      tenantId: tenantB,
+      hero: { title: 'Published Temple B' },
+      version: configB.version,
+    });
+    await expect(service.getWebsiteConfig(tenantA)).resolves.not.toMatchObject({
+      hero: { title: 'Published Temple B' },
+    });
+  });
 
 });
