@@ -380,3 +380,13 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Current branch:** `qa/p1-website-editor-save-failure-reopen` adds a Flutter widget regression: after a successful publish, a simulated later save failure must not replace persisted output; reopening the editor must load the last successful title.
 - **Evidence boundary:** the new test uses a stateful fake repository. Backend service and Firestore-emulator persistence tests are separate evidence; this does not prove the complete real Flutter → API → Firestore journey or staging/device rendering.
 - **Next:** exact-head CI, fix genuine failures without weakening assertions, merge only when required checks pass and the PR is mergeable, verify post-merge CI, then continue remaining website/media UI gaps. Android AAB remains manual/on-demand.
+
+
+## Website editor failure recovery merged; gallery upload retry next — 17 October 2026
+
+- **Merged:** [PR #251](https://github.com/JainCommunityPlatform/jain-community-platform/pull/251), merge commit `ab3df2b1a83f54769748c63fe3431e1b42b20260`.
+- **Exact-head CI:** [run #984](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39003839801) passed Flutter analysis/tests/connected giving journey, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate.
+- **Post-merge CI:** [run #985](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39004013801) passed the same applicable checks on the default branch. Android AAB was skipped by design.
+- **Current branch:** `qa/p1-website-gallery-upload-retry` adds a widget regression for a failed gallery image upload followed by a successful retry, asserting the item can be saved and published with one successful URL.
+- **Evidence boundary:** fake-repository widget coverage only. Real Storage networking, delayed progress rendering, URL reachability and staging/device behavior remain open.
+- **Next:** inspect exact-head CI, fix genuine failures without weakening assertions, merge only when required checks pass and the PR is mergeable, verify post-merge CI, then continue the remaining website/media UI gaps. Android AAB remains manual/on-demand.
