@@ -178,7 +178,16 @@ void main() {
 
     Future<void> openHeroSection() async {
       final heading = find.text('Hero / मुख्य भाग');
-      await tester.ensureVisible(heading);
+      final listView = find.byType(ListView).first;
+      final editorScrollable = find.descendant(
+        of: listView,
+        matching: find.byType(Scrollable),
+      ).first;
+      await tester.scrollUntilVisible(
+        heading,
+        240,
+        scrollable: editorScrollable,
+      );
       await tester.tap(heading);
       await tester.pumpAndSettle();
     }
