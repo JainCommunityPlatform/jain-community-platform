@@ -398,3 +398,13 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Current branch:** `qa/p1-website-gallery-preupload-validation` adds widget regressions for rejecting a gallery image larger than 10 MB, rejecting a selected file with no bytes, and safely handling picker cancellation; asserts no upload attempt and no widget exception.
 - **Evidence boundary:** uses a fake repository and injected picker. Real device picker behaviour, delayed upload progress, Firebase Storage networking, public URL reachability, and staging/device rendering remain open.
 - **Next:** inspect exact-head CI, repair genuine failures without weakening assertions, merge only after all required checks pass and the PR is mergeable, verify post-merge CI, then continue the remaining website/media UI gaps. Android AAB remains manual/on-demand.
+
+
+## Website gallery pre-upload validation merged; upload progress guard next — 18 October 2026
+
+- **Merged:** [PR #254](https://github.com/JainCommunityPlatform/jain-community-platform/pull/254), merge commit `b9273b12f38dc74cd07296f2809f625341616b0a`.
+- **Exact-head CI:** [run #988](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39063564738) passed Flutter analyze/tests and connected giving journey, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Android AAB was skipped by design.
+- **Post-merge CI:** UNKNOWN; commit-workflow lookup returned no run for the merge commit. Exact-head CI is not being presented as post-merge evidence.
+- **Current branch:** `qa/p1-website-upload-progress-guard` adds a delayed-upload widget regression asserting visible progress, disabled upload/cancel/save controls while the request is pending, one upload attempt, and successful completion recovery.
+- **Evidence boundary:** fake repository with a controlled future; it verifies UI state, not network percentage, actual Firebase Storage, URL reachability, or device/staging behavior.
+- **Next:** inspect exact-head CI, fix genuine failures without weakening assertions, merge only after all required checks pass and the PR is mergeable, verify post-merge CI where exposed, then continue remaining website/media UI gaps. Android AAB remains manual/on-demand.
