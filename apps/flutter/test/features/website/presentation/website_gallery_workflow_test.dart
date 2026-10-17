@@ -16,6 +16,8 @@ class RecordingWebsiteRepository extends WebsiteRepository {
   String? uploadedFilename;
   Uint8List? uploadedBytes;
   bool failUpdate = false;
+  bool failNextUpload = false;
+  int uploadAttempts = 0;
 
   @override
   Future<Map<String, dynamic>> getSite() async =>
@@ -33,8 +35,13 @@ class RecordingWebsiteRepository extends WebsiteRepository {
 
   @override
   Future<String> uploadImage(Uint8List bytes, String filename) async {
+    uploadAttempts++;
     uploadedFilename = filename;
     uploadedBytes = bytes;
+    if (failNextUpload) {
+      failNextUpload = false;
+      throw StateError('simulated upload failure');
+    }
     return 'https://cdn.example.test/gallery/uploaded.jpg';
   }
 }
@@ -236,4 +243,99 @@ void main() {
     expect(repository.site['hero'], isNot(containsPair('title', 'Unpublished edit')));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('gallery upload failure can be retried without duplicate successful uploads',
+      (tester) async {
+    final site = <String, dynamic>{
+      'tenantId': 'tenant-1',
+      'theme': {
+        'primary': '#F57C00',
+        'secondary': '#8B2E1B',
+        'background': '#FFF4DE',
+        'surface': '#FFFDF8',
+        'accent': '#E65100',
+      },
+      'header': {'languages': ['हिन्दी']},
+      'hero': {'title': 'Bade Baba Kharadi', 'imageUrl': ''},
+      'about': {},
+      'contact': {},
+      'templeDirectory': {'enabled': true, 'limit': 6},
+      'events': {'enabled': true, 'items': []},
+      'gallery': {'enabled': true, 'title': 'मंदिर गैलरी', 'items': []},
+      'seva': {'enabled': true, 'items': []},
+      'quickInfo': [],
+    };
+    final repository = RecordingWebsiteRepository(site)..failNextUpload = true;
+
+    await tester.pumpWidget(MaterialApp(
+      home: WebsiteEditorPage(
+        repository: repository,
+        tenantName: 'Bade Baba Kharadi',
+        imagePicker: () async => FilePickerResult([
+          PlatformFile(
+            name: 'gallery.jpg',
+            size: 4,
+            bytes: Uint8List.fromList([0xff, 0xd8, 0xff, 0xd9]),
+          ),
+        ]),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final listView = find.byType(ListView).first;
+    final editorScrollable = find.descendant(
+      of: listView,
+      matching: find.byType(Scrollable),
+    ).first;
+    await tester.scrollUntilVisible(
+      find.text('मंदिर गैलरी'),
+      240,
+      scrollable: editorScrollable,
+    );
+    final galleryCard = find.ancestor(
+      of: find.text('मंदिर गैलरी'),
+      matching: find.byType(Card),
+    ).first;
+    await tester.tap(find.descendant(
+      of: galleryCard,
+      matching: find.text('Add'),
+    ));
+    await tester.pumpAndSettle();
+
+    Future<void> enterField(String label, String value) async {
+      final field = find.byWidgetPredicate(
+        (widget) => widget is TextField &&
+            widget.decoration?.labelText == label,
+      );
+      expect(field, findsOneWidget, reason: 'Expected gallery field: $label');
+      await tester.enterText(field, value);
+    }
+
+    await enterField('title', 'Main temple');
+    await enterField('Alt text', 'Main temple entrance');
+    await tester.tap(find.text('Upload'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Upload failed: Bad state: simulated upload failure'), findsOneWidget);
+    expect(repository.uploadAttempts, 1);
+    expect(find.text('Save this item, then Save & Publish Website.'), findsNothing);
+
+    await tester.tap(find.text('Upload'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Image uploaded. Save this item, then Save & Publish Website.'), findsOneWidget);
+    expect(repository.uploadAttempts, 2);
+    await tester.tap(find.text('Save').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save & Publish Website'));
+    await tester.pumpAndSettle();
+
+    final gallery = repository.published!['gallery'] as Map<String, dynamic>;
+    final items = gallery['items'] as List<dynamic>;
+    expect(items, hasLength(1));
+    expect(items.single, containsPair('imageUrl', 'https://cdn.example.test/gallery/uploaded.jpg'));
+    expect(repository.uploadAttempts, 2);
+    expect(tester.takeException(), isNull);
+  });
+
 }
