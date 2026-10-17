@@ -205,8 +205,11 @@ void main() {
       of: listView,
       matching: find.byType(Scrollable),
     ).first;
-    await tester.drag(editorScrollable, const Offset(0, 1000));
-    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('वेबसाइट अपडेट प्रकाशित हो गई।'),
+      -240,
+      scrollable: editorScrollable,
+    );
     expect(find.text('वेबसाइट अपडेट प्रकाशित हो गई।'), findsOneWidget);
 
     repository.failUpdate = true;
@@ -218,8 +221,11 @@ void main() {
     await tester.enterText(heroTitle, 'Unpublished edit');
     await tester.tap(find.text('Save & Publish Website'));
     await tester.pumpAndSettle();
-    await tester.drag(editorScrollable, const Offset(0, 1000));
-    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('सहेजना विफल: Bad state: simulated save failure'),
+      -240,
+      scrollable: editorScrollable,
+    );
 
     expect(find.text('सहेजना विफल: Bad state: simulated save failure'), findsOneWidget);
     expect(repository.site['hero'], containsPair('title', 'Published title'));
