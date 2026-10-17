@@ -458,3 +458,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - The HTTP authorization route audit is consolidated through PR #242; exact-head CI #961 and post-merge CI #962 passed.
 - The next risk-based gap is persisted membership isolation: an operator with a real Firestore membership in tenant B must not read or mutate finance data in tenant A. This is being added to the existing Firestore-emulator HTTP suite, not a mocked membership-only test.
 - Broader persisted tenant-data isolation and production/staging identity/device checks remain separate evidence gates. Android AAB remains manual/on-demand.
+
+
+## P0 finance-console decision interaction coverage — 17 October 2026
+
+- PR #244 finance overview/retry/expense-entry widgets merged; exact-head CI #965 and post-merge CI #966 passed.
+- The next consolidated widget test change covers payment verify/reject, expense approve/reject, and adjustment approve/reject, asserting decision endpoints and rejection reasons.
+- These widget tests use a fake API client. They do not replace persisted backend/emulator maker-checker tests or staging/device/external-settlement verification.
+- Android AAB remains manual/on-demand.

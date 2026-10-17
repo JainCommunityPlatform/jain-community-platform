@@ -1824,3 +1824,16 @@ And sends the expense to the API with an idempotency key
 And displays the submission confirmation only after the API succeeds
 
 Executable regressions: `apps/flutter/test/features/giving/finance_console_page_test.dart` — “loads finance overview and refreshes tenant-scoped reports”, “shows a recoverable report error and retries successfully”, and “records a valid expense in paise with an idempotency key”. These are Flutter widget tests with a fake API client; they verify UI/request contracts, not persisted Firestore state or production finance approval.
+
+
+## Scenario: Finance operators review pending payments, expenses and adjustments from the console
+
+Given the finance console displays pending payment, expense, or adjustment records
+When an operator approves a record
+Then the UI sends the approve endpoint for that record and refreshes the finance data after the response
+
+When an operator rejects a record
+Then the UI requires a rejection reason and sends the reject endpoint with that reason
+And the UI shows recoverable feedback rather than claiming success before the request completes
+
+Executable regressions: `apps/flutter/test/features/giving/finance_console_page_test.dart` — “verifies and rejects pending payments with the correct decision routes”, “approves and rejects pending expenses and includes a rejection reason”, and “approves and rejects pending adjustments with decision reasons”. These use a fake API client to verify UI/request contracts; authorization and persisted financial outcomes are covered separately by API/Firestore-emulator tests.
