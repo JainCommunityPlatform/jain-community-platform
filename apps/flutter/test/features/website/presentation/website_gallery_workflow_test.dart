@@ -176,8 +176,16 @@ void main() {
           widget.decoration?.labelText == 'मंदिर का नाम / शीर्षक',
     );
 
+    Future<void> openHeroSection() async {
+      final heading = find.text('Hero / मुख्य भाग');
+      await tester.ensureVisible(heading);
+      await tester.tap(heading);
+      await tester.pumpAndSettle();
+    }
+
     await tester.pumpWidget(editor());
     await tester.pumpAndSettle();
+    await openHeroSection();
     await tester.enterText(heroTitle, 'Published title');
     await tester.tap(find.text('Save & Publish Website'));
     await tester.pumpAndSettle();
@@ -195,6 +203,7 @@ void main() {
 
     await tester.pumpWidget(editor(key: UniqueKey()));
     await tester.pumpAndSettle();
+    await openHeroSection();
 
     expect(tester.widget<TextField>(heroTitle).controller!.text, 'Published title');
     expect(repository.site['hero'], isNot(containsPair('title', 'Unpublished edit')));
