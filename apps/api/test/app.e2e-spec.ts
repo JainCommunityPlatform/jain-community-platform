@@ -2485,6 +2485,22 @@ describe('API endpoints (integration)', () => {
     expect(audit.record).not.toHaveBeenCalled();
   });
 
+  it('rejects oversized multipart website images before Storage upload or audit', async () => {
+    storage.uploadTenantImage.mockClear();
+    audit.record.mockClear();
+    const oversizedImage = Buffer.alloc(10 * 1024 * 1024 + 1);
+
+    await request(app.getHttpServer())
+      .post('/api/website/media')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .attach('file', oversizedImage, { filename: 'oversized.jpg', contentType: 'image/jpeg' })
+      .expect(413);
+
+    expect(storage.uploadTenantImage).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
   it('uploads website media for an authorized tenant admin and records tenant-scoped audit metadata', async () => {
     storage.uploadTenantImage.mockClear();
     audit.record.mockClear();
