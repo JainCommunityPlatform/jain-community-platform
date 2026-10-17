@@ -1916,3 +1916,15 @@ When the editor is reopened
 Then it loads the last successfully persisted configuration rather than the failed draft
 
 Executable regression: `apps/flutter/test/features/website/presentation/website_gallery_workflow_test.dart` — uses a stateful fake repository to verify successful save, failed subsequent save, and reopening. This is widget/fake-repository evidence; API persistence is covered separately and staging/device rendering remains open.
+
+
+## Scenario: Website gallery upload failure is recoverable with a retry
+
+Given a content manager adds a gallery item with an image
+When the first image upload fails
+Then the editor displays an error and keeps the item dialog open
+When the content manager retries the upload and it succeeds
+Then the uploaded URL is available to the gallery item
+And publishing creates one gallery item referencing the successful URL without duplicate submissions
+
+Executable regression: `apps/flutter/test/features/website/presentation/website_gallery_workflow_test.dart` — simulates one upload failure followed by success and asserts the retry and single published gallery item. This uses a fake repository and does not prove real Storage networking, delayed progress rendering, or device behavior.
