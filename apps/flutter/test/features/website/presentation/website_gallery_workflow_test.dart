@@ -188,8 +188,10 @@ void main() {
         240,
         scrollable: editorScrollable,
       );
-      await tester.tap(heading);
-      await tester.pumpAndSettle();
+      if (!tester.any(heroTitle)) {
+        await tester.tap(heading);
+        await tester.pumpAndSettle();
+      }
     }
 
     await tester.pumpWidget(editor());
@@ -213,11 +215,7 @@ void main() {
     expect(find.text('वेबसाइट अपडेट प्रकाशित हो गई।'), findsOneWidget);
 
     repository.failUpdate = true;
-    await tester.scrollUntilVisible(
-      heroTitle,
-      240,
-      scrollable: editorScrollable,
-    );
+    await openHeroSection();
     await tester.enterText(heroTitle, 'Unpublished edit');
     await tester.tap(find.text('Save & Publish Website'));
     await tester.pumpAndSettle();
