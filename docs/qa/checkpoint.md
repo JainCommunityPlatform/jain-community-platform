@@ -390,3 +390,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Current branch:** `qa/p1-website-gallery-upload-retry` adds a widget regression for a failed gallery image upload followed by a successful retry, asserting the item can be saved and published with one successful URL.
 - **Evidence boundary:** fake-repository widget coverage only. Real Storage networking, delayed progress rendering, URL reachability and staging/device behavior remain open.
 - **Next:** inspect exact-head CI, fix genuine failures without weakening assertions, merge only when required checks pass and the PR is mergeable, verify post-merge CI, then continue the remaining website/media UI gaps. Android AAB remains manual/on-demand.
+
+
+## Website gallery pre-upload validation — 18 October 2026
+
+- **Previous item merged:** [PR #252](https://github.com/JainCommunityPlatform/jain-community-platform/pull/252), merge commit `aa2c8bc7cf87f447dc9a06f9b8de0f74546b4119`; exact-head CI #990 and post-merge CI #991 must be confirmed from Actions before reporting final state.
+- **Current branch:** `qa/p1-website-gallery-preupload-validation` adds widget regressions for rejecting a gallery image larger than 10 MB, rejecting a selected file with no bytes, and safely handling picker cancellation; asserts no upload attempt and no widget exception.
+- **Evidence boundary:** uses a fake repository and injected picker. Real device picker behaviour, delayed upload progress, Firebase Storage networking, public URL reachability, and staging/device rendering remain open.
+- **Next:** inspect exact-head CI, repair genuine failures without weakening assertions, merge only after all required checks pass and the PR is mergeable, verify post-merge CI, then continue the remaining website/media UI gaps. Android AAB remains manual/on-demand.

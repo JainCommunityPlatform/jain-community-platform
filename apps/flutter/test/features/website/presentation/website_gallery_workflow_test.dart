@@ -338,4 +338,100 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('oversized gallery image is rejected before upload and keeps the dialog open',
+      (tester) async {
+    final site = <String, dynamic>{
+      'tenantId': 'tenant-1',
+      'theme': {'primary': '#F57C00', 'secondary': '#8B2E1B', 'background': '#FFF4DE', 'surface': '#FFFDF8', 'accent': '#E65100'},
+      'header': {'languages': ['हिन्दी']},
+      'hero': {'title': 'Bade Baba Kharadi', 'imageUrl': ''},
+      'about': {}, 'contact': {},
+      'templeDirectory': {'enabled': true, 'limit': 6},
+      'events': {'enabled': true, 'items': []},
+      'gallery': {'enabled': true, 'title': 'मंदिर गैलरी', 'items': []},
+      'seva': {'enabled': true, 'items': []},
+      'quickInfo': [],
+    };
+    final repository = RecordingWebsiteRepository(site);
+    await tester.pumpWidget(MaterialApp(
+      home: WebsiteEditorPage(
+        repository: repository,
+        tenantName: 'Bade Baba Kharadi',
+        imagePicker: () async => FilePickerResult([
+          PlatformFile(
+            name: 'too-large.jpg',
+            size: 10 * 1024 * 1024 + 1,
+            bytes: Uint8List(10 * 1024 * 1024 + 1),
+          ),
+        ]),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final listView = find.byType(ListView).first;
+    final editorScrollable = find.descendant(of: listView, matching: find.byType(Scrollable)).first;
+    await tester.scrollUntilVisible(find.text('मंदिर गैलरी'), 240, scrollable: editorScrollable);
+    final galleryCard = find.ancestor(of: find.text('मंदिर गैलरी'), matching: find.byType(Card)).first;
+    await tester.tap(find.descendant(of: galleryCard, matching: find.text('Add')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byWidgetPredicate((w) => w is TextField && w.decoration?.labelText == 'title'), 'Large image');
+    await tester.enterText(find.byWidgetPredicate((w) => w is TextField && w.decoration?.labelText == 'Alt text'), 'Oversized image');
+    await tester.tap(find.text('Upload'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Please choose an image smaller than 10 MB.'), findsOneWidget);
+    expect(repository.uploadAttempts, 0);
+    expect(find.text('Cancel'), findsOneWidget);
+    expect(find.text('Save'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('unreadable gallery image is rejected and cancelling the picker does not upload',
+      (tester) async {
+    final site = <String, dynamic>{
+      'tenantId': 'tenant-1',
+      'theme': {'primary': '#F57C00', 'secondary': '#8B2E1B', 'background': '#FFF4DE', 'surface': '#FFFDF8', 'accent': '#E65100'},
+      'header': {'languages': ['हिन्दी']},
+      'hero': {'title': 'Bade Baba Kharadi', 'imageUrl': ''},
+      'about': {}, 'contact': {},
+      'templeDirectory': {'enabled': true, 'limit': 6},
+      'events': {'enabled': true, 'items': []},
+      'gallery': {'enabled': true, 'title': 'मंदिर गैलरी', 'items': []},
+      'seva': {'enabled': true, 'items': []},
+      'quickInfo': [],
+    };
+    FilePickerResult? pickerResult = FilePickerResult([
+      PlatformFile(name: 'unreadable.jpg', size: 12, bytes: null),
+    ]);
+    final repository = RecordingWebsiteRepository(site);
+    await tester.pumpWidget(MaterialApp(
+      home: WebsiteEditorPage(
+        repository: repository,
+        tenantName: 'Bade Baba Kharadi',
+        imagePicker: () async => pickerResult,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final listView = find.byType(ListView).first;
+    final editorScrollable = find.descendant(of: listView, matching: find.byType(Scrollable)).first;
+    await tester.scrollUntilVisible(find.text('मंदिर गैलरी'), 240, scrollable: editorScrollable);
+    final galleryCard = find.ancestor(of: find.text('मंदिर गैलरी'), matching: find.byType(Card)).first;
+    await tester.tap(find.descendant(of: galleryCard, matching: find.text('Add')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Upload'));
+    await tester.pumpAndSettle();
+    expect(find.text('Could not read the selected image.'), findsOneWidget);
+    expect(repository.uploadAttempts, 0);
+
+    pickerResult = null;
+    await tester.tap(find.text('Upload'));
+    await tester.pumpAndSettle();
+    expect(find.text('Could not read the selected image.'), findsOneWidget);
+    expect(repository.uploadAttempts, 0);
+    expect(tester.takeException(), isNull);
+  });
+
 }

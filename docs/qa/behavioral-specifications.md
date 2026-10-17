@@ -1928,3 +1928,16 @@ Then the uploaded URL is available to the gallery item
 And publishing creates one gallery item referencing the successful URL without duplicate submissions
 
 Executable regression: `apps/flutter/test/features/website/presentation/website_gallery_workflow_test.dart` — simulates one upload failure followed by success and asserts the retry and single published gallery item. This uses a fake repository and does not prove real Storage networking, delayed progress rendering, or device behavior.
+
+
+## Scenario: Invalid or cancelled gallery image selection never starts an upload
+
+Given a content manager opens the gallery item editor
+When the selected file has no readable bytes or exceeds the 10 MB limit
+Then the editor shows a validation message
+And the gallery dialog remains available for correction or cancellation
+And the upload repository is not called
+When the content manager cancels the file picker
+Then no upload is started
+
+Executable regressions: `apps/flutter/test/features/website/presentation/website_gallery_workflow_test.dart` — widget tests cover oversized bytes, missing bytes, picker cancellation, visible validation, and zero upload attempts. This is fake-repository UI evidence and does not prove device picker behaviour.
