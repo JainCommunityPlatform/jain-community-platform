@@ -352,6 +352,12 @@ class _WebsiteEditorPageState extends State<WebsiteEditorPage> {
                               });
                               try {
                                 final url = await widget.repository.uploadImage(bytes, file.name);
+                                final parsedUrl = Uri.tryParse(url);
+                                if (parsedUrl == null ||
+                                    parsedUrl.scheme != 'https' ||
+                                    parsedUrl.host.isEmpty) {
+                                  throw const FormatException('Upload returned an invalid image URL');
+                                }
                                 controllers[imageField]?.text = url;
                                 if (dialogContext.mounted) {
                                   setDialogState(() => imageMessage = 'Image uploaded. Save this item, then Save & Publish Website.');
