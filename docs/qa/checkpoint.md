@@ -352,3 +352,12 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Current branch:** `qa/p1-website-save-reload-persistence` adds grouped website tests: partial updates preserve unrelated existing content and increment version; a failed persistence write must not emit a success audit; and Firestore-emulator save/reload keeps two tenant website configurations isolated.
 - **Evidence boundary:** the emulator test proves Firestore config round-trip and tenant isolation, not the full Flutter editor upload/publish/refresh journey, real Firebase Storage, or staging/device rendering.
 - **Next:** inspect exact-head CI, repair genuine failures without weakening assertions, merge only when all required checks pass and the PR is mergeable, record post-merge status accurately, then continue the remaining P1 editor/media UI workflow. Controlled Firebase staging/device and external UPI/bank settlement remain separate environment/provider gates. Android AAB remains manual/on-demand.
+
+
+## Website media upload failure-path tests — 17 October 2026
+
+- **PR #248:** merged as `dc13bdd740f9fe9bc56f039190142f29d3305d10`; exact-head CI [#972](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39001107290) passed backend lint/unit/integration/Firestore emulator/build, Flutter analyze/tests/connected giving journey, repository validation, and merge gate. Android AAB skipped by policy.
+- **Post-merge CI:** UNKNOWN; the workflow-run and combined-status lookups returned no entries for the merge commit.
+- **Current branch:** `qa/p1-website-media-upload-failure-paths` strengthens controller regressions for missing/empty files, storage failure without a success audit, tenant-scoped upload context, and deterministic tenant mock reset between tests.
+- **Evidence boundary:** controller unit tests only. Real Firebase Storage, MIME/size enforcement through the HTTP multipart pipeline, retry/progress UI, and device rendering remain open.
+- **Next:** exact-head CI; fix genuine failures without weakening assertions; merge only when all required checks pass and mergeability is confirmed. Then continue the grouped P1 website editor/media journey and retain environment verification as an explicit gate. Android AAB remains manual/on-demand.
