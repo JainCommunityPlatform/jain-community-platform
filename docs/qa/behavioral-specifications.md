@@ -1837,3 +1837,21 @@ Then the UI requires a rejection reason and sends the reject endpoint with that 
 And the UI shows recoverable feedback rather than claiming success before the request completes
 
 Executable regressions: `apps/flutter/test/features/giving/finance_console_page_test.dart` — “verifies and rejects pending payments with the correct decision routes”, “approves and rejects pending expenses and includes a rejection reason”, and “approves and rejects pending adjustments with decision reasons”. These use a fake API client to verify UI/request contracts; authorization and persisted financial outcomes are covered separately by API/Firestore-emulator tests.
+
+
+## Scenario: Finance decision forms validate, cancel safely and recover from API failures
+
+Given a finance operator is reviewing a pending payment, expense or adjustment
+When the operator opens rejection and submits without a reason
+Then the form displays required-field validation and sends no decision request
+
+When the operator cancels a rejection
+Then no decision request is sent
+
+When a decision API request fails
+Then the UI displays recoverable failure feedback and does not display a success confirmation
+
+When a decision succeeds
+Then finance lists are reloaded before the success confirmation is presented
+
+Executable regressions: `apps/flutter/test/features/giving/finance_console_page_test.dart` — “requires a rejection reason and cancellation makes no decision request”, “shows decision API failure without a false success message”, and “reloads finance lists after a successful approval”. These use a fake API client and do not establish persisted financial outcomes.

@@ -309,3 +309,10 @@ Evidence boundaries:
 - Current consolidated widget MR exercises payment verify/reject, expense approve/reject, and adjustment approve/reject controls, including required rejection reasons and the emitted API routes.
 - Evidence boundary: widget tests use a fake API client and prove visible control/request contracts, not backend authorization, persisted state, independent approval in production, or bank settlement. Those are covered by backend/emulator tests and separate environment gates.
 - Android AAB remains manual/on-demand.
+
+
+## Finance-console decision resilience — 17 October 2026
+
+- Follow-up branch `qa/p0-finance-console-decision-resilience` adds three grouped widget regressions to the existing payment/expense/adjustment decision suite: empty rejection reason validation and cancellation without POST across all three record types; decision API 503 feedback without false success; and list refresh after successful approval.
+- Test layer: Flutter widget tests with fake API client. This proves form/request/UI state contracts only; backend authorization and Firestore-emulator decision/reconciliation evidence remain separate.
+- Merge gate: exact-head CI must pass; post-merge CI must be checked independently. The merge of PR #246 is confirmed, but the connected workflow lookup did not expose a post-merge run for its merge commit, so that specific post-merge CI status remains UNKNOWN.
