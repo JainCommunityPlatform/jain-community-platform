@@ -1874,3 +1874,22 @@ When each tenant saves and reloads its own configuration
 Then each receives its own saved content and never the other tenant's content
 
 Executable regressions: `apps/api/src/website/website.service.spec.ts` — partial-update preservation/versioning and no-success-audit-on-write-failure; `apps/api/src/database/firestore.service.firestore-emulator-spec.ts` — persisted website save/reload and tenant isolation. These tests do not yet prove the full Flutter editor publish/reopen journey, Firebase Storage reachability, or staging/device rendering.
+
+
+## Scenario: Website media upload rejects invalid input and does not report success on storage failure
+
+Given a content manager uploads a website image
+When no file is provided or the file buffer is empty
+Then the request is rejected before storage is called
+And no successful media-upload audit event is recorded
+
+When the storage provider fails
+Then the upload request fails
+And no successful media-upload audit event is recorded
+
+Given tenant context resolves to a particular tenant
+When an image is uploaded
+Then storage receives that tenant ID
+And missing tenant context prevents storage writes
+
+Executable regressions: `apps/api/src/website/website.controller.spec.ts` — missing/empty file rejection, storage failure without success audit, tenant-scoped upload and stable mock setup. These are controller unit tests and do not prove real Firebase Storage, HTTP multipart file-size enforcement, client retry/progress, or device rendering.
