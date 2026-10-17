@@ -18,6 +18,7 @@ class FakeFinanceApiClient extends ApiClient {
 
   final calls = <FinanceCall>[];
   int summaryFailuresRemaining = 0;
+  String? postFailurePath;
   final listResponses = <String, List<dynamic>>{};
 
   @override
@@ -63,6 +64,9 @@ class FakeFinanceApiClient extends ApiClient {
     Map<String, String>? headers,
   }) async {
     calls.add(FinanceCall('POST', path, body: body, headers: headers));
+    if (path == postFailurePath) {
+      throw const ApiException(statusCode: 503, message: 'Decision service unavailable');
+    }
     return {'id': 'created'};
   }
 
@@ -270,4 +274,117 @@ void main() {
     expect(call.headers?['Idempotency-Key'], startsWith('finance-expense-'));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('requires a rejection reason and cancellation makes no decision request', (tester) async {
+    final cases = <({String tab, String listPath, String id, String action})>[
+      (tab: 'Payments', listPath: '/api/giving/payments', id: 'payment-empty-reason', action: 'Verify'),
+      (tab: 'Expenses', listPath: '/api/giving/expenses', id: 'expense-empty-reason', action: 'Approve'),
+      (tab: 'Adjustments', listPath: '/api/giving/adjustments', id: 'adjustment-empty-reason', action: 'Approve'),
+    ];
+
+    for (final item in cases) {
+      final api = FakeFinanceApiClient()
+        ..listResponses[item.listPath] = [
+          {
+            'id': item.id,
+            'amountPaise': 1000,
+            'method': 'UPI',
+            'category': 'Supplies',
+            'description': 'Test record',
+            'kind': 'REFUND',
+            'reason': 'Test',
+            'pledgeId': 'pledge-1',
+            'status': 'PENDING_APPROVAL',
+          },
+        ];
+
+      await tester.pumpWidget(MaterialApp(home: FinanceConsolePage(api: api)));
+      await tester.pumpAndSettle();
+      final tab = find.text(item.tab).first;
+      await tester.ensureVisible(tab);
+      await tester.pumpAndSettle();
+      await tester.tap(tab);
+      await tester.pumpAndSettle();
+
+      final menu = find.byType(PopupMenuButton<String>).first;
+      await tester.tap(menu);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Reject'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Required'), findsOneWidget, reason: item.tab);
+      expect(api.calls.where((call) => call.method == 'POST'), isEmpty,
+          reason: 'An empty rejection reason must not submit for ${item.tab}.');
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(api.calls.where((call) => call.method == 'POST'), isEmpty);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    }
+  });
+
+  testWidgets('shows decision API failure without a false success message', (tester) async {
+    final api = FakeFinanceApiClient()
+      ..postFailurePath = '/api/giving/payments/payment-fails/approve'
+      ..listResponses['/api/giving/payments'] = [
+        {
+          'id': 'payment-fails',
+          'amountPaise': 2500,
+          'method': 'UPI',
+          'status': 'PENDING_APPROVAL',
+          'pledgeId': 'pledge-1',
+        },
+      ];
+
+    await tester.pumpWidget(MaterialApp(home: FinanceConsolePage(api: api)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Payments').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(PopupMenuButton<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Verify'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Decision service unavailable'), findsOneWidget);
+    expect(find.text('Decision saved.'), findsNothing);
+    expect(api.calls.where((call) => call.method == 'POST'), hasLength(1));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('reloads finance lists after a successful approval', (tester) async {
+    final api = FakeFinanceApiClient()
+      ..listResponses['/api/giving/payments'] = [
+        {
+          'id': 'payment-refresh',
+          'amountPaise': 2500,
+          'method': 'UPI',
+          'status': 'PENDING_APPROVAL',
+          'pledgeId': 'pledge-1',
+        },
+      ];
+
+    await tester.pumpWidget(MaterialApp(home: FinanceConsolePage(api: api)));
+    await tester.pumpAndSettle();
+    final initialListLoads = api.calls.where(
+      (call) => call.method == 'GET' && call.path == '/api/giving/payments',
+    ).length;
+
+    await tester.tap(find.text('Payments').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(PopupMenuButton<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Verify'));
+    await tester.pumpAndSettle();
+
+    final finalListLoads = api.calls.where(
+      (call) => call.method == 'GET' && call.path == '/api/giving/payments',
+    ).length;
+    expect(finalListLoads, greaterThan(initialListLoads));
+    expect(find.text('Decision saved.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
 }
