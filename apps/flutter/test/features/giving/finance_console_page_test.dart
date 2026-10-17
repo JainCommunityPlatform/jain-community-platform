@@ -202,7 +202,10 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(home: FinanceConsolePage(api: api)));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Adjustments').first);
+    final adjustmentsTab = find.text('Adjustments').first;
+    await tester.ensureVisible(adjustmentsTab);
+    await tester.pumpAndSettle();
+    await tester.tap(adjustmentsTab);
     await tester.pumpAndSettle();
 
     final menus = find.byType(PopupMenuButton<String>);
