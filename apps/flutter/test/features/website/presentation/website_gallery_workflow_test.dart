@@ -15,6 +15,7 @@ class RecordingWebsiteRepository extends WebsiteRepository {
   Map<String, dynamic>? published;
   String? uploadedFilename;
   Uint8List? uploadedBytes;
+  bool failUpdate = false;
 
   @override
   Future<Map<String, dynamic>> getSite() async =>
@@ -22,7 +23,11 @@ class RecordingWebsiteRepository extends WebsiteRepository {
 
   @override
   Future<Map<String, dynamic>> updateSite(Map<String, dynamic> config) async {
+    if (failUpdate) throw StateError('simulated save failure');
     published = Map<String, dynamic>.from(config);
+    site
+      ..clear()
+      ..addAll(published!);
     return Map<String, dynamic>.from(config);
   }
 
@@ -131,3 +136,65 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 }
+
+
+  testWidgets('failed publish preserves the last published website when editor is reopened',
+      (tester) async {
+    final site = <String, dynamic>{
+      'tenantId': 'tenant-1',
+      'theme': {
+        'primary': '#F57C00',
+        'secondary': '#8B2E1B',
+        'background': '#FFF4DE',
+        'surface': '#FFFDF8',
+        'accent': '#E65100',
+      },
+      'header': {'languages': ['हिन्दी']},
+      'hero': {'title': 'Bade Baba Kharadi', 'imageUrl': ''},
+      'about': {},
+      'contact': {},
+      'templeDirectory': {'enabled': true, 'limit': 6},
+      'events': {'enabled': true, 'items': []},
+      'gallery': {'enabled': true, 'title': 'मंदिर गैलरी', 'items': []},
+      'seva': {'enabled': true, 'items': []},
+      'quickInfo': [],
+    };
+    final repository = RecordingWebsiteRepository(site);
+
+    Widget editor({Key? key}) => MaterialApp(
+          home: WebsiteEditorPage(
+            key: key,
+            repository: repository,
+            tenantName: 'Bade Baba Kharadi',
+          ),
+        );
+
+    final heroTitle = find.byWidgetPredicate(
+      (widget) => widget is TextField &&
+          widget.decoration?.labelText == 'मंदिर का नाम / शीर्षक',
+    );
+
+    await tester.pumpWidget(editor());
+    await tester.pumpAndSettle();
+    await tester.enterText(heroTitle, 'Published title');
+    await tester.tap(find.text('Save & Publish Website'));
+    await tester.pumpAndSettle();
+
+    expect(repository.site['hero'], containsPair('title', 'Published title'));
+    expect(find.text('वेबसाइट अपडेट प्रकाशित हो गई।'), findsOneWidget);
+
+    repository.failUpdate = true;
+    await tester.enterText(heroTitle, 'Unpublished edit');
+    await tester.tap(find.text('Save & Publish Website'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('सहेजना विफल: Bad state: simulated save failure'), findsOneWidget);
+    expect(repository.site['hero'], containsPair('title', 'Published title'));
+
+    await tester.pumpWidget(editor(key: UniqueKey()));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TextField>(heroTitle).controller!.text, 'Published title');
+    expect(repository.site['hero'], isNot(containsPair('title', 'Unpublished edit')));
+    expect(tester.takeException(), isNull);
+  });
