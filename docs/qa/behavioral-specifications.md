@@ -1904,3 +1904,15 @@ And Firebase Storage is not called
 And no successful media-upload audit is recorded
 
 Executable regression: `apps/api/test/app.e2e-spec.ts` — sends a multipart payload one byte above the 10 MB limit and asserts rejection before storage/audit. This is HTTP pipeline coverage with mocked Storage; it does not verify real Firebase Storage or client retry/progress behaviour.
+
+
+## Scenario: Failed website publish preserves the last successful published configuration
+
+Given a tenant content manager has successfully published website configuration
+When a later save/publish attempt fails
+Then the editor reports the failure
+And the last successfully persisted website configuration remains unchanged
+When the editor is reopened
+Then it loads the last successfully persisted configuration rather than the failed draft
+
+Executable regression: `apps/flutter/test/features/website/presentation/website_gallery_workflow_test.dart` — uses a stateful fake repository to verify successful save, failed subsequent save, and reopening. This is widget/fake-repository evidence; API persistence is covered separately and staging/device rendering remains open.
