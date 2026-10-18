@@ -519,3 +519,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - The workflow previously tracked the `npx` wrapper PID and only probed `my-receipts`, not the campaign endpoint needed by the Flutter screen.
 - Current branch changes launch `./node_modules/.bin/ts-node` directly and require both seeded campaign and receipt endpoints to be ready with the same tenant header before starting the Flutter integration test.
 - The updated workflow and member UI regressions need a fresh exact-head CI run; no merge until all required checks pass.
+
+
+## Next grouped P1 work — notification delivery retry and tenant idempotency (18 October 2026)
+
+- Previous merge: PR #259, commit `86ac65e75b6ee94d15ca8d29f0a1447b6b271b1e`; exact-head CI #39089408184 passed. Post-merge default-branch CI #39089595905 remains in progress at the latest check.
+- Current branch `qa/p1-notification-delivery-retry-batch` adds tests for blank destination skipping, retrying FAILED deliveries with the same provider idempotency key, avoiding cross-tenant deduplication, and keeping provider rejection/timeout from failing the persisted in-app event workflow.
+- Evidence boundary: provider HTTP calls and Firestore are mocked; live provider delivery and production persistence remain separate gates.
+- Android AAB remains manual/on-demand.
