@@ -316,3 +316,10 @@ Evidence boundaries:
 - Follow-up branch `qa/p0-finance-console-decision-resilience` adds three grouped widget regressions to the existing payment/expense/adjustment decision suite: empty rejection reason validation and cancellation without POST across all three record types; decision API 503 feedback without false success; and list refresh after successful approval.
 - Test layer: Flutter widget tests with fake API client. This proves form/request/UI state contracts only; backend authorization and Firestore-emulator decision/reconciliation evidence remain separate.
 - Merge gate: exact-head CI must pass; post-merge CI must be checked independently. The merge of PR #246 is confirmed, but the connected workflow lookup did not expose a post-merge run for its merge commit, so that specific post-merge CI status remains UNKNOWN.
+
+
+## CI connected-giving fixture identity correction — 18 October 2026
+
+- PR #262 exposed a deterministic integration harness mismatch: server-generated tenant IDs were random per run while the workflow and Flutter client hard-coded `connected-giving-test`. The connected campaign journey failed because requests did not use the tenant that owned the seeded campaign/receipt.
+- The grouped localization/accessibility/responsive MR now also passes the server-emitted tenant ID into the connected API checks and Flutter test. This change preserves the real Flutter → NestJS → Firestore path; it does not skip or mock the connected test.
+- Verify exact-head CI after this correction; keep PR unmerged until the connected journey and all required checks pass. Android AAB remains manual/on-demand.
