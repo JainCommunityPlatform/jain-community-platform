@@ -438,3 +438,15 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - Flutter tests and the connected giving journey passed; backend lint, unit/integration tests, Firestore-emulator tests and build passed; repository validation and merge gate passed. Android AAB was skipped by design.
 - **Current work:** [PR #257](https://github.com/JainCommunityPlatform/jain-community-platform/pull/257) groups invalid gallery URL variants and retry recovery into one MR. Exact-head CI #39087830219 is still running; repository validation and Flutter unit/widget tests, backend tests and build have passed so far, while the connected Flutter → NestJS → Firestore journey remains in progress at last observation.
 - **Next:** wait for the exact PR-head connected journey and merge gate; fix any real failure without weakening tests, then merge only if every required check passes and GitHub confirms mergeability. Android AAB remains manual/on-demand.
+
+
+## Verified execution — grouped gallery URL validation and retry recovery (18 October 2026)
+
+- **Merged:** [PR #257](https://github.com/JainCommunityPlatform/jain-community-platform/pull/257), merge commit `ea45df4972dc21dfe29f3a9dea94019acfae55f8`.
+- **Exact-head CI:** [run #39087984656](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39087984656) passed Flutter analysis/tests and connected giving journey, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Android AAB skipped by design.
+- **First CI attempt:** [run #39087830219](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39087830219) failed the connected-giving widget journey while the new gallery widget tests passed. The updated exact-head run passed without weakening the test.
+- **Post-merge CI:** [run #39088157001](https://github.com/JainCommunityPlatform/jain-communityplatform/actions/runs/39088157001) is in progress at the latest check; do not mark it green until all required jobs and merge gate pass.
+- **Coverage:** grouped regressions reject HTTP, relative, empty and hostless HTTPS upload URLs; verify invalid values do not populate the image URL field; and verify valid retry recovery after an invalid URL response.
+- **Evidence boundary:** fake repository/widget tests only. Real Firebase Storage networking, public URL reachability and staging/device behavior remain open.
+- **Current branch:** `qa/p1-profile-contact-ui-regressions-batch` groups profile cancel/no-save, trimmed save/read-only recovery, save-failure retry, load retry/refresh, and contact-link validation/loading/failure recovery. This addresses QA-009 as one coherent UI regression MR rather than one-case MRs.
+- **Next:** exact-head CI for the profile/contact batch, repair genuine failures without weakening assertions, merge only when required checks pass and mergeability is confirmed, then verify post-merge CI separately. Android AAB remains manual/on-demand.
