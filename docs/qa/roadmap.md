@@ -605,3 +605,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Exact-head CI #39118114093 still failed the connected widget render despite the workflow preflight finding the seeded campaign and receipt via the generated tenant ID. All backend and repository jobs passed.
 - The grouped PR #262 now probes campaigns, pledges, receipts and notifications individually before mounting the donor page, and uses a 15-second request timeout. This should localize an API dependency failure and reduce cold-start sensitivity without removing the live journey or relaxing its receipt/campaign assertions.
 - Re-run exact-head CI and fix the observed root cause before merging. Verify post-merge CI independently; Android AAB remains manual/on-demand.
+
+
+## Verified localization batch and next API validation batch — 18 October 2026
+
+- PR #262 merged as `91146da0b479a976f19219a9370e21d6545d1579`; exact-head CI #39118457894 and post-merge CI #39118764541 passed all applicable required checks, including the connected Flutter → NestJS → Firestore emulator receipt journey. Android AAB remains manual/on-demand.
+- Next grouped branch `qa/p1-api-dto-validation-failure-matrix` adds HTTP E2E payload validation across campaign creation, pledges, expenses and notification preferences. It covers invalid numeric values, malformed dates, excessive evidence references, wrong boolean types, unknown fields and tenant-field injection; invalid requests must not call domain services or emit success audit.
+- After CI, merge only on a green exact head, verify default-branch CI separately, then continue the remaining DTO/auth failure matrix.
