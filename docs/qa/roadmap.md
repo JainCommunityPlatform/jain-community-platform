@@ -473,3 +473,17 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - **Prior merge:** PR #247 merged as `1e40a10ce1f211957eff90b53a73d530f466bb69`; exact-head CI #970 passed. Post-merge CI is UNKNOWN because the available connector lookup exposes PR-triggered runs/statuses but no default-branch run for the merge commit.
 - **Current branch:** `qa/p1-website-save-reload-persistence` groups API service and Firestore-emulator tests for partial-update preservation/versioning, persistence failure without false success audit, and tenant-isolated save/reload.
 - **Next:** exact-head CI, fix actual failures without weakening assertions, merge only if required checks pass and mergeability is confirmed, then verify post-merge CI where available. Full Flutter editor publish/reopen, real Storage and staging/device verification remain open.
+
+
+## Website gallery URL validation and recovery — 18 October 2026
+
+- PR #256 merged as `238718e05e00319c3cb10e0ef5c5934bb3ff934e`; exact-head CI #992 passed all required jobs. Post-merge default-branch [CI #39087779879](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39087779879) passed all applicable checks; Android AAB was skipped by design.
+- Follow-up branch `qa/p1-gallery-upload-url-recovery-batch` consolidates multiple related cases in one MR: reject HTTP, relative, empty and hostless HTTPS URLs; verify invalid values are not assigned to the image field; and prove a valid retry succeeds after an invalid URL response.
+- Evidence boundary: fake repository/widget tests prove client-side handling only. Real Storage, URL reachability and staging/device behavior remain separate acceptance gates.
+- Android AAB remains manual/on-demand.
+
+
+## Post-merge CI correction — website gallery URL validation (18 October 2026)
+
+- PR #256 exact-head CI #992 passed and the default-branch push workflow [#39087779879](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39087779879) subsequently passed Flutter, connected giving journey, backend, repository validation and merge gate. This supersedes the earlier UNKNOWN post-merge note.
+- PR #257 remains in progress; exact-head CI #39087830219 has passed repository validation, Flutter analyze/widget tests and backend lint/unit/integration/emulator/build, with the connected giving journey still running at the last check.
