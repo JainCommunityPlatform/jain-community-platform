@@ -557,3 +557,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - First PR #261 run #39090394205 passed directory empty/search, API retry and refresh cases; the public landing test failed because the “Sign in to continue” CTA is below the lazy ListView viewport.
 - The test now scrolls to the bottom before locating the CTA; it then verifies both sign-in actions navigate to the login route.
 - PR #260 post-merge CI #39090197145 passed all applicable checks. PR #261 must pass fresh exact-head CI before merge.
+
+
+## Next grouped P1 work — localization/accessibility/responsive checks (18 October 2026)
+
+- PR #261 exact-head CI #39090600461 passed; post-merge CI #39090790721 was in progress at last check.
+- Current branch `qa/p1-localization-accessibility-responsive-batch` batches supported-locale shared strings, dynamic English-to-Hindi validation, semantics for mobile field/button, and narrow 320px layouts at 1.5 text scale for member directory and public landing.
+- Evidence boundary: widget tests do not replace physical-device testing, contrast measurement, keyboard/focus audit, or complete localization of public tenant content.
+- Android AAB remains manual/on-demand.
