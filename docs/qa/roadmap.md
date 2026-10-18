@@ -626,3 +626,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - PR #264 merged as `cd4b6a3082880cc0b7fe3ccf93bac60db3ac7add`; exact-head [CI #39119641541](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39119641541) and post-merge [CI #39119849096](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39119849096) passed the connected UI pledge write/read-after-write and all applicable required checks.
 - Current branch `qa/p0-persisted-cross-tenant-donor-isolation-batch` batches persisted tenant-boundary cases: donor pledge/receipt history created in tenant A must be empty in tenant B; tenant B cannot create a pledge against tenant A's campaign; direct Firestore assertions prove no tenant B pledge or receipt was persisted.
 - Use two resolved tenant hosts with the real Firestore Emulator and HTTP pipeline. Merge only after exact-head CI passes and mergeability is confirmed; verify post-merge CI independently. Production/staging identity remains a separate gate.
+
+
+## PR #265 CI repair — isolated tenant fixture (18 October 2026)
+
+- Exact-head CI #39120170312 failed two later reconciliation tests because the new cross-tenant scenario added a receipt to the suite's shared tenant; observed receipt counts increased by one. The new scenario must not pollute other tests' data.
+- Fix: allocate a separate tenant pair/hostnames for the new scenario and seed operator/approver memberships for that isolated tenant. Existing exact-count expectations are preserved.
+- Re-run full exact-head CI and merge only if every required job passes; then verify post-merge CI independently.
