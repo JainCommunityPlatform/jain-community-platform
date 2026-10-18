@@ -1954,3 +1954,14 @@ When the upload completes
 Then the editor shows the successful-upload message and re-enables the dialog actions
 
 Executable regression: `apps/flutter/test/features/website/presentation/website_gallery_workflow_test.dart` — holds the fake upload future open to assert progress and disabled controls, then completes it and checks a single upload attempt. This does not establish actual network progress percentage or device rendering.
+
+
+## Scenario: Reject an invalid URL returned by website image upload
+
+Given a content manager uploads a gallery image
+When the upload repository returns a URL that is not a valid HTTPS URL with a host
+Then the editor reports the upload as failed
+And it does not place the invalid URL in the gallery image field
+And the dialog remains available for recovery without an uncaught UI exception
+
+Executable regression: `apps/flutter/test/features/website/presentation/website_gallery_workflow_test.dart` — fake repository returns a `javascript:` URL and the widget asserts failure feedback and no success message. This is UI validation with a fake repository, not proof of public URL reachability.

@@ -408,3 +408,14 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Current branch:** `qa/p1-website-upload-progress-guard` adds a delayed-upload widget regression asserting visible progress, disabled upload/cancel/save controls while the request is pending, one upload attempt, and successful completion recovery.
 - **Evidence boundary:** fake repository with a controlled future; it verifies UI state, not network percentage, actual Firebase Storage, URL reachability, or device/staging behavior.
 - **Next:** inspect exact-head CI, fix genuine failures without weakening assertions, merge only after all required checks pass and the PR is mergeable, verify post-merge CI where exposed, then continue remaining website/media UI gaps. Android AAB remains manual/on-demand.
+
+
+## Verified execution — website gallery upload progress guard (18 October 2026)
+
+- **Merged:** [PR #255](https://github.com/JainCommunityPlatform/jain-community-platform/pull/255), merge commit `f51d29457190ee2a1216e3e386005da0619bb6f4`.
+- **Exact-head CI:** [run #990](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39063829260) passed Flutter analysis/tests and connected giving journey, backend lint/unit/integration/Firestore emulator/build, repository validation, and merge gate. Android AAB was skipped by design.
+- **Post-merge CI:** UNKNOWN; the commit-workflow lookup returned no workflow runs for the merge commit.
+- **Coverage:** delayed-upload widget regression verifies uploading feedback, progress indicator, disabled upload/cancel/save controls while pending, one upload attempt, and successful completion feedback.
+- **Current branch:** `qa/p1-website-invalid-upload-url` validates upload URLs as HTTPS with a non-empty host before assigning them to the gallery field; a widget regression uses a `javascript:` URL and expects recoverable error feedback.
+- **Evidence boundary:** controlled fake repository; actual Firebase Storage/network progress, public URL reachability, and staging/device behavior remain open.
+- **Next:** inspect exact-head CI for invalid URL validation, fix genuine failures without weakening assertions, merge only when required checks pass and PR mergeability is confirmed, verify post-merge CI independently, then continue the next website/media gap. Android AAB remains manual/on-demand.
