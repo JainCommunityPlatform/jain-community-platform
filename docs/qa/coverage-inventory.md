@@ -323,3 +323,10 @@ Evidence boundaries:
 - PR #262 exposed a deterministic integration harness mismatch: server-generated tenant IDs were random per run while the workflow and Flutter client hard-coded `connected-giving-test`. The connected campaign journey failed because requests did not use the tenant that owned the seeded campaign/receipt.
 - The grouped localization/accessibility/responsive MR now also passes the server-emitted tenant ID into the connected API checks and Flutter test. This change preserves the real Flutter → NestJS → Firestore path; it does not skip or mock the connected test.
 - Verify exact-head CI after this correction; keep PR unmerged until the connected journey and all required checks pass. Android AAB remains manual/on-demand.
+
+
+## Connected giving UI-to-API failure diagnosis — 18 October 2026
+
+- CI #39118114093: repository validation and backend lint/unit/integration/Firestore-emulator/build passed; the connected Flutter widget journey failed to render the seeded campaign. The workflow's live API preflight did find the seeded campaign/receipt using the dynamically emitted tenant ID, so tenant-ID alignment alone is not sufficient evidence of a fix.
+- The current grouped PR #262 adds individual live API probes for campaigns, pledges, receipts and notifications before the combined page render, and increases the test request timeout to 15 seconds to distinguish endpoint failures from concurrent widget-load timing.
+- Keep the connected integration journey required and unskipped. Verify the next exact-head CI before merge; Android AAB remains manual/on-demand.
