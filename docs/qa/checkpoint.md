@@ -521,3 +521,57 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - This is a test viewport issue, not a missing product CTA. The test now scrolls the public landing ListView to the bottom before asserting and tapping “Sign in to continue”.
 - PR #260 post-merge [CI #39090197145](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090197145) has now passed all applicable checks, including connected giving and merge gate; Android AAB skipped by design.
 - The latest PR #261 head needs a fresh exact-head run after the CTA test correction and checkpoint update; do not merge until every required check passes.
+
+
+## Next grouped P1 work — localization, accessibility and responsive layout (18 October 2026)
+
+- PR #261 merged as `ecffd12c20d15ca36375b6080ebed640abe624b0`; exact-head CI #39090600461 passed. Post-merge CI #39090790721 was in progress at the last check.
+- Current branch `qa/p1-localization-accessibility-responsive-batch` groups supported-locale string coverage, dynamic English-to-Hindi contact-link validation, semantic labels for input/button, and narrow-screen/larger-text layout checks for public directory and public tenant landing.
+- Evidence boundary: responsive tests use MockClient and test widgets; these do not replace device testing, contrast measurement, keyboard/focus audit, or localization completeness for all public website content.
+
+
+## Post-merge verification — public directory and tenant landing (18 October 2026)
+
+- PR #261 merge commit `ecffd12c20d15ca36375b6080ebed640abe624b0`.
+- Exact-head CI #39090600461 passed; default-branch [CI #39090790721](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090790721) also passed Flutter tests/connected giving journey, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Android AAB skipped by design.
+- PR #262 localization/accessibility/responsive tests are in progress on branch `qa/p1-localization-accessibility-responsive-batch`; exact-head [CI #39090937905](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090937905) must be checked again after this checkpoint update.
+
+
+## Localization/accessibility/responsive CI triage — 18 October 2026
+
+- First full PR #262 run [CI #39090967002](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090967002) passed repository validation and unrelated existing tests, but the new locale/semantics and narrow-layout tests exposed test-harness assumptions.
+- The semantics test failed with a leaked `SemanticsHandle` when an assertion failed before teardown; it now disposes the handle in `finally` and uses label patterns for semantic matching.
+- Narrow-screen tests assumed lazily built content was present before scrolling. They now use `dragUntilVisible` to scroll to the directory card and public landing CTA before asserting.
+- PR #261 post-merge [CI #39090790721](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090790721) passed all applicable checks, including connected giving and merge gate.
+- Latest PR #262 head requires fresh exact-head CI after these test fixes; no merge until all required checks pass.
+
+
+## Follow-up static-analysis correction — localization test (18 October 2026)
+
+- Exact-head run #39091208599 failed Flutter analysis because a text replacement corrupted the locale test's raw RegExp string and left duplicate widget setup. This was a test-source syntax error, not a product issue.
+- The test file has been rewritten cleanly with one widget setup and a `try/finally` that always disposes the semantics handle.
+- Fresh exact-head CI is required for the latest branch head before merge; do not treat the previous run as a test pass.
+
+
+## Semantics assertion refinement — localization test (18 October 2026)
+
+- Latest code-only run #39091376820 passed Flutter analysis and both responsive layout tests, but the locale test's button semantics finder matched two framework nodes for the same accessible CTA.
+- The assertion now requires one or more semantic matches rather than exactly one widget node; it still verifies the localized Hindi label and validation text, and does not weaken the actual translation assertion.
+- Fresh exact-head CI is required for the latest branch head before merge.
+
+
+
+## Connected-giving CI tenant identity mismatch — 18 October 2026
+
+- PR #262 exact-head CI run [#39091500794](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39091500794) failed only in the connected Flutter → NestJS → Firestore receipt journey; backend lint/unit/integration/emulator/build and repository validation passed.
+- Failure evidence: the server seeds a unique tenant ID per run (`connected-giving-${suffix}`), while the CI script and Flutter client sent the hard-coded `connected-giving-test` header. The campaign lookup therefore could not find the campaign created for the server's generated tenant. This is a deterministic fixture/tenant-context mismatch, not a localization assertion failure.
+- The current PR batch also fixes the harness to read the server's ready JSON and pass its actual tenant ID to the readiness checks and Flutter integration test. The integration test accepts the tenant ID through `JCP_CONNECTED_TENANT_ID`; the existing fallback remains for local/manual runs.
+- **Merge gate:** fresh exact-head CI must verify this harness fix and the localization/accessibility/responsive cases. Do not merge while the connected journey fails. Android AAB remains manual/on-demand.
+
+
+
+## Connected journey follow-up diagnosis — 18 October 2026
+
+- Fresh exact-head CI [#39118114093](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39118114093) still failed the connected widget journey even after the workflow's curl preflight found the seeded campaign and receipt using the server-emitted tenant ID. Backend lint/unit/integration/Firestore-emulator/build and repository validation passed.
+- Therefore the tenant-header alignment alone is not yet a verified fix. The Flutter page loads campaigns, pledges, receipts and notifications concurrently; the current test now probes those live API endpoints individually before mounting the page, so a failing dependency is reported at its own call site rather than only as a missing campaign card. Request timeout is raised to 15 seconds to accommodate emulator-backed cold startup without skipping requests or assertions.
+- **Current state:** PR #262 remains open. Fresh exact-head CI must verify the diagnosis and all localization/accessibility/responsive cases. Do not merge until connected journey and merge gate pass.

@@ -557,3 +557,51 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - First PR #261 run #39090394205 passed directory empty/search, API retry and refresh cases; the public landing test failed because the “Sign in to continue” CTA is below the lazy ListView viewport.
 - The test now scrolls to the bottom before locating the CTA; it then verifies both sign-in actions navigate to the login route.
 - PR #260 post-merge CI #39090197145 passed all applicable checks. PR #261 must pass fresh exact-head CI before merge.
+
+
+## Next grouped P1 work — localization/accessibility/responsive checks (18 October 2026)
+
+- PR #261 exact-head CI #39090600461 passed; post-merge CI #39090790721 was in progress at last check.
+- Current branch `qa/p1-localization-accessibility-responsive-batch` batches supported-locale shared strings, dynamic English-to-Hindi validation, semantics for mobile field/button, and narrow 320px layouts at 1.5 text scale for member directory and public landing.
+- Evidence boundary: widget tests do not replace physical-device testing, contrast measurement, keyboard/focus audit, or complete localization of public tenant content.
+- Android AAB remains manual/on-demand.
+
+
+## Public directory post-merge verification and localization batch (18 October 2026)
+
+- PR #261 default-branch [CI #39090790721](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090790721) passed all required checks; Android AAB skipped by design.
+- PR #262 groups supported-locale strings, dynamic language switching, semantics and responsive layout at narrow viewport/larger text.
+- Exact-head CI #39090937905 was running when this checkpoint was updated; the newest head must be rechecked after this docs update.
+
+
+## Localization/accessibility test-harness corrections — 18 October 2026
+
+- PR #262 first run #39090967002 failed three new assertions: a semantics handle leaked when the locale assertion failed, and lazy directory/public landing children were asserted before being built.
+- The locale test now disposes semantics in `finally` and uses anchored/pattern semantics labels. Responsive tests use `dragUntilVisible` to ensure offscreen content is built before assertions.
+- PR #261 post-merge CI #39090790721 passed all required checks. PR #262 needs a fresh exact-head CI run after these corrections.
+
+
+## Locale test static-analysis correction — 18 October 2026
+
+- PR #262 run #39091208599 failed analysis due malformed test source after the previous automated text edit: raw RegExp syntax was corrupted and widget setup duplicated.
+- The locale test file has been rewritten cleanly; the semantics handle is disposed in `finally`. A new exact-head run must verify analysis and all tests.
+
+
+## Semantics node assertion refinement — 18 October 2026
+
+- Run #39091376820 passed analysis and both responsive layout cases; the localized CTA semantics query matched both IndexedSemantics and Semantics wrappers for the same control.
+- Updated the assertion to accept multiple framework nodes while continuing to require the Hindi accessible label and Hindi-only validation message. Latest exact-head CI must verify the final head.
+
+
+## CI connected-giving tenant fixture alignment — 18 October 2026
+
+- CI #39091500794 failed the connected Flutter → NestJS → Firestore journey because the server generated a per-run tenant ID while the workflow/client used the hard-coded `connected-giving-test` tenant header. Other backend checks and repository validation passed.
+- Fix included in the current grouped PR #262: extract the tenant ID from the connected test server's readiness JSON and pass it through `JCP_CONNECTED_TENANT_ID` to the Flutter test and readiness probes. No integration assertions are removed.
+- Await fresh exact-head CI. Merge only after the connected journey and all required checks pass; verify default-branch CI separately. Android AAB remains manual/on-demand.
+
+
+## Connected Flutter giving journey — diagnostic expansion (18 October 2026)
+
+- Exact-head CI #39118114093 still failed the connected widget render despite the workflow preflight finding the seeded campaign and receipt via the generated tenant ID. All backend and repository jobs passed.
+- The grouped PR #262 now probes campaigns, pledges, receipts and notifications individually before mounting the donor page, and uses a 15-second request timeout. This should localize an API dependency failure and reduce cold-start sensitivity without removing the live journey or relaxing its receipt/campaign assertions.
+- Re-run exact-head CI and fix the observed root cause before merging. Verify post-merge CI independently; Android AAB remains manual/on-demand.
