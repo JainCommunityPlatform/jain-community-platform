@@ -585,3 +585,9 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 
 - PR #262 run #39091208599 failed analysis due malformed test source after the previous automated text edit: raw RegExp syntax was corrupted and widget setup duplicated.
 - The locale test file has been rewritten cleanly; the semantics handle is disposed in `finally`. A new exact-head run must verify analysis and all tests.
+
+
+## Semantics node assertion refinement — 18 October 2026
+
+- Run #39091376820 passed analysis and both responsive layout cases; the localized CTA semantics query matched both IndexedSemantics and Semantics wrappers for the same control.
+- Updated the assertion to accept multiple framework nodes while continuing to require the Hindi accessible label and Hindi-only validation message. Latest exact-head CI must verify the final head.
