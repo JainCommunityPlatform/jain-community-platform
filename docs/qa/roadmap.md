@@ -503,3 +503,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Current branch `qa/p1-admin-members-ui-workflow-batch` consolidates add-member validation/create retry, contact validation/update, role change, remove, and pull-to-refresh into one test MR.
 - Evidence boundary: widget tests use a fake repository; existing API authorization tests separately cover tenant/role boundaries. Real persisted membership lifecycle and staging/device session behavior remain open.
 - Android AAB remains manual/on-demand.
+
+
+## Member administration UI batch — CI failure diagnosis (18 October 2026)
+
+- First exact-head [CI #39088711839](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39088711839) passed repository validation but failed five new widget cases.
+- Root cause: Add/Contact dialogs tied controller disposal to the `showDialog` future, which can complete before the transition widget is fully removed; CI reported "TextEditingController was used after being disposed." Dedicated stateful dialog widgets now own/dispose controllers. Fake repository mutation calls yield asynchronously so the popup route is removed before the parent list refreshes.
+- Updated branch `qa/p1-admin-members-ui-workflow-batch` awaits a fresh exact-head CI run before merge.
+- Separate post-merge note: PR #258's default-branch CI #39088624672 failed the connected-giving journey despite exact-head CI passing. Investigate readiness and API context if this recurs; do not conflate it with member UI regressions.
