@@ -539,7 +539,14 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 
 ## Next grouped P1 work — public directory and tenant landing pages (18 October 2026)
 
-- PR #260 merged as `793aff1ad9d208f685191d970ddb35b9d54629ed`; exact-head CI #39089935044 passed all required checks. Post-merge default-branch CI #39090197145 is in progress at the latest checkpoint.
+- PR #260 merged as `793aff1ad9d208f685191d970ddb35b9d54629ed`; exact-head CI #39089935044 passed all required checks. Post-merge default-branch [CI #39090197145](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090197145) passed all applicable checks, including connected giving; Android AAB was skipped by design.
 - Current branch `qa/p1-public-directory-recovery-batch` groups public directory empty-state/search feedback, API error/retry across Home and Temples, location filtering, pull-to-refresh reload, and anonymous landing-page sign-in navigation.
 - Evidence boundary: directory calls use MockClient and public landing tests use a test GoRouter. Tenant hostname routing, live public website content and staging/device behavior remain open.
 - Android AAB remains manual/on-demand.
+
+
+## Public directory batch — updated post-merge evidence (18 October 2026)
+
+- PR #260's default-branch CI #39090197145 passed all required checks; Android AAB skipped by design.
+- PR #261 groups public directory empty state, API failure/retry, location search, refresh reload, and anonymous public landing/sign-in navigation.
+- Exact-head CI #39090348627 was in progress when the checkpoint was refreshed; the newest head must be rechecked after this docs update.
