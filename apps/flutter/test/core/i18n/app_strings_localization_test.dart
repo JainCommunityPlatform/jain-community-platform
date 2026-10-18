@@ -15,9 +15,12 @@ void main() {
       expect(strings.invalidMobile, isNotEmpty, reason: '$code validation label');
       expect(strings.retry, isNotEmpty, reason: '$code retry label');
       if (code != 'en') {
-        expect(strings.signIn, isNot(english.signIn), reason: '$code should not fall back to English');
-        expect(strings.searchTemple, isNot(english.searchTemple), reason: '$code search should be translated');
-        expect(strings.invalidMobile, isNot(english.invalidMobile), reason: '$code validation should be translated');
+        expect(strings.signIn, isNot(english.signIn),
+            reason: '$code should not fall back to English');
+        expect(strings.searchTemple, isNot(english.searchTemple),
+            reason: '$code search should be translated');
+        expect(strings.invalidMobile, isNot(english.invalidMobile),
+            reason: '$code validation should be translated');
       }
     }
   });
@@ -26,16 +29,8 @@ void main() {
       (tester) async {
     SharedPreferences.setMockInitialValues({});
     final semantics = tester.ensureSemantics();
-    addTearDown(semantics.dispose);
     final controller = AppLanguageController(initialLocale: const Locale('en'));
 
-    await tester.pumpWidget(MaterialApp(
-      home: AppLanguageScope(
-        controller: controller,
-        child: LinkContactPage(onLink: (_) async {}),
-      ),
-    ));
-    await tester.pumpAndSettle();
     try {
       await tester.pumpWidget(MaterialApp(
         home: AppLanguageScope(
@@ -44,15 +39,12 @@ void main() {
         ),
       ));
       await tester.pumpAndSettle();
-      expect(find.bySemanticsLabel(RegExp('^Mobile number')), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp(r'^Mobile number')), findsOneWidget);
 
       await controller.setLocale(const Locale('hi'));
       await tester.pumpAndSettle();
-      expect(find.bySemanticsLabel(RegExp('^मोबाइल नंबर
-  });
-}
-)), findsOneWidget);
-      expect(find.bySemanticsLabel(RegExp('मोबाइल नंबर जोड़ें')), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp(r'^मोबाइल नंबर$')), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp(r'मोबाइल नंबर जोड़ें')), findsOneWidget);
 
       await tester.tap(find.text('मोबाइल नंबर जोड़ें'));
       await tester.pumpAndSettle();
