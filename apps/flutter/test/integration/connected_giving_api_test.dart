@@ -29,9 +29,22 @@ void main() {
         baseUrl: Uri.parse(apiUrl),
         accessTokenProvider: () async => 'connected-donor',
         tenantIdProvider: () => tenantId,
-        requestTimeout: const Duration(seconds: 5),
+        requestTimeout: const Duration(seconds: 15),
         client: connectedHttpClient,
       );
+
+      // Probe each endpoint before the combined widget load so an ancillary
+      // endpoint failure is reported directly instead of only as a missing
+      // campaign card. These requests still go through the live API/emulator.
+      final campaigns = await api.getList('/api/giving/campaigns');
+      expect(
+        campaigns.cast<Map<String, dynamic>>().map((item) => item['name']),
+        contains('Connected API receipt journey'),
+        reason: 'The live campaigns endpoint must return the seeded campaign',
+      );
+      await api.getList('/api/giving/my-pledges');
+      await api.getList('/api/giving/my-receipts');
+      await api.getList('/api/notifications');
 
       await tester.pumpWidget(MaterialApp(home: DonorGivingPage(api: api)));
       final campaignFinder = find.text('Connected API receipt journey');
