@@ -550,3 +550,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - PR #260's default-branch CI #39090197145 passed all required checks; Android AAB skipped by design.
 - PR #261 groups public directory empty state, API failure/retry, location search, refresh reload, and anonymous public landing/sign-in navigation.
 - Exact-head CI #39090348627 was in progress when the checkpoint was refreshed; the newest head must be rechecked after this docs update.
+
+
+## Public landing CTA test correction — 18 October 2026
+
+- First PR #261 run #39090394205 passed directory empty/search, API retry and refresh cases; the public landing test failed because the “Sign in to continue” CTA is below the lazy ListView viewport.
+- The test now scrolls to the bottom before locating the CTA; it then verifies both sign-in actions navigate to the login route.
+- PR #260 post-merge CI #39090197145 passed all applicable checks. PR #261 must pass fresh exact-head CI before merge.
