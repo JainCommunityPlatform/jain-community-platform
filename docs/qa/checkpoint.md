@@ -584,3 +584,12 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Post-merge CI:** [run #39118764541](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39118764541) passed all applicable checks on master, including connected giving and merge gate. Android AAB skipped by design.
 - **Next grouped MR:** `qa/p1-api-dto-validation-failure-matrix` adds an API DTO validation/failure matrix for campaign creation, pledges, expenses and notification preferences. Invalid amounts, date, evidence count, non-boolean preferences and caller-supplied tenant fields must return 400 before service or audit calls.
 - **Evidence boundary:** HTTP E2E tests use mocked services and verify validation/side-effect contracts; Firestore persistence and staging identity remain separate evidence. Android AAB remains manual/on-demand.
+
+
+## Verified execution — grouped API DTO validation matrix (18 October 2026)
+
+- **Merged:** [PR #263](https://github.com/JainCommunityPlatform/jain-community-platform/pull/263), merge commit `21867d8b95200ca4c67f8a3eb0d4e25d4e4d05af`.
+- **Exact-head CI:** [run #39119173399](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39119173399) passed Flutter analysis/tests, connected giving, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate.
+- **Post-merge CI:** [run #39119374068](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39119374068) passed all applicable checks on master. Android AAB skipped by design.
+- **Next P0 batch:** `qa/p0-connected-donor-pledge-e2e-batch` extends the connected donor journey with UI amount validation, no-persist on invalid amount, successful pledge submission through real NestJS HTTP, Firestore-backed read-after-write assertion, and existing receipt visibility.
+- **Evidence boundary:** Firestore Emulator with real NestJS HTTP, not production donor data; staging/device identity and external settlement remain open.
