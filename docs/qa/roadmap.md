@@ -612,3 +612,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - PR #262 merged as `91146da0b479a976f19219a9370e21d6545d1579`; exact-head CI #39118457894 and post-merge CI #39118764541 passed all applicable required checks, including the connected Flutter → NestJS → Firestore emulator receipt journey. Android AAB remains manual/on-demand.
 - Next grouped branch `qa/p1-api-dto-validation-failure-matrix` adds HTTP E2E payload validation across campaign creation, pledges, expenses and notification preferences. It covers invalid numeric values, malformed dates, excessive evidence references, wrong boolean types, unknown fields and tenant-field injection; invalid requests must not call domain services or emit success audit.
 - After CI, merge only on a green exact head, verify default-branch CI separately, then continue the remaining DTO/auth failure matrix.
+
+
+## Next P0 — connected donor pledge write/read-after-write journey (18 October 2026)
+
+- PR #263 merged as `21867d8b95200ca4c67f8a3eb0d4e25d4e4d05af`; exact-head [CI #39119173399](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39119173399) and post-merge [CI #39119374068](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39119374068) passed all applicable checks. Android AAB skipped by design.
+- Current branch `qa/p0-connected-donor-pledge-e2e-batch` upgrades the connected Flutter → NestJS → Firestore-emulator journey: invalid zero pledge is rejected without changing persisted pledge count; a valid ₹123.45 pledge is created from the UI and verified by a subsequent live API read; seeded receipt remains visible.
+- This is P0 UI-to-API-to-persistence coverage. Do not merge until exact-head CI passes and the read-after-write assertions are green; verify post-merge CI independently. Production/staging identity and external settlement remain separate gates.

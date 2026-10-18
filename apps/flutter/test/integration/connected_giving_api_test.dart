@@ -23,7 +23,7 @@ void main() {
   tearDownAll(connectedHttpClient.close);
 
   testWidgets(
-    'renders a Firestore-persisted receipt from the live NestJS API',
+    'creates a pledge through the donor UI and verifies persisted pledge and receipt data',
     (tester) async {
       final api = ApiClient(
         baseUrl: Uri.parse(apiUrl),
@@ -37,25 +37,62 @@ void main() {
       // endpoint failure is reported directly instead of only as a missing
       // campaign card. These requests still go through the live API/emulator.
       final campaigns = await api.getList('/api/giving/campaigns');
+      final seededCampaign = campaigns.cast<Map<String, dynamic>>().singleWhere(
+        (item) => item['name'] == 'Connected API receipt journey',
+      );
       expect(
-        campaigns.cast<Map<String, dynamic>>().map((item) => item['name']),
-        contains('Connected API receipt journey'),
+        seededCampaign['id'],
+        isNotEmpty,
         reason: 'The live campaigns endpoint must return the seeded campaign',
       );
-      await api.getList('/api/giving/my-pledges');
+      final initialPledges = await api.getList('/api/giving/my-pledges');
       await api.getList('/api/giving/my-receipts');
       await api.getList('/api/notifications');
 
       await tester.pumpWidget(MaterialApp(home: DonorGivingPage(api: api)));
       final campaignFinder = find.text('Connected API receipt journey');
-      for (var attempt = 0; attempt < 50 && campaignFinder.evaluate().isEmpty; attempt++) {
+      for (var attempt = 0; attempt < 100 && campaignFinder.evaluate().isEmpty; attempt++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
       expect(campaignFinder, findsOneWidget);
 
+      await tester.tap(find.text('Make a pledge'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField), '0');
+      await tester.tap(find.text('Confirm pledge'));
+      await tester.pumpAndSettle();
+      expect(find.text('Enter a valid amount greater than zero'), findsOneWidget);
+      expect(find.text('Pledge to Connected API receipt journey'), findsOneWidget);
+
+      final pledgesAfterInvalidAmount = await api.getList('/api/giving/my-pledges');
+      expect(
+        pledgesAfterInvalidAmount.length,
+        initialPledges.length,
+        reason: 'Invalid UI amount must not create a persisted pledge',
+      );
+
+      await tester.enterText(find.byType(TextFormField), '123.45');
+      await tester.tap(find.text('Confirm pledge'));
+      await tester.pump();
+      final createdPledgeAmount = find.text('₹123.45');
+      for (var attempt = 0; attempt < 150 && createdPledgeAmount.evaluate().isEmpty; attempt++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(createdPledgeAmount, findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      final persistedPledges = await api.getList('/api/giving/my-pledges');
+      expect(
+        persistedPledges.cast<Map<String, dynamic>>().any((pledge) =>
+            pledge['campaignId'] == seededCampaign['id'] &&
+            pledge['pledgedAmountPaise'] == 12345),
+        isTrue,
+        reason: 'A confirmed pledge must be persisted and returned by the live API',
+      );
+
       await tester.tap(find.text('Receipts'));
       final receiptFinder = find.textContaining('JCP-');
-      for (var attempt = 0; attempt < 50 && receiptFinder.evaluate().isEmpty; attempt++) {
+      for (var attempt = 0; attempt < 100 && receiptFinder.evaluate().isEmpty; attempt++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
 
