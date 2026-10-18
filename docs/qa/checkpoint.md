@@ -567,3 +567,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - Failure evidence: the server seeds a unique tenant ID per run (`connected-giving-${suffix}`), while the CI script and Flutter client sent the hard-coded `connected-giving-test` header. The campaign lookup therefore could not find the campaign created for the server's generated tenant. This is a deterministic fixture/tenant-context mismatch, not a localization assertion failure.
 - The current PR batch also fixes the harness to read the server's ready JSON and pass its actual tenant ID to the readiness checks and Flutter integration test. The integration test accepts the tenant ID through `JCP_CONNECTED_TENANT_ID`; the existing fallback remains for local/manual runs.
 - **Merge gate:** fresh exact-head CI must verify this harness fix and the localization/accessibility/responsive cases. Do not merge while the connected journey fails. Android AAB remains manual/on-demand.
+
+
+
+## Connected journey follow-up diagnosis — 18 October 2026
+
+- Fresh exact-head CI [#39118114093](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39118114093) still failed the connected widget journey even after the workflow's curl preflight found the seeded campaign and receipt using the server-emitted tenant ID. Backend lint/unit/integration/Firestore-emulator/build and repository validation passed.
+- Therefore the tenant-header alignment alone is not yet a verified fix. The Flutter page loads campaigns, pledges, receipts and notifications concurrently; the current test now probes those live API endpoints individually before mounting the page, so a failing dependency is reported at its own call site rather than only as a missing campaign card. Request timeout is raised to 15 seconds to accommodate emulator-backed cold startup without skipping requests or assertions.
+- **Current state:** PR #262 remains open. Fresh exact-head CI must verify the diagnosis and all localization/accessibility/responsive cases. Do not merge until connected journey and merge gate pass.
