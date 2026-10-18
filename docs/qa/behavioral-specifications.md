@@ -1965,3 +1965,12 @@ And it does not place the invalid URL in the gallery image field
 And the dialog remains available for recovery without an uncaught UI exception
 
 Executable regression: `apps/flutter/test/features/website/presentation/website_gallery_workflow_test.dart` — fake repository returns a `javascript:` URL and the widget asserts failure feedback and no success message. This is UI validation with a fake repository, not proof of public URL reachability.
+
+
+## API DTO validation matrix — grouped campaign, pledge, expense and preference requests
+
+- Invalid request payloads must return HTTP 400 under the global validation pipe.
+- Validation failures must occur before domain service invocation and must not emit success audit events.
+- Campaign name/target constraints, pledge positive paise and allowed fields, expense positive paise/date/evidence-reference limits, and boolean-only notification preferences are part of the matrix.
+- Caller-supplied `tenantId` or other non-whitelisted properties are rejected; tenant scope comes from the authenticated request context, not the request body.
+- Existing payment/adjustment/rejection payload coverage remains in place. The combined HTTP E2E matrix uses mocked domain services; it does not replace persisted Firestore or staging verification.

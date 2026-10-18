@@ -2141,6 +2141,93 @@ describe('API endpoints (integration)', () => {
     expect(giving.rejectAdjustment).not.toHaveBeenCalled();
   });
 
+  it('rejects invalid campaign, pledge, expense and notification preference payloads before service or audit calls', async () => {
+    giving.createCampaign.mockClear();
+    giving.createPledge.mockClear();
+    giving.createExpense.mockClear();
+    notifications.updatePreferences.mockClear();
+    audit.record.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/giving/campaigns')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-operator')
+      .send({ name: 'x', targetAmountPaise: -1 })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/api/giving/campaigns')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-operator')
+      .send({ name: 'Valid campaign', unexpected: true })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/api/giving/pledges')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'donor-a')
+      .set('idempotency-key', 'invalid-pledge-amount')
+      .send({ campaignId: 'campaign-public', pledgedAmountPaise: 0 })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/api/giving/pledges')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'donor-a')
+      .set('idempotency-key', 'invalid-pledge-extra-field')
+      .send({ campaignId: 'campaign-public', pledgedAmountPaise: 5000, tenantId: 'attacker-tenant' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/api/giving/expenses')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-operator')
+      .set('idempotency-key', 'invalid-expense-amount')
+      .send({ category: 'MAINTENANCE', description: 'Broken light', amountPaise: 0 })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/api/giving/expenses')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-operator')
+      .set('idempotency-key', 'invalid-expense-date')
+      .send({ category: 'MAINTENANCE', description: 'Broken light', amountPaise: 5000, incurredAt: 'not-a-date' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/api/giving/expenses')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-finance-operator')
+      .set('idempotency-key', 'invalid-expense-evidence-count')
+      .send({
+        category: 'MAINTENANCE',
+        description: 'Broken light',
+        amountPaise: 5000,
+        evidenceReferences: Array.from({ length: 11 }, (_, index) => 'evidence-' + index),
+      })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .put('/api/notifications/preferences')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'donor-a')
+      .send({ email: 'yes', whatsapp: true, push: false })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .put('/api/notifications/preferences')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'donor-a')
+      .send({ email: true, whatsapp: true, push: false, tenantId: 'attacker-tenant' })
+      .expect(400);
+
+    expect(giving.createCampaign).not.toHaveBeenCalled();
+    expect(giving.createPledge).not.toHaveBeenCalled();
+    expect(giving.createExpense).not.toHaveBeenCalled();
+    expect(notifications.updatePreferences).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
   it('platform tenant administration routes deny non-platform users before tenant operations', async () => {
     firestore.getTenantById.mockClear();
     firestore.recordAudit.mockClear();

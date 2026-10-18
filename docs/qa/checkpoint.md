@@ -575,3 +575,12 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - Fresh exact-head CI [#39118114093](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39118114093) still failed the connected widget journey even after the workflow's curl preflight found the seeded campaign and receipt using the server-emitted tenant ID. Backend lint/unit/integration/Firestore-emulator/build and repository validation passed.
 - Therefore the tenant-header alignment alone is not yet a verified fix. The Flutter page loads campaigns, pledges, receipts and notifications concurrently; the current test now probes those live API endpoints individually before mounting the page, so a failing dependency is reported at its own call site rather than only as a missing campaign card. Request timeout is raised to 15 seconds to accommodate emulator-backed cold startup without skipping requests or assertions.
 - **Current state:** PR #262 remains open. Fresh exact-head CI must verify the diagnosis and all localization/accessibility/responsive cases. Do not merge until connected journey and merge gate pass.
+
+
+## Verified execution — grouped localization/accessibility/responsive batch (18 October 2026)
+
+- **Merged:** [PR #262](https://github.com/JainCommunityPlatform/jain-community-platform/pull/262), merge commit `91146da0b479a976f19219a9370e21d6545d1579`.
+- **Exact-head CI:** [run #39118457894](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39118457894) passed Flutter analysis/tests, connected Flutter → NestJS → Firestore-emulator receipt journey, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate.
+- **Post-merge CI:** [run #39118764541](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39118764541) passed all applicable checks on master, including connected giving and merge gate. Android AAB skipped by design.
+- **Next grouped MR:** `qa/p1-api-dto-validation-failure-matrix` adds an API DTO validation/failure matrix for campaign creation, pledges, expenses and notification preferences. Invalid amounts, date, evidence count, non-boolean preferences and caller-supplied tenant fields must return 400 before service or audit calls.
+- **Evidence boundary:** HTTP E2E tests use mocked services and verify validation/side-effect contracts; Firestore persistence and staging identity remain separate evidence. Android AAB remains manual/on-demand.
