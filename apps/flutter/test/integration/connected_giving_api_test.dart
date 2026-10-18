@@ -15,6 +15,10 @@ void main() {
   LiveTestWidgetsFlutterBinding.ensureInitialized();
 
   const apiUrl = String.fromEnvironment('JCP_CONNECTED_API_URL');
+  const tenantId = String.fromEnvironment(
+    'JCP_CONNECTED_TENANT_ID',
+    defaultValue: 'connected-giving-test',
+  );
 
   tearDownAll(connectedHttpClient.close);
 
@@ -24,7 +28,7 @@ void main() {
       final api = ApiClient(
         baseUrl: Uri.parse(apiUrl),
         accessTokenProvider: () async => 'connected-donor',
-        tenantIdProvider: () => 'connected-giving-test',
+        tenantIdProvider: () => tenantId,
         requestTimeout: const Duration(seconds: 5),
         client: connectedHttpClient,
       );
