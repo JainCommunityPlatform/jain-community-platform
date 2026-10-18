@@ -479,3 +479,13 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Fix in current branch:** launch the API through the installed `./node_modules/.bin/ts-node` executable so the tracked PID is the server process; readiness now requires both the seeded receipt and campaign endpoints to return the expected data with the same tenant header used by the Flutter API client.
 - **Member UI fixes:** add/contact dialogs now own their controllers in StatefulWidget lifecycles; create retry uses a mutable list fixture; fake mutations yield asynchronously. The latest pre-readiness-fix widget run had one remaining fixture failure, corrected before this workflow change.
 - **Status:** the updated workflow and tests require fresh exact-head CI. Do not merge until Flutter tests, connected journey, backend checks, repository validation and merge gate all pass.
+
+
+## Verified execution — tenant member administration and CI readiness (18 October 2026)
+
+- **Merged:** [PR #259](https://github.com/JainCommunityPlatform/jain-community-platform/pull/259), merge commit `86ac65e75b6ee94d15ca8d29f0a1447b6b271b1e`.
+- **Exact-head CI:** [run #39089408184](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39089408184) passed Flutter analysis/tests, connected giving journey, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Android AAB was skipped by design.
+- **Post-merge CI:** [run #39089595905](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39089595905) is in progress at the latest check; final status must be recorded after the default-branch run completes.
+- **Coverage delivered:** add-member required ID/create/retry, contact validation/update, role change, remove and pull-to-refresh; dialog controllers now follow widget lifecycle; connected-giving readiness starts the API via the installed ts-node executable and checks both campaign and receipt endpoints.
+- **Next branch:** `qa/p1-notification-delivery-retry-batch` groups blank-destination opt-out, failed-delivery retry with stable provider idempotency, tenant-scoped delivery IDs, and non-blocking event dispatch when a provider rejects/times out.
+- **Evidence boundary:** notification provider tests use mocked fetch and Firestore; no real provider delivery or production webhook verification is claimed. Android AAB remains manual/on-demand.
