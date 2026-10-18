@@ -487,3 +487,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 
 - PR #256 exact-head CI #992 passed and the default-branch push workflow [#39087779879](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39087779879) subsequently passed Flutter, connected giving journey, backend, repository validation and merge gate. This supersedes the earlier UNKNOWN post-merge note.
 - PR #257 remains in progress; exact-head CI #39087830219 has passed repository validation, Flutter analyze/widget tests and backend lint/unit/integration/emulator/build, with the connected giving journey still running at the last check.
+
+
+## Next grouped P1 work — profile and contact-linking UI resilience (18 October 2026)
+
+- Previous merge: PR #257 gallery URL validation/retry matrix merged as `ea45df4972dc21dfe29f3a9dea94019acfae55f8`; exact-head CI #39087984656 passed all required jobs. Post-merge default-branch CI #39088157001 passed all applicable checks.
+- Current branch `qa/p1-profile-contact-ui-regressions-batch` groups profile edit cancel/no-save, save trimming and read-only recovery, save failure/retry, load failure/retry, pull-to-refresh reload, plus contact-link validation, disabled duplicate submission and recoverable failure.
+- Evidence boundary: profile and contact-link UI tests use fake repositories/callbacks. API identity/tenant authorization tests exist separately; full persisted UI/API round-trip and staging/device behavior remain open.
+- Keep this work as one coherent MR. Android AAB remains manual/on-demand.
