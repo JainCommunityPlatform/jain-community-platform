@@ -351,3 +351,10 @@ Evidence boundaries:
 - PR #264 merged as `cd4b6a3082880cc0b7fe3ccf93bac60db3ac7add`; exact-head CI #39119641541 and post-merge CI #39119849096 passed all applicable checks, including the connected UI pledge write/read-after-write.
 - Current branch `qa/p0-persisted-cross-tenant-donor-isolation-batch` extends the Firestore-emulator HTTP suite with a second tenant host: tenant A's donor pledge/receipt must be visible only in A, and a tenant B pledge against A's campaign must return 404 without creating tenant B data.
 - This is real NestJS HTTP + Firestore Emulator coverage; production/staging identity and device evidence remain separate.
+
+
+## PR #265 test isolation correction — 18 October 2026
+
+- CI #39120170312 exposed shared-fixture contamination: the new cross-tenant test created a receipt in the same tenant used by later exact-count reconciliation tests.
+- The test now uses dedicated tenant A/B IDs and a distinct pair of hostnames, with operator/approver memberships seeded only for the isolated tenant. Exact reconciliation assertions remain unchanged.
+- Fresh exact-head CI must prove both the new tenant isolation and all pre-existing emulator journeys pass.
