@@ -535,3 +535,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - PR #260 exact-head [CI #39089740194](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39089740194) passed Flutter analysis/tests and connected giving, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Android AAB skipped by design.
 - Tests cover blank destination skip, retrying FAILED delivery with the same provider idempotency key, tenant-scoped delivery identity, and swallowing provider rejection/timeout in event dispatch. Provider and Firestore calls are mocked.
 - PR #260 remains open until the post-merge verification strategy is confirmed; next merge gate is to verify current PR state/mergeability and merge only with required checks green.
+
+
+## Next grouped P1 work — public directory and tenant landing pages (18 October 2026)
+
+- PR #260 merged as `793aff1ad9d208f685191d970ddb35b9d54629ed`; exact-head CI #39089935044 passed all required checks. Post-merge default-branch CI #39090197145 is in progress at the latest checkpoint.
+- Current branch `qa/p1-public-directory-recovery-batch` groups public directory empty-state/search feedback, API error/retry across Home and Temples, location filtering, pull-to-refresh reload, and anonymous landing-page sign-in navigation.
+- Evidence boundary: directory calls use MockClient and public landing tests use a test GoRouter. Tenant hostname routing, live public website content and staging/device behavior remain open.
+- Android AAB remains manual/on-demand.
