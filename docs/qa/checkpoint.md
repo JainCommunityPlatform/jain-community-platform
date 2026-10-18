@@ -551,3 +551,10 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - Exact-head run #39091208599 failed Flutter analysis because a text replacement corrupted the locale test's raw RegExp string and left duplicate widget setup. This was a test-source syntax error, not a product issue.
 - The test file has been rewritten cleanly with one widget setup and a `try/finally` that always disposes the semantics handle.
 - Fresh exact-head CI is required for the latest branch head before merge; do not treat the previous run as a test pass.
+
+
+## Semantics assertion refinement — localization test (18 October 2026)
+
+- Latest code-only run #39091376820 passed Flutter analysis and both responsive layout tests, but the locale test's button semantics finder matched two framework nodes for the same accessible CTA.
+- The assertion now requires one or more semantic matches rather than exactly one widget node; it still verifies the localized Hindi label and validation text, and does not weaken the actual translation assertion.
+- Fresh exact-head CI is required for the latest branch head before merge.
