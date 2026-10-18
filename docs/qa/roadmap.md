@@ -565,3 +565,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Current branch `qa/p1-localization-accessibility-responsive-batch` batches supported-locale shared strings, dynamic English-to-Hindi validation, semantics for mobile field/button, and narrow 320px layouts at 1.5 text scale for member directory and public landing.
 - Evidence boundary: widget tests do not replace physical-device testing, contrast measurement, keyboard/focus audit, or complete localization of public tenant content.
 - Android AAB remains manual/on-demand.
+
+
+## Public directory post-merge verification and localization batch (18 October 2026)
+
+- PR #261 default-branch [CI #39090790721](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090790721) passed all required checks; Android AAB skipped by design.
+- PR #262 groups supported-locale strings, dynamic language switching, semantics and responsive layout at narrow viewport/larger text.
+- Exact-head CI #39090937905 was running when this checkpoint was updated; the newest head must be rechecked after this docs update.
