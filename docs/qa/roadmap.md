@@ -572,3 +572,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - PR #261 default-branch [CI #39090790721](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090790721) passed all required checks; Android AAB skipped by design.
 - PR #262 groups supported-locale strings, dynamic language switching, semantics and responsive layout at narrow viewport/larger text.
 - Exact-head CI #39090937905 was running when this checkpoint was updated; the newest head must be rechecked after this docs update.
+
+
+## Localization/accessibility test-harness corrections — 18 October 2026
+
+- PR #262 first run #39090967002 failed three new assertions: a semantics handle leaked when the locale assertion failed, and lazy directory/public landing children were asserted before being built.
+- The locale test now disposes semantics in `finally` and uses anchored/pattern semantics labels. Responsive tests use `dragUntilVisible` to ensure offscreen content is built before assertions.
+- PR #261 post-merge CI #39090790721 passed all required checks. PR #262 needs a fresh exact-head CI run after these corrections.
