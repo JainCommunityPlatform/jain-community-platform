@@ -125,6 +125,8 @@ void main() {
       find.byWidgetPredicate((w) => w is TextField && w.decoration?.labelText == 'Name'),
       'Unsaved name',
     );
+    await tester.ensureVisible(find.text('Cancel'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
 
@@ -154,6 +156,8 @@ void main() {
       find.byWidgetPredicate((w) => w is TextField && w.decoration?.labelText == 'City'),
       '  Nashik  ',
     );
+    await tester.ensureVisible(find.text('Save profile'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Save profile'));
     await tester.pumpAndSettle();
 
@@ -182,6 +186,8 @@ void main() {
       find.byWidgetPredicate((w) => w is TextField && w.decoration?.labelText == 'Name'),
       'Updated Member',
     );
+    await tester.ensureVisible(find.text('Save profile'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Save profile'));
     await tester.pumpAndSettle();
 
@@ -190,6 +196,8 @@ void main() {
     expect(repository.updates, 1);
 
     repository.failUpdate = false;
+    await tester.ensureVisible(find.text('Save profile'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Save profile'));
     await tester.pumpAndSettle();
     expect(repository.updates, 2);
