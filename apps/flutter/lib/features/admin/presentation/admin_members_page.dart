@@ -135,54 +135,23 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
   }
 
   void showAdd() {
-    final controller = TextEditingController();
-    var role = roles.first;
-    final key = GlobalKey<FormState>();
     showDialog<void>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (_, setDialogState) => AlertDialog(
-          title: const Text('Add member'),
-          content: Form(key: key, child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextFormField(controller: controller, decoration: const InputDecoration(labelText: 'User ID'),
-              validator: (value) => value == null || value.trim().isEmpty ? 'User ID is required' : null),
-            DropdownButtonFormField<String>(initialValue: role, decoration: const InputDecoration(labelText: 'Role'),
-              items: roles.map((r) => DropdownMenuItem(value: r, child: Text(roleLabel(r)))).toList(),
-              onChanged: (value) => setDialogState(() => role = value!)),
-          ])),
-          actions: [
-            TextButton(onPressed: mutating ? null : () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-            FilledButton(onPressed: mutating ? null : () { if (key.currentState!.validate()) add(controller.text.trim(), role); },
-              child: mutating ? const CircularProgressIndicator() : const Text('Add')),
-          ],
-        ),
+      builder: (_) => _AddMemberDialog(
+        onAdd: add,
       ),
-    ).whenComplete(controller.dispose);
+    );
   }
 
   void showContact(TenantMember member) {
-    final controller = TextEditingController(text: member.primaryPhone ?? '');
-    final key = GlobalKey<FormState>();
     showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Update mobile number'),
-        content: Form(
-          key: key,
-          child: TextFormField(
-            controller: controller,
-            keyboardType: TextInputType.phone,
-            maxLength: 10,
-            decoration: const InputDecoration(labelText: 'Mobile number', prefixText: '+91 '),
-            validator: (value) => validMobile(value) ? null : 'Enter a valid 10 digit mobile number',
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: mutating ? null : () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-          FilledButton(onPressed: mutating ? null : () { if (key.currentState!.validate()) updateContact(member, controller.text.trim()); }, child: const Text('Save')),
-        ],
+      builder: (_) => _UpdateMemberContactDialog(
+        initialValue: member.primaryPhone ?? '',
+        isValidMobile: validMobile,
+        onSave: (value) => updateContact(member, value),
       ),
-    ).whenComplete(controller.dispose);
+    );
   }
 
   void showRole(TenantMember member) {
@@ -203,6 +172,147 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
       ),
     );
   }
+}
+
+
+class _AddMemberDialog extends StatefulWidget {
+  const _AddMemberDialog({required this.onAdd});
+
+  final Future<void> Function(String userId, String role) onAdd;
+
+  @override
+  State<_AddMemberDialog> createState() => _AddMemberDialogState();
+}
+
+class _AddMemberDialogState extends State<_AddMemberDialog> {
+  final controller = TextEditingController();
+  final formKey = GlobalKey<FormState>();
+  String role = roles.first;
+  bool submitting = false;
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> submit() async {
+    if (submitting || !formKey.currentState!.validate()) return;
+    setState(() => submitting = true);
+    try {
+      await widget.onAdd(controller.text.trim(), role);
+    } finally {
+      if (mounted) setState(() => submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Add member'),
+    content: Form(
+      key: formKey,
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextFormField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'User ID'),
+          validator: (value) => value == null || value.trim().isEmpty
+              ? 'User ID is required'
+              : null,
+        ),
+        DropdownButtonFormField<String>(
+          initialValue: role,
+          decoration: const InputDecoration(labelText: 'Role'),
+          items: roles.map((r) => DropdownMenuItem(
+            value: r,
+            child: Text(roleLabel(r)),
+          )).toList(),
+          onChanged: submitting ? null : (value) {
+            if (value != null) setState(() => role = value);
+          },
+        ),
+      ]),
+    ),
+    actions: [
+      TextButton(
+        onPressed: submitting ? null : () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(
+        onPressed: submitting ? null : submit,
+        child: submitting
+            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+            : const Text('Add'),
+      ),
+    ],
+  );
+}
+
+class _UpdateMemberContactDialog extends StatefulWidget {
+  const _UpdateMemberContactDialog({
+    required this.initialValue,
+    required this.isValidMobile,
+    required this.onSave,
+  });
+
+  final String initialValue;
+  final bool Function(String? value) isValidMobile;
+  final Future<void> Function(String value) onSave;
+
+  @override
+  State<_UpdateMemberContactDialog> createState() => _UpdateMemberContactDialogState();
+}
+
+class _UpdateMemberContactDialogState extends State<_UpdateMemberContactDialog> {
+  late final TextEditingController controller =
+      TextEditingController(text: widget.initialValue);
+  final formKey = GlobalKey<FormState>();
+  bool submitting = false;
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> submit() async {
+    if (submitting || !formKey.currentState!.validate()) return;
+    setState(() => submitting = true);
+    try {
+      await widget.onSave(controller.text.trim());
+    } finally {
+      if (mounted) setState(() => submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Update mobile number'),
+    content: Form(
+      key: formKey,
+      child: TextFormField(
+        controller: controller,
+        keyboardType: TextInputType.phone,
+        maxLength: 10,
+        enabled: !submitting,
+        decoration: const InputDecoration(labelText: 'Mobile number', prefixText: '+91 '),
+        validator: (value) => widget.isValidMobile(value)
+            ? null
+            : 'Enter a valid 10 digit mobile number',
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: submitting ? null : () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(
+        onPressed: submitting ? null : submit,
+        child: submitting
+            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+            : const Text('Save'),
+      ),
+    ],
+  );
 }
 
 const roles = ['TENANT_ADMIN', 'CONTENT_MANAGER', 'EVENT_MANAGER', 'INVENTORY_MANAGER', 'FINANCE_VIEWER', 'FINANCE_OPERATOR', 'FINANCE_APPROVER', 'CA_AUDITOR'];

@@ -495,3 +495,27 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Current branch `qa/p1-profile-contact-ui-regressions-batch` groups profile edit cancel/no-save, save trimming and read-only recovery, save failure/retry, load failure/retry, pull-to-refresh reload, plus contact-link validation, disabled duplicate submission and recoverable failure.
 - Evidence boundary: profile and contact-link UI tests use fake repositories/callbacks. API identity/tenant authorization tests exist separately; full persisted UI/API round-trip and staging/device behavior remain open.
 - Keep this work as one coherent MR. Android AAB remains manual/on-demand.
+
+
+## Next grouped P1 work — tenant member administration UI workflows (18 October 2026)
+
+- Previous merge: [PR #258](https://github.com/JainCommunityPlatform/jain-community-platform/pull/258), merge commit `46a332a4b345b150aeb84cf991fcc721911ed45b`; exact-head CI #39088411925 passed all required checks. Post-merge CI #39088624672 was in progress at last check.
+- Current branch `qa/p1-admin-members-ui-workflow-batch` consolidates add-member validation/create retry, contact validation/update, role change, remove, and pull-to-refresh into one test MR.
+- Evidence boundary: widget tests use a fake repository; existing API authorization tests separately cover tenant/role boundaries. Real persisted membership lifecycle and staging/device session behavior remain open.
+- Android AAB remains manual/on-demand.
+
+
+## Member administration UI batch — CI failure diagnosis (18 October 2026)
+
+- First exact-head [CI #39088711839](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39088711839) passed repository validation but failed five new widget cases.
+- Root cause: Add/Contact dialogs tied controller disposal to the `showDialog` future, which can complete before the transition widget is fully removed; CI reported "TextEditingController was used after being disposed." Dedicated stateful dialog widgets now own/dispose controllers. Fake repository mutation calls yield asynchronously so the popup route is removed before the parent list refreshes.
+- Updated branch `qa/p1-admin-members-ui-workflow-batch` awaits a fresh exact-head CI run before merge.
+- Separate post-merge note: PR #258's default-branch CI #39088624672 failed the connected-giving journey despite exact-head CI passing. Investigate readiness and API context if this recurs; do not conflate it with member UI regressions.
+
+
+## Connected giving integration readiness — fix in member administration QA batch (18 October 2026)
+
+- Post-merge PR #258 CI #39088624672 and PR #259 CI #39089123588 both failed the connected-giving journey with the seeded campaign absent. Logs show repeated connection refusals to port 4317 while the background `npx ts-node` process was considered exited.
+- The workflow previously tracked the `npx` wrapper PID and only probed `my-receipts`, not the campaign endpoint needed by the Flutter screen.
+- Current branch changes launch `./node_modules/.bin/ts-node` directly and require both seeded campaign and receipt endpoints to be ready with the same tenant header before starting the Flutter integration test.
+- The updated workflow and member UI regressions need a fresh exact-head CI run; no merge until all required checks pass.

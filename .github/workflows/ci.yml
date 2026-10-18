@@ -100,12 +100,15 @@ jobs:
           npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-jcp '
             set -euo pipefail
             cd apps/api
-            NODE_ENV=test FIREBASE_PROJECT_ID=demo-jcp FIRESTORE_DATABASE_ID="(default)" JCP_CONNECTED_TEST_PORT=4317 npx ts-node test/connected-giving-server.ts > /tmp/jcp-connected-api.log 2>&1 &
+            NODE_ENV=test FIREBASE_PROJECT_ID=demo-jcp FIRESTORE_DATABASE_ID="(default)" JCP_CONNECTED_TEST_PORT=4317 ./node_modules/.bin/ts-node test/connected-giving-server.ts > /tmp/jcp-connected-api.log 2>&1 &
             server_pid=$!
             trap "kill \\$server_pid 2>/dev/null || true" EXIT
             ready=false
             for attempt in $(seq 1 60); do
-              if curl --silent --show-error --fail -H "Authorization: Bearer connected-donor" -H "Host: connected-giving.jcp.test" http://127.0.0.1:4317/api/giving/my-receipts > /tmp/jcp-connected-receipts.json; then
+              if curl --silent --show-error --fail -H "Authorization: Bearer connected-donor" -H "X-JCP-Tenant-ID: connected-giving-test" http://127.0.0.1:4317/api/giving/my-receipts > /tmp/jcp-connected-receipts.json &&
+                 curl --silent --show-error --fail -H "Authorization: Bearer connected-donor" -H "X-JCP-Tenant-ID: connected-giving-test" http://127.0.0.1:4317/api/giving/campaigns > /tmp/jcp-connected-campaigns.json &&
+                 grep -q "receiptNumber" /tmp/jcp-connected-receipts.json &&
+                 grep -q "Connected API receipt journey" /tmp/jcp-connected-campaigns.json; then
                 ready=true
                 break
               fi
@@ -117,10 +120,9 @@ jobs:
             done
             if [ "$ready" != true ]; then
               cat /tmp/jcp-connected-api.log
-              echo "Connected giving API did not become ready"
+              echo "Connected giving API did not become ready with seeded campaign and receipt"
               exit 1
             fi
-            grep -q "receiptNumber" /tmp/jcp-connected-receipts.json
             cd ../flutter
             flutter test --dart-define=JCP_CONNECTED_API_URL=http://127.0.0.1:4317/ test/integration/connected_giving_api_test.dart
           '

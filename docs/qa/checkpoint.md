@@ -450,3 +450,32 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Evidence boundary:** fake repository/widget tests only. Real Firebase Storage networking, public URL reachability and staging/device behavior remain open.
 - **Current branch:** `qa/p1-profile-contact-ui-regressions-batch` groups profile cancel/no-save, trimmed save/read-only recovery, save-failure retry, load retry/refresh, and contact-link validation/loading/failure recovery. This addresses QA-009 as one coherent UI regression MR rather than one-case MRs.
 - **Next:** exact-head CI for the profile/contact batch, repair genuine failures without weakening assertions, merge only when required checks pass and mergeability is confirmed, then verify post-merge CI separately. Android AAB remains manual/on-demand.
+
+
+## Verified execution — grouped profile/contact-linking UI tests (18 October 2026)
+
+- **Merged:** [PR #258](https://github.com/JainCommunityPlatform/jain-community-platform/pull/258), merge commit `46a332a4b345b150aeb84cf991fcc721911ed45b`.
+- **Exact-head CI:** [run #39088411925](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39088411925) passed Flutter analysis/tests and connected giving journey, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Android AAB was skipped by design.
+- **Post-merge CI:** [run #39088624672](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39088624672) failed the connected-giving receipt journey; the widget could not find the seeded campaign. Backend and repository validation passed. This is an existing integration-test reliability gap, not evidence that PR #258's profile tests failed.
+- **Coverage:** profile edit cancel/no-save, trimmed save and read-only recovery, save failure/retry, load failure/retry, pull-to-refresh; contact-link invalid mobile validation, duplicate-submission prevention while pending and recoverable callback failure.
+- **Evidence boundary:** fake repository/callback UI tests only. Full persisted UI/API round-trip and staging/device session behavior remain open.
+- **Current branch:** `qa/p1-admin-members-ui-workflow-batch` groups add-member validation/create retry, contact validation/update, role change, removal and list refresh into one MR. QA-010 is addressed as a coherent UI workflow batch, not single-test MRs.
+- **Next:** verify exact-head CI, repair real failures without weakening assertions, merge only when all required checks pass and PR mergeability is confirmed, then verify post-merge CI separately. Android AAB remains manual/on-demand.
+
+
+## CI failure triage — tenant member UI batch (18 October 2026)
+
+- **First exact-head run:** [CI #39088711839](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39088711839) passed repository validation but failed five newly added member-administration widget cases.
+- **Root cause evidence:** Add-member and contact dialogs disposed their `TextEditingController` from the `showDialog(...).whenComplete` callback while the route transition could still rebuild the `TextFormField`. This produced "TextEditingController was used after being disposed" and subsequent widget-tree assertions. The role/remove cases also used immediately completing fake mutations, causing state changes while popup routes were being removed.
+- **Fix in current branch:** dialog controllers now belong to dedicated StatefulWidget lifecycles and are disposed by widget `dispose()`; add/contact buttons disable while their callback is pending; fake mutation responses now yield asynchronously to model the real repository.
+- **Status:** fix is committed on `qa/p1-admin-members-ui-workflow-batch`; exact-head CI for the updated head must verify it. Do not merge until all required checks pass.
+- **Post-merge #258 CI:** the default-branch run failed only the connected-giving integration journey; its exact-head PR run #39088411925 had passed. Track this separately and fix the shared readiness/tenant-context reliability issue if it reproduces on the current PR head.
+
+
+## Connected-giving CI readiness fix — 18 October 2026
+
+- **Observed failure:** post-merge [CI #39088624672](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39088624672) and PR-head [CI #39089123588](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39089123588) failed the connected-giving journey; Flutter could not render the seeded campaign.
+- **Log evidence:** the readiness loop repeatedly failed to connect to port 4317 and the background `npx ts-node` process exited before the API became ready. The readiness check only verified the receipt endpoint, not the campaign endpoint the widget first renders.
+- **Fix in current branch:** launch the API through the installed `./node_modules/.bin/ts-node` executable so the tracked PID is the server process; readiness now requires both the seeded receipt and campaign endpoints to return the expected data with the same tenant header used by the Flutter API client.
+- **Member UI fixes:** add/contact dialogs now own their controllers in StatefulWidget lifecycles; create retry uses a mutable list fixture; fake mutations yield asynchronously. The latest pre-readiness-fix widget run had one remaining fixture failure, corrected before this workflow change.
+- **Status:** the updated workflow and tests require fresh exact-head CI. Do not merge until Flutter tests, connected journey, backend checks, repository validation and merge gate all pass.
