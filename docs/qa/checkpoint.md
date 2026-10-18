@@ -528,3 +528,10 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - PR #261 merged as `ecffd12c20d15ca36375b6080ebed640abe624b0`; exact-head CI #39090600461 passed. Post-merge CI #39090790721 was in progress at the last check.
 - Current branch `qa/p1-localization-accessibility-responsive-batch` groups supported-locale string coverage, dynamic English-to-Hindi contact-link validation, semantic labels for input/button, and narrow-screen/larger-text layout checks for public directory and public tenant landing.
 - Evidence boundary: responsive tests use MockClient and test widgets; these do not replace device testing, contrast measurement, keyboard/focus audit, or localization completeness for all public website content.
+
+
+## Post-merge verification — public directory and tenant landing (18 October 2026)
+
+- PR #261 merge commit `ecffd12c20d15ca36375b6080ebed640abe624b0`.
+- Exact-head CI #39090600461 passed; default-branch [CI #39090790721](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090790721) also passed Flutter tests/connected giving journey, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Android AAB skipped by design.
+- PR #262 localization/accessibility/responsive tests are in progress on branch `qa/p1-localization-accessibility-responsive-batch`; exact-head [CI #39090937905](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090937905) must be checked again after this checkpoint update.
