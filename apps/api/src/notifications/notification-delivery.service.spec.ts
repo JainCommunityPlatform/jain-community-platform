@@ -175,4 +175,77 @@ describe('NotificationDeliveryService', () => {
     expect(result.status).toBe('SENT');
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
+
+  it('skips delivery when a verified destination is blank', async () => {
+    const result = await service().deliver({
+      ...input,
+      recipient: '   ',
+      recipientVerified: true,
+      consentConfirmed: true,
+    });
+    expect(result.status).toBe('SKIPPED');
+    expect(result.errorCode).toBe('RECIPIENT_NOT_VERIFIED_OR_CONSENT_MISSING');
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(firestore.recordNotificationDelivery).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'SKIPPED', tenantId: 'tenant-a' }),
+    );
+  });
+
+  it('retries a failed delivery with the same provider idempotency key', async () => {
+    process.env.RESEND_API_KEY = 'test-key';
+    process.env.NOTIFICATION_EMAIL_FROM = 'JCP <updates@example.org>';
+    firestore.listNotificationDeliveries.mockResolvedValue([{
+      id: deliveryId,
+      status: 'FAILED',
+      updatedAt: new Date(),
+      errorCode: 'PROVIDER_DELIVERY_FAILED',
+    }]);
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true, status: 200, json: async () => ({ id: 'email-message-retry' }),
+    } as Response);
+
+    const result = await service().deliver(input);
+
+    expect(result.status).toBe('SENT');
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith('https://api.resend.com/emails', expect.objectContaining({
+      headers: expect.objectContaining({ 'Idempotency-Key': 'notification-a-email' }),
+    }));
+    expect(firestore.recordNotificationDelivery.mock.calls.map(([record]) => record.status))
+      .toEqual(['PROCESSING', 'SENT']);
+    expect(firestore.recordNotificationDelivery).toHaveBeenLastCalledWith(expect.objectContaining({
+      id: deliveryId,
+      tenantId: 'tenant-a',
+      status: 'SENT',
+      providerMessageId: 'email-message-retry',
+    }));
+  });
+
+  it('does not deduplicate a same-named notification across tenants', async () => {
+    process.env.RESEND_API_KEY = 'test-key';
+    process.env.NOTIFICATION_EMAIL_FROM = 'JCP <updates@example.org>';
+    firestore.listNotificationDeliveries.mockResolvedValue([{
+      id: deliveryId,
+      status: 'SENT',
+      updatedAt: new Date(),
+    }]);
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true, status: 200, json: async () => ({ id: 'email-message-tenant-b' }),
+    } as Response);
+    const tenantBId = createHash('sha256')
+      .update('tenant-b:notification-a:EMAIL')
+      .digest('hex');
+
+    const result = await service().deliver({ ...input, tenantId: 'tenant-b' });
+
+    expect(result.status).toBe('SENT');
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(firestore.listNotificationDeliveries).toHaveBeenCalledWith('tenant-b', 'notification-a');
+    expect(firestore.recordNotificationDelivery).toHaveBeenCalledWith(expect.objectContaining({
+      id: tenantBId,
+      tenantId: 'tenant-b',
+      status: 'PROCESSING',
+    }));
+  });
+
 });
