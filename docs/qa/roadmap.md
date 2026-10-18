@@ -477,7 +477,13 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 
 ## Website gallery URL validation and recovery — 18 October 2026
 
-- PR #256 merged as `238718e05e00319c3cb10e0ef5c5934bb3ff934e`; exact-head CI #992 passed all required jobs. Post-merge CI remains UNKNOWN because the connected lookup returned no workflow run for the merge commit.
+- PR #256 merged as `238718e05e00319c3cb10e0ef5c5934bb3ff934e`; exact-head CI #992 passed all required jobs. Post-merge default-branch [CI #39087779879](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39087779879) passed all applicable checks; Android AAB was skipped by design.
 - Follow-up branch `qa/p1-gallery-upload-url-recovery-batch` consolidates multiple related cases in one MR: reject HTTP, relative, empty and hostless HTTPS URLs; verify invalid values are not assigned to the image field; and prove a valid retry succeeds after an invalid URL response.
 - Evidence boundary: fake repository/widget tests prove client-side handling only. Real Storage, URL reachability and staging/device behavior remain separate acceptance gates.
 - Android AAB remains manual/on-demand.
+
+
+## Post-merge CI correction — website gallery URL validation (18 October 2026)
+
+- PR #256 exact-head CI #992 passed and the default-branch push workflow [#39087779879](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39087779879) subsequently passed Flutter, connected giving journey, backend, repository validation and merge gate. This supersedes the earlier UNKNOWN post-merge note.
+- PR #257 remains in progress; exact-head CI #39087830219 has passed repository validation, Flutter analyze/widget tests and backend lint/unit/integration/emulator/build, with the connected giving journey still running at the last check.
