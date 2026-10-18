@@ -591,3 +591,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 
 - Run #39091376820 passed analysis and both responsive layout cases; the localized CTA semantics query matched both IndexedSemantics and Semantics wrappers for the same control.
 - Updated the assertion to accept multiple framework nodes while continuing to require the Hindi accessible label and Hindi-only validation message. Latest exact-head CI must verify the final head.
+
+
+## CI connected-giving tenant fixture alignment — 18 October 2026
+
+- CI #39091500794 failed the connected Flutter → NestJS → Firestore journey because the server generated a per-run tenant ID while the workflow/client used the hard-coded `connected-giving-test` tenant header. Other backend checks and repository validation passed.
+- Fix included in the current grouped PR #262: extract the tenant ID from the connected test server's readiness JSON and pass it through `JCP_CONNECTED_TENANT_ID` to the Flutter test and readiness probes. No integration assertions are removed.
+- Await fresh exact-head CI. Merge only after the connected journey and all required checks pass; verify default-branch CI separately. Android AAB remains manual/on-demand.
