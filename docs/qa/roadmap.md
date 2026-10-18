@@ -598,3 +598,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - CI #39091500794 failed the connected Flutter → NestJS → Firestore journey because the server generated a per-run tenant ID while the workflow/client used the hard-coded `connected-giving-test` tenant header. Other backend checks and repository validation passed.
 - Fix included in the current grouped PR #262: extract the tenant ID from the connected test server's readiness JSON and pass it through `JCP_CONNECTED_TENANT_ID` to the Flutter test and readiness probes. No integration assertions are removed.
 - Await fresh exact-head CI. Merge only after the connected journey and all required checks pass; verify default-branch CI separately. Android AAB remains manual/on-demand.
+
+
+## Connected Flutter giving journey — diagnostic expansion (18 October 2026)
+
+- Exact-head CI #39118114093 still failed the connected widget render despite the workflow preflight finding the seeded campaign and receipt via the generated tenant ID. All backend and repository jobs passed.
+- The grouped PR #262 now probes campaigns, pledges, receipts and notifications individually before mounting the donor page, and uses a 15-second request timeout. This should localize an API dependency failure and reduce cold-start sensitivity without removing the live journey or relaxing its receipt/campaign assertions.
+- Re-run exact-head CI and fix the observed root cause before merging. Verify post-merge CI independently; Android AAB remains manual/on-demand.
