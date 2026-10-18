@@ -103,13 +103,10 @@ jobs:
             NODE_ENV=test FIREBASE_PROJECT_ID=demo-jcp FIRESTORE_DATABASE_ID="(default)" JCP_CONNECTED_TEST_PORT=4317 ./node_modules/.bin/ts-node test/connected-giving-server.ts > /tmp/jcp-connected-api.log 2>&1 &
             server_pid=$!
             trap "kill \\$server_pid 2>/dev/null || true" EXIT
-            ready=false
+            server_ready=false
             for attempt in $(seq 1 60); do
-              if curl --silent --show-error --fail -H "Authorization: Bearer connected-donor" -H "X-JCP-Tenant-ID: connected-giving-test" http://127.0.0.1:4317/api/giving/my-receipts > /tmp/jcp-connected-receipts.json &&
-                 curl --silent --show-error --fail -H "Authorization: Bearer connected-donor" -H "X-JCP-Tenant-ID: connected-giving-test" http://127.0.0.1:4317/api/giving/campaigns > /tmp/jcp-connected-campaigns.json &&
-                 grep -q "receiptNumber" /tmp/jcp-connected-receipts.json &&
-                 grep -q "Connected API receipt journey" /tmp/jcp-connected-campaigns.json; then
-                ready=true
+              if curl --silent --show-error --fail -H "Authorization: Bearer connected-donor" -H "Host: connected-giving.jcp.test" http://127.0.0.1:4317/api/giving/my-receipts > /tmp/jcp-connected-receipts.json; then
+                server_ready=true
                 break
               fi
               if ! kill -0 "$server_pid" 2>/dev/null; then
@@ -118,13 +115,18 @@ jobs:
               fi
               sleep 2
             done
-            if [ "$ready" != true ]; then
+            if [ "$server_ready" != true ]; then
               cat /tmp/jcp-connected-api.log
-              echo "Connected giving API did not become ready with seeded campaign and receipt"
+              echo "Connected giving API did not become ready"
               exit 1
             fi
+            tenant_id=$(node -e '\''const fs=require("fs"); const lines=fs.readFileSync("/tmp/jcp-connected-api.log","utf8").split(/\r?\n/); const ready=lines.map(line=>{try{return JSON.parse(line)}catch{return null}}).find(value=>value && value.ready===true && value.tenantId); if(!ready) process.exit(2); process.stdout.write(ready.tenantId);'\'')
+            curl --silent --show-error --fail -H "Authorization: Bearer connected-donor" -H "X-JCP-Tenant-ID: $tenant_id" http://127.0.0.1:4317/api/giving/my-receipts > /tmp/jcp-connected-receipts.json
+            curl --silent --show-error --fail -H "Authorization: Bearer connected-donor" -H "X-JCP-Tenant-ID: $tenant_id" http://127.0.0.1:4317/api/giving/campaigns > /tmp/jcp-connected-campaigns.json
+            grep -q "receiptNumber" /tmp/jcp-connected-receipts.json
+            grep -q "Connected API receipt journey" /tmp/jcp-connected-campaigns.json
             cd ../flutter
-            flutter test --dart-define=JCP_CONNECTED_API_URL=http://127.0.0.1:4317/ test/integration/connected_giving_api_test.dart
+            flutter test --dart-define=JCP_CONNECTED_API_URL=http://127.0.0.1:4317/ --dart-define=JCP_CONNECTED_TENANT_ID="$tenant_id" test/integration/connected_giving_api_test.dart
           '
 
   backend:
