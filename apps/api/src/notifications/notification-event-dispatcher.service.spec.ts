@@ -79,4 +79,20 @@ describe('NotificationEventDispatcher', () => {
       tenantId: 'tenant-1', userId: 'user-1', entityType: 'DonationPledge', entityId: 'pledge-1',
     })).resolves.toBeUndefined();
   });
+
+  it('swallows a provider timeout rejection after the in-app event is persisted', async () => {
+    firestore.getNotificationPreferences.mockResolvedValue({ email: true, whatsapp: false, push: false });
+    delivery.deliver.mockRejectedValue(new Error('provider timeout'));
+
+    await expect(dispatcher().dispatchForEntity({
+      tenantId: 'tenant-1',
+      userId: 'user-1',
+      entityType: 'DonationPledge',
+      entityId: 'pledge-1',
+    })).resolves.toBeUndefined();
+
+    expect(firestore.listNotificationsForUser).toHaveBeenCalledWith('tenant-1', 'user-1', 100);
+    expect(delivery.deliver).toHaveBeenCalledTimes(1);
+  });
+
 });
