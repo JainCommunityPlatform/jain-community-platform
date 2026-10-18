@@ -470,3 +470,12 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Fix in current branch:** dialog controllers now belong to dedicated StatefulWidget lifecycles and are disposed by widget `dispose()`; add/contact buttons disable while their callback is pending; fake mutation responses now yield asynchronously to model the real repository.
 - **Status:** fix is committed on `qa/p1-admin-members-ui-workflow-batch`; exact-head CI for the updated head must verify it. Do not merge until all required checks pass.
 - **Post-merge #258 CI:** the default-branch run failed only the connected-giving integration journey; its exact-head PR run #39088411925 had passed. Track this separately and fix the shared readiness/tenant-context reliability issue if it reproduces on the current PR head.
+
+
+## Connected-giving CI readiness fix — 18 October 2026
+
+- **Observed failure:** post-merge [CI #39088624672](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39088624672) and PR-head [CI #39089123588](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39089123588) failed the connected-giving journey; Flutter could not render the seeded campaign.
+- **Log evidence:** the readiness loop repeatedly failed to connect to port 4317 and the background `npx ts-node` process exited before the API became ready. The readiness check only verified the receipt endpoint, not the campaign endpoint the widget first renders.
+- **Fix in current branch:** launch the API through the installed `./node_modules/.bin/ts-node` executable so the tracked PID is the server process; readiness now requires both the seeded receipt and campaign endpoints to return the expected data with the same tenant header used by the Flutter API client.
+- **Member UI fixes:** add/contact dialogs now own their controllers in StatefulWidget lifecycles; create retry uses a mutable list fixture; fake mutations yield asynchronously. The latest pre-readiness-fix widget run had one remaining fixture failure, corrected before this workflow change.
+- **Status:** the updated workflow and tests require fresh exact-head CI. Do not merge until Flutter tests, connected journey, backend checks, repository validation and merge gate all pass.
