@@ -450,3 +450,14 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Evidence boundary:** fake repository/widget tests only. Real Firebase Storage networking, public URL reachability and staging/device behavior remain open.
 - **Current branch:** `qa/p1-profile-contact-ui-regressions-batch` groups profile cancel/no-save, trimmed save/read-only recovery, save-failure retry, load retry/refresh, and contact-link validation/loading/failure recovery. This addresses QA-009 as one coherent UI regression MR rather than one-case MRs.
 - **Next:** exact-head CI for the profile/contact batch, repair genuine failures without weakening assertions, merge only when required checks pass and mergeability is confirmed, then verify post-merge CI separately. Android AAB remains manual/on-demand.
+
+
+## Verified execution — grouped profile/contact-linking UI tests (18 October 2026)
+
+- **Merged:** [PR #258](https://github.com/JainCommunityPlatform/jain-community-platform/pull/258), merge commit `46a332a4b345b150aeb84cf991fcc721911ed45b`.
+- **Exact-head CI:** [run #39088411925](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39088411925) passed Flutter analysis/tests and connected giving journey, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Android AAB was skipped by design.
+- **Post-merge CI:** [run #39088624672](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39088624672) was in progress at last check; final status must be recorded after the default-branch merge gate finishes.
+- **Coverage:** profile edit cancel/no-save, trimmed save and read-only recovery, save failure/retry, load failure/retry, pull-to-refresh; contact-link invalid mobile validation, duplicate-submission prevention while pending and recoverable callback failure.
+- **Evidence boundary:** fake repository/callback UI tests only. Full persisted UI/API round-trip and staging/device session behavior remain open.
+- **Current branch:** `qa/p1-admin-members-ui-workflow-batch` groups add-member validation/create retry, contact validation/update, role change, removal and list refresh into one MR. QA-010 is addressed as a coherent UI workflow batch, not single-test MRs.
+- **Next:** verify exact-head CI, repair real failures without weakening assertions, merge only when all required checks pass and PR mergeability is confirmed, then verify post-merge CI separately. Android AAB remains manual/on-demand.
