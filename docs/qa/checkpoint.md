@@ -498,3 +498,26 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Exact-head CI:** [run #39089740194](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39089740194) passed backend lint/unit/integration/Firestore-emulator/build, Flutter analysis/tests and connected giving journey, repository validation and merge gate. Android AAB skipped by design.
 - **Post-merge CI:** pending; update after the default-branch run completes. Do not mark PR #260 merged or post-merge verified until the exact-head run and mergeability conditions are met.
 - **Evidence boundary:** notification delivery tests mock provider fetch and Firestore. Real provider delivery, production webhook handling and persisted delivery state remain unverified.
+
+
+## Verified execution — notification delivery retry/idempotency (18 October 2026)
+
+- **Merged:** [PR #260](https://github.com/JainCommunityPlatform/jain-community-platform/pull/260), commit `793aff1ad9d208f685191d970ddb35b9d54629ed`.
+- **Exact-head CI:** [run #39089935044](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39089935044) passed backend lint/unit/integration/Firestore-emulator/build, Flutter analysis/tests and connected giving journey, repository validation and merge gate. Android AAB skipped by design.
+- **Post-merge CI:** [run #39090197145](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090197145) passed on the default branch, including Flutter tests and connected giving journey, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Android AAB was skipped by design.
+- **Current branch:** `qa/p1-public-directory-recovery-batch` groups directory empty/search feedback, API failure/retry across Home and Temples tabs, search by location, pull-to-refresh reload, and anonymous public landing/sign-in navigation. QA-012 coverage is still in progress.
+
+
+## Post-merge verification — notification delivery retry/idempotency (18 October 2026)
+
+- PR #260 merge commit `793aff1ad9d208f685191d970ddb35b9d54629ed`.
+- Exact-head CI #39089935044 passed; default-branch [CI #39090197145](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090197145) also passed Flutter tests/connected giving journey, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Android AAB skipped by design.
+- Current PR #261 exact-head [CI #39090348627](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090348627) is in progress; the latest documentation commit triggers a fresh run. Merge only after the latest head's required checks pass.
+
+
+## Public directory CI failure triage — 18 October 2026
+
+- First run [CI #39090394205](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090394205) passed repository validation and the three new directory tests, but the public landing test could not find the bottom CTA before it had been built in the lazy ListView.
+- This is a test viewport issue, not a missing product CTA. The test now scrolls the public landing ListView to the bottom before asserting and tapping “Sign in to continue”.
+- PR #260 post-merge [CI #39090197145](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090197145) has now passed all applicable checks, including connected giving and merge gate; Android AAB skipped by design.
+- The latest PR #261 head needs a fresh exact-head run after the CTA test correction and checkpoint update; do not merge until every required check passes.

@@ -535,3 +535,25 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - PR #260 exact-head [CI #39089740194](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39089740194) passed Flutter analysis/tests and connected giving, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Android AAB skipped by design.
 - Tests cover blank destination skip, retrying FAILED delivery with the same provider idempotency key, tenant-scoped delivery identity, and swallowing provider rejection/timeout in event dispatch. Provider and Firestore calls are mocked.
 - PR #260 remains open until the post-merge verification strategy is confirmed; next merge gate is to verify current PR state/mergeability and merge only with required checks green.
+
+
+## Next grouped P1 work — public directory and tenant landing pages (18 October 2026)
+
+- PR #260 merged as `793aff1ad9d208f685191d970ddb35b9d54629ed`; exact-head CI #39089935044 passed all required checks. Post-merge default-branch [CI #39090197145](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090197145) passed all applicable checks, including connected giving; Android AAB was skipped by design.
+- Current branch `qa/p1-public-directory-recovery-batch` groups public directory empty-state/search feedback, API error/retry across Home and Temples, location filtering, pull-to-refresh reload, and anonymous landing-page sign-in navigation.
+- Evidence boundary: directory calls use MockClient and public landing tests use a test GoRouter. Tenant hostname routing, live public website content and staging/device behavior remain open.
+- Android AAB remains manual/on-demand.
+
+
+## Public directory batch — updated post-merge evidence (18 October 2026)
+
+- PR #260's default-branch CI #39090197145 passed all required checks; Android AAB skipped by design.
+- PR #261 groups public directory empty state, API failure/retry, location search, refresh reload, and anonymous public landing/sign-in navigation.
+- Exact-head CI #39090348627 was in progress when the checkpoint was refreshed; the newest head must be rechecked after this docs update.
+
+
+## Public landing CTA test correction — 18 October 2026
+
+- First PR #261 run #39090394205 passed directory empty/search, API retry and refresh cases; the public landing test failed because the “Sign in to continue” CTA is below the lazy ListView viewport.
+- The test now scrolls to the bottom before locating the CTA; it then verifies both sign-in actions navigate to the login route.
+- PR #260 post-merge CI #39090197145 passed all applicable checks. PR #261 must pass fresh exact-head CI before merge.
