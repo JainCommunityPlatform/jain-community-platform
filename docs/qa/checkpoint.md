@@ -419,3 +419,14 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Current branch:** `qa/p1-website-invalid-upload-url` validates upload URLs as HTTPS with a non-empty host before assigning them to the gallery field; a widget regression uses a `javascript:` URL and expects recoverable error feedback.
 - **Evidence boundary:** controlled fake repository; actual Firebase Storage/network progress, public URL reachability, and staging/device behavior remain open.
 - **Next:** inspect exact-head CI for invalid URL validation, fix genuine failures without weakening assertions, merge only when required checks pass and PR mergeability is confirmed, verify post-merge CI independently, then continue the next website/media gap. Android AAB remains manual/on-demand.
+
+
+## Verified execution — website gallery upload URL validation (18 October 2026)
+
+- **Merged:** [PR #256](https://github.com/JainCommunityPlatform/jain-community-platform/pull/256), merge commit `238718e05e00319c3cb10e0ef5c5934bb3ff934e`.
+- **Exact-head CI:** [run #992](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39064179750) passed Flutter analyze/tests and connected giving journey, backend lint/unit/integration/Firestore-emulator/build, repository validation, and merge gate. Android AAB skipped by design.
+- **Post-merge CI:** UNKNOWN; the available commit-workflow lookup returned no run for the merge commit.
+- **Coverage:** upload results must parse as HTTPS URLs with a non-empty host; the widget regression rejects a `javascript:` URL and verifies recoverable failure feedback without an uncaught UI exception.
+- **Evidence boundary:** fake repository/widget test only. Real Firebase Storage networking, public URL reachability and staging/device behavior remain unverified.
+- **Current branch:** `qa/p1-gallery-upload-url-recovery-batch` groups the remaining URL validation matrix (HTTP, relative, empty and hostless HTTPS results), asserts invalid URLs are not written into the image field, and verifies recovery after a failed upload response. This is grouped with related gallery URL tests rather than split into separate MRs.
+- **Next:** verify exact-head CI, fix genuine failures without weakening assertions, merge only when required checks pass and PR mergeability is confirmed, check post-merge CI independently, then reassess the remaining P1 inventory. Android AAB remains manual/on-demand.
