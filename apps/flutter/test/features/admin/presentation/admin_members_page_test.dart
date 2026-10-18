@@ -32,6 +32,7 @@ class FakeRepository extends TenantMemberRepository {
   @override
   Future<TenantMember> create({required String userId, required String role}) async {
     createCalls++;
+    await Future<void>.delayed(const Duration(milliseconds: 1));
     if (failCreate) throw StateError('simulated create failure');
     final member = TenantMember(
       id: 'new',
@@ -47,6 +48,7 @@ class FakeRepository extends TenantMemberRepository {
   @override
   Future<TenantMember> updateRole({required String userId, required String role}) async {
     roleUpdateCalls++;
+    await Future<void>.delayed(const Duration(milliseconds: 1));
     if (failRoleUpdate) throw StateError('simulated role update failure');
     final index = current.indexWhere((member) => member.userId == userId);
     final old = current[index];
@@ -65,6 +67,7 @@ class FakeRepository extends TenantMemberRepository {
   @override
   Future<void> updateContact({required String userId, required String value}) async {
     contactUpdateCalls++;
+    await Future<void>.delayed(const Duration(milliseconds: 1));
     if (failContactUpdate) throw StateError('simulated contact update failure');
     final index = current.indexWhere((member) => member.userId == userId);
     final old = current[index];
@@ -81,6 +84,7 @@ class FakeRepository extends TenantMemberRepository {
   @override
   Future<void> remove(String userId) async {
     removeCalls++;
+    await Future<void>.delayed(const Duration(milliseconds: 1));
     if (failRemove) throw StateError('simulated remove failure');
     current.removeWhere((member) => member.userId == userId);
   }
