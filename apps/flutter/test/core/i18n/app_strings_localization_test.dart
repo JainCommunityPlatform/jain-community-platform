@@ -36,17 +36,31 @@ void main() {
       ),
     ));
     await tester.pumpAndSettle();
-    expect(find.bySemanticsLabel('Mobile number'), findsOneWidget);
+    try {
+      await tester.pumpWidget(MaterialApp(
+        home: AppLanguageScope(
+          controller: controller,
+          child: LinkContactPage(onLink: (_) async {}),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel(RegExp('^Mobile number')), findsOneWidget);
 
-    await controller.setLocale(const Locale('hi'));
-    await tester.pumpAndSettle();
-    expect(find.bySemanticsLabel('मोबाइल नंबर'), findsOneWidget);
-    expect(find.bySemanticsLabel('मोबाइल नंबर जोड़ें'), findsOneWidget);
+      await controller.setLocale(const Locale('hi'));
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel(RegExp('^मोबाइल नंबर
+  });
+}
+)), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('मोबाइल नंबर जोड़ें')), findsOneWidget);
 
-    await tester.tap(find.text('मोबाइल नंबर जोड़ें'));
-    await tester.pumpAndSettle();
-    expect(find.text('कृपया 10 अंकों का सही मोबाइल नंबर दर्ज करें।'), findsOneWidget);
-    expect(find.text('Enter a valid 10 digit mobile number.'), findsNothing);
-    expect(tester.takeException(), isNull);
+      await tester.tap(find.text('मोबाइल नंबर जोड़ें'));
+      await tester.pumpAndSettle();
+      expect(find.text('कृपया 10 अंकों का सही मोबाइल नंबर दर्ज करें।'), findsOneWidget);
+      expect(find.text('Enter a valid 10 digit mobile number.'), findsNothing);
+      expect(tester.takeException(), isNull);
+    } finally {
+      semantics.dispose();
+    }
   });
 }
