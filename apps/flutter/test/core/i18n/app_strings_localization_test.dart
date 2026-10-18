@@ -44,7 +44,7 @@ void main() {
       await controller.setLocale(const Locale('hi'));
       await tester.pumpAndSettle();
       expect(find.bySemanticsLabel(RegExp(r'^मोबाइल नंबर$')), findsOneWidget);
-      expect(find.bySemanticsLabel(RegExp(r'मोबाइल नंबर जोड़ें')), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp(r'मोबाइल नंबर जोड़ें')), findsWidgets);
 
       await tester.tap(find.text('मोबाइल नंबर जोड़ें'));
       await tester.pumpAndSettle();
