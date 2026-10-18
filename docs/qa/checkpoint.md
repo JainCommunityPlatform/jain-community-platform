@@ -602,3 +602,10 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Post-merge CI:** [run #39119849096](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39119849096) passed all applicable checks on master, including the expanded UI-to-API-to-Firestore pledge journey. Android AAB skipped by design.
 - **Next P0 batch:** `qa/p0-persisted-cross-tenant-donor-isolation-batch` adds a second tenant hostname to the Firestore-emulator HTTP fixture and verifies tenant A's donor pledge/receipt stay invisible in tenant B, while a tenant B pledge using tenant A's campaign is rejected and no tenant B pledge/receipt is persisted.
 - **Evidence boundary:** real NestJS HTTP and Firestore Emulator; controlled staging identity and production/device behavior remain open.
+
+
+## PR #265 CI triage — isolate cross-tenant fixture data (18 October 2026)
+
+- Exact-head [CI #39120170312](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39120170312) found the new test created an approved receipt in the suite's shared tenant, causing two later reconciliation assertions to observe one extra receipt. The new isolation assertions themselves passed; the failures were test-order contamination.
+- The test now uses a dedicated tenant pair and adds operator/approver memberships only in its isolated tenant. Existing exact-count reconciliation scenarios remain unchanged; no assertions are weakened.
+- PR #265 remains open pending fresh exact-head CI. Merge only after the entire Firestore-emulator suite, connected journey and all required checks pass.
