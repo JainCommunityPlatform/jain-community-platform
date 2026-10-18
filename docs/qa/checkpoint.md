@@ -558,3 +558,12 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - Latest code-only run #39091376820 passed Flutter analysis and both responsive layout tests, but the locale test's button semantics finder matched two framework nodes for the same accessible CTA.
 - The assertion now requires one or more semantic matches rather than exactly one widget node; it still verifies the localized Hindi label and validation text, and does not weaken the actual translation assertion.
 - Fresh exact-head CI is required for the latest branch head before merge.
+
+
+
+## Connected-giving CI tenant identity mismatch — 18 October 2026
+
+- PR #262 exact-head CI run [#39091500794](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39091500794) failed only in the connected Flutter → NestJS → Firestore receipt journey; backend lint/unit/integration/emulator/build and repository validation passed.
+- Failure evidence: the server seeds a unique tenant ID per run (`connected-giving-${suffix}`), while the CI script and Flutter client sent the hard-coded `connected-giving-test` header. The campaign lookup therefore could not find the campaign created for the server's generated tenant. This is a deterministic fixture/tenant-context mismatch, not a localization assertion failure.
+- The current PR batch also fixes the harness to read the server's ready JSON and pass its actual tenant ID to the readiness checks and Flutter integration test. The integration test accepts the tenant ID through `JCP_CONNECTED_TENANT_ID`; the existing fallback remains for local/manual runs.
+- **Merge gate:** fresh exact-head CI must verify this harness fix and the localization/accessibility/responsive cases. Do not merge while the connected journey fails. Android AAB remains manual/on-demand.
