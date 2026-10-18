@@ -485,7 +485,16 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 
 - **Merged:** [PR #259](https://github.com/JainCommunityPlatform/jain-community-platform/pull/259), merge commit `86ac65e75b6ee94d15ca8d29f0a1447b6b271b1e`.
 - **Exact-head CI:** [run #39089408184](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39089408184) passed Flutter analysis/tests, connected giving journey, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Android AAB was skipped by design.
-- **Post-merge CI:** [run #39089595905](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39089595905) is in progress at the latest check; final status must be recorded after the default-branch run completes.
+- **Post-merge CI:** [run #39089595905](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39089595905) passed on the default branch, including Flutter tests and connected giving journey, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Android AAB was skipped by design.
 - **Coverage delivered:** add-member required ID/create/retry, contact validation/update, role change, remove and pull-to-refresh; dialog controllers now follow widget lifecycle; connected-giving readiness starts the API via the installed ts-node executable and checks both campaign and receipt endpoints.
 - **Next branch:** `qa/p1-notification-delivery-retry-batch` groups blank-destination opt-out, failed-delivery retry with stable provider idempotency, tenant-scoped delivery IDs, and non-blocking event dispatch when a provider rejects/times out.
 - **Evidence boundary:** notification provider tests use mocked fetch and Firestore; no real provider delivery or production webhook verification is claimed. Android AAB remains manual/on-demand.
+
+
+## Verified execution — notification delivery retry and tenant idempotency (18 October 2026)
+
+- **Previous merge verified:** PR #259 exact-head [CI #39089408184](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39089408184) passed; default-branch [CI #39089595905](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39089595905) also passed all applicable checks after the connected-giving readiness fix. Android AAB skipped by design.
+- **Current PR:** [#260](https://github.com/JainCommunityPlatform/jain-community-platform/pull/260), branch `qa/p1-notification-delivery-retry-batch`, groups blank destination skipping, failed-delivery retry with stable provider idempotency, tenant-scoped delivery IDs, and non-blocking dispatch on provider rejection.
+- **Exact-head CI:** [run #39089740194](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39089740194) passed backend lint/unit/integration/Firestore-emulator/build, Flutter analysis/tests and connected giving journey, repository validation and merge gate. Android AAB skipped by design.
+- **Post-merge CI:** pending; update after the default-branch run completes. Do not mark PR #260 merged or post-merge verified until the exact-head run and mergeability conditions are met.
+- **Evidence boundary:** notification delivery tests mock provider fetch and Firestore. Real provider delivery, production webhook handling and persisted delivery state remain unverified.
