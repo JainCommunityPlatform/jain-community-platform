@@ -544,3 +544,10 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - Narrow-screen tests assumed lazily built content was present before scrolling. They now use `dragUntilVisible` to scroll to the directory card and public landing CTA before asserting.
 - PR #261 post-merge [CI #39090790721](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090790721) passed all applicable checks, including connected giving and merge gate.
 - Latest PR #262 head requires fresh exact-head CI after these test fixes; no merge until all required checks pass.
+
+
+## Follow-up static-analysis correction — localization test (18 October 2026)
+
+- Exact-head run #39091208599 failed Flutter analysis because a text replacement corrupted the locale test's raw RegExp string and left duplicate widget setup. This was a test-source syntax error, not a product issue.
+- The test file has been rewritten cleanly with one widget setup and a `try/finally` that always disposes the semantics handle.
+- Fresh exact-head CI is required for the latest branch head before merge; do not treat the previous run as a test pass.
