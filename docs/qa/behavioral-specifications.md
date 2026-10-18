@@ -1974,3 +1974,12 @@ Executable regression: `apps/flutter/test/features/website/presentation/website_
 - Campaign name/target constraints, pledge positive paise and allowed fields, expense positive paise/date/evidence-reference limits, and boolean-only notification preferences are part of the matrix.
 - Caller-supplied `tenantId` or other non-whitelisted properties are rejected; tenant scope comes from the authenticated request context, not the request body.
 - Existing payment/adjustment/rejection payload coverage remains in place. The combined HTTP E2E matrix uses mocked domain services; it does not replace persisted Firestore or staging verification.
+
+
+## P0 donation lifecycle — connected donor UI/API/persistence acceptance
+
+- Given a live tenant with an active campaign, the donor page renders that campaign and the existing Firestore-backed receipt.
+- When the donor submits zero or otherwise invalid pledge amount, the UI shows validation feedback and no new pledge is persisted.
+- When the donor confirms a valid amount, Flutter sends the pledge through the NestJS API; a subsequent donor-history read returns the same campaign ID and exact paise amount from Firestore.
+- The donor can navigate to Receipts and still see the seeded approved payment receipt.
+- Evidence uses a dedicated Firestore Emulator project and a real NestJS HTTP server. It does not prove production Firebase identity, physical-device behavior, or external UPI/bank settlement.
