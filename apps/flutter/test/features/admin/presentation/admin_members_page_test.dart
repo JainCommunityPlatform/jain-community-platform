@@ -131,7 +131,7 @@ void main() {
 
   testWidgets('create failure keeps add dialog open and allows retry',
       (tester) async {
-    final repo = FakeRepository(const [])..failCreate = true;
+    final repo = FakeRepository(<TenantMember>[])..failCreate = true;
     await tester.pumpWidget(MaterialApp(home: AdminMembersPage(repository: repo)));
     await tester.pumpAndSettle();
 
