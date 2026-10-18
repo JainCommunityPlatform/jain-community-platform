@@ -491,7 +491,7 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 
 ## Next grouped P1 work — profile and contact-linking UI resilience (18 October 2026)
 
-- Previous merge: PR #257 gallery URL validation/retry matrix merged as `ea45df4972dc21dfe29f3a9dea94019acfae55f8`; exact-head CI #39087984656 passed all required jobs. Post-merge default-branch CI #39088157001 is in progress at the latest check.
+- Previous merge: PR #257 gallery URL validation/retry matrix merged as `ea45df4972dc21dfe29f3a9dea94019acfae55f8`; exact-head CI #39087984656 passed all required jobs. Post-merge default-branch CI #39088157001 passed all applicable checks.
 - Current branch `qa/p1-profile-contact-ui-regressions-batch` groups profile edit cancel/no-save, save trimming and read-only recovery, save failure/retry, load failure/retry, pull-to-refresh reload, plus contact-link validation, disabled duplicate submission and recoverable failure.
 - Evidence boundary: profile and contact-link UI tests use fake repositories/callbacks. API identity/tenant authorization tests exist separately; full persisted UI/API round-trip and staging/device behavior remain open.
 - Keep this work as one coherent MR. Android AAB remains manual/on-demand.
