@@ -104,7 +104,7 @@ void main() {
 
   testWidgets('add member validates required user ID and refreshes after creation',
       (tester) async {
-    final repo = FakeRepository(const []);
+    final repo = FakeRepository(<TenantMember>[]);
     await tester.pumpWidget(MaterialApp(home: AdminMembersPage(repository: repo)));
     await tester.pumpAndSettle();
 
