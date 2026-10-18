@@ -535,3 +535,12 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - PR #261 merge commit `ecffd12c20d15ca36375b6080ebed640abe624b0`.
 - Exact-head CI #39090600461 passed; default-branch [CI #39090790721](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090790721) also passed Flutter tests/connected giving journey, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Android AAB skipped by design.
 - PR #262 localization/accessibility/responsive tests are in progress on branch `qa/p1-localization-accessibility-responsive-batch`; exact-head [CI #39090937905](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090937905) must be checked again after this checkpoint update.
+
+
+## Localization/accessibility/responsive CI triage — 18 October 2026
+
+- First full PR #262 run [CI #39090967002](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090967002) passed repository validation and unrelated existing tests, but the new locale/semantics and narrow-layout tests exposed test-harness assumptions.
+- The semantics test failed with a leaked `SemanticsHandle` when an assertion failed before teardown; it now disposes the handle in `finally` and uses label patterns for semantic matching.
+- Narrow-screen tests assumed lazily built content was present before scrolling. They now use `dragUntilVisible` to scroll to the directory card and public landing CTA before asserting.
+- PR #261 post-merge [CI #39090790721](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39090790721) passed all applicable checks, including connected giving and merge gate.
+- Latest PR #262 head requires fresh exact-head CI after these test fixes; no merge until all required checks pass.
