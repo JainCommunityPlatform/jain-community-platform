@@ -48,8 +48,20 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
+    await tester.dragUntilVisible(
+      find.textContaining('Shri Digambar Jain Atishay Kshetra'),
+      find.byType(ListView).first,
+      const Offset(0, -300),
+    );
+    await tester.pumpAndSettle();
     expect(find.textContaining('Shri Digambar Jain Atishay Kshetra'), findsOneWidget);
     await tester.tap(find.text('Temples'));
+    await tester.pumpAndSettle();
+    await tester.dragUntilVisible(
+      find.textContaining('Shri Digambar Jain Atishay Kshetra'),
+      find.byType(ListView).first,
+      const Offset(0, -300),
+    );
     await tester.pumpAndSettle();
     expect(find.textContaining('Shri Digambar Jain Atishay Kshetra'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -74,7 +86,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Your Jain Temple Community'), findsOneWidget);
-    await tester.drag(find.byType(ListView), const Offset(0, -1200));
+    await tester.dragUntilVisible(
+      find.text('Sign in to continue'),
+      find.byType(ListView),
+      const Offset(0, -300),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Sign in to continue'), findsOneWidget);
     expect(tester.takeException(), isNull);
