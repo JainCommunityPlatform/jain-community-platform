@@ -177,6 +177,7 @@ describe('NotificationDeliveryService', () => {
   });
 
   it('skips delivery when a verified destination is blank', async () => {
+    jest.spyOn(global, 'fetch');
     const result = await service().deliver({
       ...input,
       recipient: '   ',
