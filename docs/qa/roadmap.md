@@ -579,3 +579,9 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - PR #262 first run #39090967002 failed three new assertions: a semantics handle leaked when the locale assertion failed, and lazy directory/public landing children were asserted before being built.
 - The locale test now disposes semantics in `finally` and uses anchored/pattern semantics labels. Responsive tests use `dragUntilVisible` to ensure offscreen content is built before assertions.
 - PR #261 post-merge CI #39090790721 passed all required checks. PR #262 needs a fresh exact-head CI run after these corrections.
+
+
+## Locale test static-analysis correction — 18 October 2026
+
+- PR #262 run #39091208599 failed analysis due malformed test source after the previous automated text edit: raw RegExp syntax was corrupted and widget setup duplicated.
+- The locale test file has been rewritten cleanly; the semantics handle is disposed in `finally`. A new exact-head run must verify analysis and all tests.
