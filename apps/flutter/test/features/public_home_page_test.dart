@@ -30,7 +30,6 @@ void main() {
     expect(find.text('Your Jain Temple Community'), findsOneWidget);
     expect(find.text('Discover temples and community activities'), findsOneWidget);
     expect(find.text('Sign in'), findsOneWidget);
-    expect(find.text('Sign in to continue'), findsOneWidget);
     expect(find.text('MyJinalay Member'), findsNothing);
 
     await tester.tap(find.text('Sign in'));
@@ -39,7 +38,9 @@ void main() {
 
     router.go('/public');
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Sign in to continue'));
+    await tester.drag(find.byType(ListView), const Offset(0, -1000));
+    await tester.pumpAndSettle();
+    expect(find.text('Sign in to continue'), findsOneWidget);
     await tester.tap(find.text('Sign in to continue'));
     await tester.pumpAndSettle();
     expect(find.text('Login destination'), findsOneWidget);
