@@ -655,3 +655,10 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Post-merge CI:** [run #39306280409](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39306280409) completed successfully on master: Flutter analyze/tests, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate passed. Android AAB skipped by design.
 - **Current grouped branch:** `qa/p1-profile-persistence-identity-batch` adds Firestore-emulator HTTP coverage for authenticated profile save/read-after-write, direct persisted values, unchanged phone fields, invalid profile DTOs, rejection of caller-controlled identity/contact fields, and unchanged second-user data.
 - **Evidence boundary:** real NestJS HTTP + Firestore Emulator and test identities; not a real-device session or production identity proof. Android AAB remains manual/on-demand.
+
+
+## PR #269 CI triage — profile identity upsert erased display name (20 October 2026)
+
+- Exact-head [CI #39306743662](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39306743662) failed the new emulator-backed profile read-after-write test: PATCH returned the new profile fields, but the subsequent GET omitted `displayName`.
+- Root cause: `FirestoreService.upsertUser` wrote `displayName: null` (and `email: null`) whenever optional auth claims were absent. The GET resolved identity again and erased the user-managed display name.
+- Fix in the current branch: only update email/displayName in the identity upsert when the corresponding auth claim is actually supplied. The test also asserts the stored email remains intact. No assertions are removed or weakened; fresh exact-head CI must confirm the fix.
