@@ -633,3 +633,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Exact-head CI #39120170312 failed two later reconciliation tests because the new cross-tenant scenario added a receipt to the suite's shared tenant; observed receipt counts increased by one. The new scenario must not pollute other tests' data.
 - Fix: allocate a separate tenant pair/hostnames for the new scenario and seed operator/approver memberships for that isolated tenant. Existing exact-count expectations are preserved.
 - Re-run full exact-head CI and merge only if every required job passes; then verify post-merge CI independently.
+
+
+## Current grouped P0 — payment replay, maker-checker and partial-payment reconciliation (19 October 2026)
+
+- PR #265 merged as `7cfe8f8c3e03e19471de5980ad392fa7d718f4c4`; exact-head [CI #39120375666](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39120375666) passed. Post-merge [CI #39234175711](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39234175711) was running at checkpoint time.
+- Branch `qa/p0-payment-idempotency-maker-checker-batch` adds one grouped Firestore-emulator HTTP scenario for same-key payment replay, conflicting key reuse, maker self-approval denial, duplicate approval denial, two partial payments, persisted donor balance and receipt reconciliation.
+- Require fresh exact-head CI to pass before merge. Then verify default-branch CI independently. Production/staging identity and external UPI/bank settlement remain separate gates; Android AAB remains manual/on-demand.
