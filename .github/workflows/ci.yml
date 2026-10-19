@@ -121,12 +121,14 @@ jobs:
               exit 1
             fi
             tenant_id=$(node -e '\''const fs=require("fs"); const lines=fs.readFileSync("/tmp/jcp-connected-api.log","utf8").split(/\r?\n/); const ready=lines.map(line=>{try{return JSON.parse(line)}catch{return null}}).find(value=>value && value.ready===true && value.tenantId); if(!ready) process.exit(2); process.stdout.write(ready.tenantId);'\'')
+            operator_id=$(node -e '\''const fs=require("fs"); const lines=fs.readFileSync("/tmp/jcp-connected-api.log","utf8").split(/\r?\n/); const ready=lines.map(line=>{try{return JSON.parse(line)}catch{return null}}).find(value=>value && value.ready===true && value.operatorSubject); if(!ready) process.exit(2); process.stdout.write(ready.operatorSubject);'\'')
+            approver_id=$(node -e '\''const fs=require("fs"); const lines=fs.readFileSync("/tmp/jcp-connected-api.log","utf8").split(/\r?\n/); const ready=lines.map(line=>{try{return JSON.parse(line)}catch{return null}}).find(value=>value && value.ready===true && value.approverSubject); if(!ready) process.exit(2); process.stdout.write(ready.approverSubject);'\'')
             curl --silent --show-error --fail -H "Authorization: Bearer connected-donor" -H "X-JCP-Tenant-ID: $tenant_id" http://127.0.0.1:4317/api/giving/my-receipts > /tmp/jcp-connected-receipts.json
             curl --silent --show-error --fail -H "Authorization: Bearer connected-donor" -H "X-JCP-Tenant-ID: $tenant_id" http://127.0.0.1:4317/api/giving/campaigns > /tmp/jcp-connected-campaigns.json
             grep -q "receiptNumber" /tmp/jcp-connected-receipts.json
             grep -q "Connected API receipt journey" /tmp/jcp-connected-campaigns.json
             cd ../flutter
-            flutter test --dart-define=JCP_CONNECTED_API_URL=http://127.0.0.1:4317/ --dart-define=JCP_CONNECTED_TENANT_ID="$tenant_id" test/integration/connected_giving_api_test.dart
+            flutter test --dart-define=JCP_CONNECTED_API_URL=http://127.0.0.1:4317/ --dart-define=JCP_CONNECTED_TENANT_ID="$tenant_id" --dart-define=JCP_CONNECTED_OPERATOR_ID="$operator_id" --dart-define=JCP_CONNECTED_APPROVER_ID="$approver_id" test/integration/connected_giving_api_test.dart
           '
 
   backend:
