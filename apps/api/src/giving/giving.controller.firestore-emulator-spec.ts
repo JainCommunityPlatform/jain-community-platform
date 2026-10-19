@@ -502,6 +502,157 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
     ]));
   });
 
+  it('keeps payment retries idempotent and enforces independent approval across partial payments', async () => {
+    const host = 'giving-isolation-emulator.jcp.test';
+
+    if (!(await firestore.getMembership(operatorId, isolatedTenantId))) {
+      await firestore.createMembership({
+        userId: operatorId,
+        tenantId: isolatedTenantId,
+        role: 'FINANCE_OPERATOR',
+        roles: ['FINANCE_OPERATOR'],
+      });
+    }
+    if (!(await firestore.getMembership(approverId, isolatedTenantId))) {
+      await firestore.createMembership({
+        userId: approverId,
+        tenantId: isolatedTenantId,
+        role: 'FINANCE_APPROVER',
+        roles: ['FINANCE_APPROVER'],
+      });
+    }
+
+    const campaignResponse = await request(app.getHttpServer())
+      .post('/api/giving/campaigns')
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .send({
+        name: 'Payment idempotency and partial balance',
+        description: 'Replay, maker-checker and partial payment regression',
+        targetAmountPaise: 20000,
+      })
+      .expect(201);
+    const campaignId = campaignResponse.body.id as string;
+    await request(app.getHttpServer())
+      .patch('/api/giving/campaigns/' + campaignId + '/status')
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .send({ status: 'ACTIVE' })
+      .expect(200);
+
+    const pledgeResponse = await request(app.getHttpServer())
+      .post('/api/giving/pledges')
+      .set('Host', host)
+      .set('x-test-user', donorSubject)
+      .set('idempotency-key', 'payment-replay-pledge-' + isolatedTenantId)
+      .send({ campaignId, pledgedAmountPaise: 20000 })
+      .expect(201);
+    const pledgeId = pledgeResponse.body.id as string;
+
+    const firstPaymentPayload = {
+      amountPaise: 10000,
+      method: 'UPI',
+      reference: 'partial-payment-one-' + isolatedTenantId,
+    };
+    const firstPayment = await request(app.getHttpServer())
+      .post('/api/giving/pledges/' + pledgeId + '/payments')
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .set('idempotency-key', 'payment-replay-one-' + isolatedTenantId)
+      .send(firstPaymentPayload)
+      .expect(201);
+    const firstPaymentReplay = await request(app.getHttpServer())
+      .post('/api/giving/pledges/' + pledgeId + '/payments')
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .set('idempotency-key', 'payment-replay-one-' + isolatedTenantId)
+      .send(firstPaymentPayload)
+      .expect(201);
+    expect(firstPaymentReplay.body.id).toBe(firstPayment.body.id);
+    expect(firstPaymentReplay.body.status).toBe('PENDING_APPROVAL');
+
+    await request(app.getHttpServer())
+      .post('/api/giving/pledges/' + pledgeId + '/payments')
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .set('idempotency-key', 'payment-replay-one-' + isolatedTenantId)
+      .send({ ...firstPaymentPayload, amountPaise: 9000 })
+      .expect(409);
+
+    const firstPaymentId = firstPayment.body.id as string;
+    await request(app.getHttpServer())
+      .post('/api/giving/payments/' + firstPaymentId + '/approve')
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .expect(403);
+
+    const firstApproval = await request(app.getHttpServer())
+      .post('/api/giving/payments/' + firstPaymentId + '/approve')
+      .set('Host', host)
+      .set('x-test-user', approverSubject)
+      .expect(201);
+    expect(firstApproval.body.status).toBe('VERIFIED');
+    await request(app.getHttpServer())
+      .post('/api/giving/payments/' + firstPaymentId + '/approve')
+      .set('Host', host)
+      .set('x-test-user', approverSubject)
+      .expect(409);
+
+    const secondPayment = await request(app.getHttpServer())
+      .post('/api/giving/pledges/' + pledgeId + '/payments')
+      .set('Host', host)
+      .set('x-test-user', operatorSubject)
+      .set('idempotency-key', 'payment-replay-two-' + isolatedTenantId)
+      .send({
+        amountPaise: 10000,
+        method: 'UPI',
+        reference: 'partial-payment-two-' + isolatedTenantId,
+      })
+      .expect(201);
+    const secondPaymentId = secondPayment.body.id as string;
+    const secondApproval = await request(app.getHttpServer())
+      .post('/api/giving/payments/' + secondPaymentId + '/approve')
+      .set('Host', host)
+      .set('x-test-user', approverSubject)
+      .expect(201);
+    expect(secondApproval.body.status).toBe('VERIFIED');
+
+    const donorPledges = await request(app.getHttpServer())
+      .get('/api/giving/my-pledges')
+      .set('Host', host)
+      .set('x-test-user', donorSubject)
+      .expect(200);
+    expect(donorPledges.body).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: pledgeId,
+        pledgedAmountPaise: 20000,
+        paidAmountPaise: 20000,
+        status: 'PAID',
+      }),
+    ]));
+
+    const tenantPayments = await firestore.listDonationPaymentsForTenant(isolatedTenantId);
+    expect(tenantPayments.filter((payment) => payment.id === firstPaymentId)).toHaveLength(1);
+    expect(tenantPayments.filter((payment) => payment.id === secondPaymentId)).toHaveLength(1);
+    const tenantReceipts = await firestore.listDonationReceiptsForTenant(isolatedTenantId);
+    expect(tenantReceipts.filter((receipt) =>
+      receipt.paymentId === firstPaymentId || receipt.paymentId === secondPaymentId)).toHaveLength(2);
+    expect(tenantReceipts.filter((receipt) => receipt.paymentId === firstPaymentId)).toEqual([
+      expect.objectContaining({ paymentId: firstPaymentId, amountPaise: 10000 }),
+    ]);
+    expect(tenantReceipts.filter((receipt) => receipt.paymentId === secondPaymentId)).toEqual([
+      expect.objectContaining({ paymentId: secondPaymentId, amountPaise: 10000 }),
+    ]);
+
+    const reconciliation = await firestore.getDonationReconciliationReport(isolatedTenantId);
+    expect(reconciliation.receipts).toMatchObject({
+      missingReceiptPaymentIds: [],
+      orphanReceiptPaymentIds: [],
+      amountMismatchPaymentIds: [],
+      isBalanced: true,
+    });
+  });
+
   it('persists an approved refund adjustment and reconciles the reduced donor balance', async () => {
     const host = 'giving-emulator.jcp.test';
 
