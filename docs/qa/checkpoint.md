@@ -609,3 +609,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - Exact-head [CI #39120170312](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39120170312) found the new test created an approved receipt in the suite's shared tenant, causing two later reconciliation assertions to observe one extra receipt. The new isolation assertions themselves passed; the failures were test-order contamination.
 - The test now uses a dedicated tenant pair and adds operator/approver memberships only in its isolated tenant. Existing exact-count reconciliation scenarios remain unchanged; no assertions are weakened.
 - PR #265 remains open pending fresh exact-head CI. Merge only after the entire Firestore-emulator suite, connected journey and all required checks pass.
+
+
+## Current execution — grouped payment idempotency and maker-checker batch (19 October 2026)
+
+- **Previous P0 merged:** [PR #265](https://github.com/JainCommunityPlatform/jain-community-platform/pull/265), merge commit `7cfe8f8c3e03e19471de5980ad392fa7d718f4c4`; exact-head [CI #39120375666](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39120375666) passed all required checks. Default-branch [CI #39234175711](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39234175711) is running; post-merge status is pending until completion.
+- **Current branch:** `qa/p0-payment-idempotency-maker-checker-batch` adds one coherent Firestore-emulator HTTP scenario for duplicate payment submission, conflicting idempotency-key reuse, maker self-approval denial, duplicate approval denial, two approved partial payments, persisted donor balance/read-after-write, exactly one receipt per payment, and receipt reconciliation.
+- **Isolation:** uses the dedicated `isolatedTenantId` and unique keys/references so it does not alter exact-count assertions for the default emulator tenant.
+- **Merge gate:** fresh exact-head CI must pass backend lint/unit/integration/Firestore emulator, Flutter tests, repository validation and merge gate. Fix real failures without weakening assertions; verify post-merge CI separately. Android AAB remains manual/on-demand.
