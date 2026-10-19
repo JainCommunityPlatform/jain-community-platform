@@ -148,13 +148,16 @@ void main() {
       );
 
       await tester.tap(find.text('Receipts'));
-      await tester.tap(find.byIcon(Icons.refresh));
-      final createdReceiptAmount = find.text('₹123.45');
-      for (var attempt = 0; attempt < 150 && createdReceiptAmount.evaluate().isEmpty; attempt++) {
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Refresh giving data'));
+      final expectedReceiptNumber = find.text(approvedPayment['receiptNumber'] as String);
+      for (var attempt = 0; attempt < 150 && expectedReceiptNumber.evaluate().isEmpty; attempt++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
-      expect(createdReceiptAmount, findsOneWidget);
-      expect(find.text(approvedPayment['receiptNumber'] as String), findsOneWidget);
+      // Wait for the receipt itself, not its amount: the amount may already be
+      // rendered from stale state while the asynchronous refresh is still in flight.
+      expect(expectedReceiptNumber, findsOneWidget);
+      expect(find.text('₹123.45'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
     skip: apiUrl.isEmpty,
