@@ -358,3 +358,10 @@ Evidence boundaries:
 - CI #39120170312 exposed shared-fixture contamination: the new cross-tenant test created a receipt in the same tenant used by later exact-count reconciliation tests.
 - The test now uses dedicated tenant A/B IDs and a distinct pair of hostnames, with operator/approver memberships seeded only for the isolated tenant. Exact reconciliation assertions remain unchanged.
 - Fresh exact-head CI must prove both the new tenant isolation and all pre-existing emulator journeys pass.
+
+
+## P0 payment replay and partial-payment maker-checker regression — 19 October 2026
+
+- Previous PR #265 merged as `7cfe8f8c3e03e19471de5980ad392fa7d718f4c4`; exact-head CI #39120375666 passed. Post-merge CI #39234175711 was still in progress at the checkpoint.
+- Branch `qa/p0-payment-idempotency-maker-checker-batch` groups emulator-backed HTTP assertions for payment idempotency (same request returns the same record; same key with changed details returns 409), maker self-approval denial, duplicate approval denial, two partial payments completing a pledge, persisted donor balance, one receipt per approved payment and balanced receipt reconciliation.
+- These tests use the Firestore Emulator and real NestJS HTTP with test authentication; they do not prove production Firebase identity, external UPI/bank settlement, or staging/device behavior.
