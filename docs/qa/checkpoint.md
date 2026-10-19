@@ -646,3 +646,19 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Post-merge CI:** [run #39305120442](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39305120442) was in progress at the last poll; repository validation passed, Flutter tests and backend unit tests were still running. Do not mark post-merge green until every applicable job completes.
 - **Current grouped branch:** `qa/p0-notification-persistence-isolation-batch` adds real HTTP + Firestore-emulator tests for notification preference persistence and opt-out defaults, user/tenant preference isolation, pledge-created in-app notification, persistent read-state after reload, and denial of cross-user/cross-tenant read attempts. This is bundled as a coherent notification persistence/security MR, not one MR per assertion.
 - **Evidence boundary:** Firestore Emulator with test identities only. Real provider delivery, production Firebase identity and staging/device behavior remain open. Android AAB remains manual/on-demand.
+
+
+## Verified execution — persisted notification preference and read-state isolation (20 October 2026)
+
+- **Merged:** [PR #268](https://github.com/JainCommunityPlatform/jain-community-platform/pull/268), merge commit `7c3cb24d32cffd5443c61a6584ebcc335af66d8a`.
+- **Exact-head CI:** [run #39305782003](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39305782003) passed Flutter analysis/tests including the connected giving journey, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Android AAB skipped by design.
+- **Post-merge CI:** [run #39306280409](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39306280409) completed successfully on master: Flutter analyze/tests, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate passed. Android AAB skipped by design.
+- **Current grouped branch:** `qa/p1-profile-persistence-identity-batch` adds Firestore-emulator HTTP coverage for authenticated profile save/read-after-write, direct persisted values, unchanged phone fields, invalid profile DTOs, rejection of caller-controlled identity/contact fields, and unchanged second-user data.
+- **Evidence boundary:** real NestJS HTTP + Firestore Emulator and test identities; not a real-device session or production identity proof. Android AAB remains manual/on-demand.
+
+
+## PR #269 CI triage — profile identity upsert erased display name (20 October 2026)
+
+- Exact-head [CI #39306743662](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39306743662) failed the new emulator-backed profile read-after-write test: PATCH returned the new profile fields, but the subsequent GET omitted `displayName`.
+- Root cause: `FirestoreService.upsertUser` wrote `displayName: null` (and `email: null`) whenever optional auth claims were absent. The GET resolved identity again and erased the user-managed display name.
+- Fix in the current branch: only update email/displayName in the identity upsert when the corresponding auth claim is actually supplied. The test also asserts the stored email remains intact. No assertions are removed or weakened; fresh exact-head CI must confirm the fix.

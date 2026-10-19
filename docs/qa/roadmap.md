@@ -655,3 +655,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - PR #266 merged at `c9c378da8bf8a43b41e67f8fdb413e7147d4dcad`; exact-head [CI #39304067428](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39304067428) passed required checks. Post-merge [CI #39305120442](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39305120442) was still in progress at last poll.
 - Branch `qa/p0-notification-persistence-isolation-batch` groups related persistence/security cases: channel preferences default to opt-out; updates survive HTTP read-after-write; preferences do not leak across tenants or users; pledge-created notifications persist; read state survives a fresh list request; another user and another tenant cannot mark/read the notification.
 - Real NestJS HTTP + Firestore Emulator is the automated evidence layer. Real provider delivery and staging/device identity are separate gates; Android AAB remains manual/on-demand.
+
+
+## Next grouped profile persistence and identity-boundary batch (20 October 2026)
+
+- PR #268 merged as `7c3cb24d32cffd5443c61a6584ebcc335af66d8a`; exact-head [CI #39305782003](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39305782003) passed all required jobs. Post-merge [CI #39306280409](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39306280409) passed all applicable checks on master; Android AAB skipped by design.
+- Branch `qa/p1-profile-persistence-identity-batch` batches the remaining profile API persistence gap: valid field update → HTTP read-after-write → direct Firestore assertion; phone/contact fields remain immutable through this endpoint; malformed values and caller-supplied user/email/phone fields are rejected with no persisted change; another user's profile remains unchanged.
+- This is emulator-backed HTTP evidence, separate from existing fake-repository Flutter widget coverage and from staging/device identity verification.
