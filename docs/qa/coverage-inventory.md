@@ -358,3 +358,10 @@ Evidence boundaries:
 - CI #39120170312 exposed shared-fixture contamination: the new cross-tenant test created a receipt in the same tenant used by later exact-count reconciliation tests.
 - The test now uses dedicated tenant A/B IDs and a distinct pair of hostnames, with operator/approver memberships seeded only for the isolated tenant. Exact reconciliation assertions remain unchanged.
 - Fresh exact-head CI must prove both the new tenant isolation and all pre-existing emulator journeys pass.
+
+
+## P0 donation lifecycle batch — payment replay, maker-checker and partial payment (19 October 2026)
+
+- Folded into PR #266 to avoid a separate small MR.
+- Added Firestore-emulator HTTP assertions: identical payment retry returns the same record; conflicting idempotency-key reuse returns 409; maker cannot approve their own payment; repeat approval returns 409; two partial payments yield the full persisted paid balance; each approved payment has exactly one receipt and reconciliation stays balanced.
+- PR #265 cross-tenant donor isolation is merged and both exact-head CI #39120375666 and post-merge CI #39234175711 passed. PR #266 must pass fresh exact-head CI after the combined test change before merge.
