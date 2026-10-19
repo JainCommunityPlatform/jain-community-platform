@@ -1307,4 +1307,113 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
       .not.toEqual(expect.arrayContaining([expect.objectContaining({ id: pledgeNotification.id })]));
   });
 
+
+  it('persists profile edits through authenticated HTTP read-after-write without changing another profile', async () => {
+    const host = 'giving-emulator.jcp.test';
+    const donor = await identity.resolve({
+      subject: donorSubject,
+      email: donorSubject + '@example.test',
+    } as AuthenticatedUser);
+    const otherUser = await identity.resolve({
+      subject: operatorSubject,
+      email: operatorSubject + '@example.test',
+    } as AuthenticatedUser);
+    const otherBefore = await firestore.getUser(otherUser.id);
+    const donorBefore = await firestore.getUser(donor.id);
+
+    await request(app.getHttpServer())
+      .patch('/api/profile')
+      .set('Host', host)
+      .set('x-test-user', donorSubject)
+      .send({
+        displayName: 'Persisted Profile Member',
+        address: '42 Jain Society, Pune',
+        city: 'Pune',
+        state: 'Maharashtra',
+        postalCode: '411014',
+      })
+      .expect(200)
+      .expect((response) => expect(response.body).toMatchObject({
+        id: donor.id,
+        displayName: 'Persisted Profile Member',
+        address: '42 Jain Society, Pune',
+        city: 'Pune',
+        state: 'Maharashtra',
+        postalCode: '411014',
+      }));
+
+    await request(app.getHttpServer())
+      .get('/api/profile')
+      .set('Host', host)
+      .set('x-test-user', donorSubject)
+      .expect(200)
+      .expect((response) => expect(response.body).toMatchObject({
+        id: donor.id,
+        displayName: 'Persisted Profile Member',
+        address: '42 Jain Society, Pune',
+        city: 'Pune',
+        state: 'Maharashtra',
+        postalCode: '411014',
+      }));
+
+    const donorAfter = await firestore.getUser(donor.id);
+    expect(donorAfter).toMatchObject({
+      id: donor.id,
+      displayName: 'Persisted Profile Member',
+      address: '42 Jain Society, Pune',
+      city: 'Pune',
+      state: 'Maharashtra',
+      postalCode: '411014',
+    });
+    expect(donorAfter?.primaryPhone).toBe(donorBefore?.primaryPhone);
+    expect(donorAfter?.phoneNumbers).toEqual(donorBefore?.phoneNumbers);
+    expect(await firestore.getUser(otherUser.id)).toMatchObject({
+      id: otherUser.id,
+      displayName: otherBefore?.displayName,
+      address: otherBefore?.address,
+      city: otherBefore?.city,
+      state: otherBefore?.state,
+      postalCode: otherBefore?.postalCode,
+    });
+  });
+
+  it('rejects invalid or caller-controlled profile fields without persisting any change', async () => {
+    const host = 'giving-emulator.jcp.test';
+    const donor = await identity.resolve({
+      subject: donorSubject,
+      email: donorSubject + '@example.test',
+    } as AuthenticatedUser);
+    const before = await firestore.getUser(donor.id);
+    const invalidPayloads: Array<Record<string, unknown>> = [
+      { displayName: 'x' },
+      { address: 'tiny' },
+      { postalCode: '123' },
+      { displayName: 'Attempted overwrite', userId: operatorId },
+      { displayName: 'Attempted overwrite', primaryPhone: '9876543210' },
+      { displayName: 'Attempted overwrite', phoneNumbers: ['9876543210'] },
+      { displayName: 'Attempted overwrite', email: 'attacker@example.test' },
+    ];
+
+    for (const payload of invalidPayloads) {
+      await request(app.getHttpServer())
+        .patch('/api/profile')
+        .set('Host', host)
+        .set('x-test-user', donorSubject)
+        .send(payload)
+        .expect(400);
+
+      const afterRejectedUpdate = await firestore.getUser(donor.id);
+      expect(afterRejectedUpdate).toMatchObject({
+        id: donor.id,
+        displayName: before?.displayName,
+        address: before?.address,
+        city: before?.city,
+        state: before?.state,
+        postalCode: before?.postalCode,
+        primaryPhone: before?.primaryPhone,
+        phoneNumbers: before?.phoneNumbers,
+      });
+    }
+  });
+
 });
