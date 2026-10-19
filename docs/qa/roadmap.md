@@ -633,3 +633,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Exact-head CI #39120170312 failed two later reconciliation tests because the new cross-tenant scenario added a receipt to the suite's shared tenant; observed receipt counts increased by one. The new scenario must not pollute other tests' data.
 - Fix: allocate a separate tenant pair/hostnames for the new scenario and seed operator/approver memberships for that isolated tenant. Existing exact-count expectations are preserved.
 - Re-run full exact-head CI and merge only if every required job passes; then verify post-merge CI independently.
+
+
+## Current P0 checkpoint — persisted donor isolation and linked payment-to-receipt journey (19 October 2026)
+
+- PR #265 merged as `7cfe8f8c3e03e19471de5980ad392fa7d718f4c4`; exact-head [CI #39120375666](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39120375666) passed all required checks after test data was isolated. Post-merge [CI #39234175711](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39234175711) was still running at last poll.
+- Current branch `qa/p0-connected-donation-payment-receipt-batch` expands the connected Flutter → NestJS → Firestore-emulator test so the pledge created in the UI is the one paid and approved. It asserts distinct operator/approver identities, persisted receipt association and amount, balanced reconciliation, and receipt visibility after refreshing the donor UI.
+- Merge gate: exact-head required checks green and mergeability confirmed; then verify post-merge CI independently. Do not weaken existing receipt, reconciliation, or tenant-isolation assertions to make CI green.
+- Evidence boundary: emulator-backed integration does not establish production Firebase identity, external UPI/bank settlement, or staging/device behaviour. Android AAB remains manual/on-demand.
