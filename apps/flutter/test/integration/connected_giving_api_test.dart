@@ -193,7 +193,7 @@ void main() {
       for (var attempt = 0; attempt < 150 && loadedName.evaluate().isEmpty; attempt++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
-      expect(loadedName, findsOneWidget);
+      expect(loadedName, findsNWidgets(2)); // Header and editable Name field.
 
       await tester.tap(find.text('Edit'));
       await tester.pumpAndSettle();
