@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/io_client.dart';
 import 'package:jain_community_platform/core/api/api_client.dart';
 import 'package:jain_community_platform/features/giving/presentation/donor_giving_page.dart';
+import 'package:jain_community_platform/features/profile/data/profile_repository.dart';
+import 'package:jain_community_platform/features/profile/presentation/profile_page.dart';
 
 void main() {
   // Construct the IOClient outside the widget-test zone. Flutter's widget-test
@@ -162,4 +164,68 @@ void main() {
     },
     skip: apiUrl.isEmpty,
   );
+
+  testWidgets(
+    'saves profile edits from Flutter and reloads them from the live API',
+    (tester) async {
+      final api = ApiClient(
+        baseUrl: Uri.parse(apiUrl),
+        accessTokenProvider: () async => 'connected-donor',
+        tenantIdProvider: () => tenantId,
+        requestTimeout: const Duration(seconds: 15),
+        client: connectedHttpClient,
+      );
+
+      // Seed through the same authenticated HTTP API so the widget begins
+      // with persisted profile data and exercises the actual update/reload path.
+      await api.patch('/api/profile', body: {
+        'displayName': 'Connected Profile Member',
+        'address': '42 Jain Society, Pune',
+        'city': 'Pune',
+        'state': 'Maharashtra',
+        'postalCode': '411014',
+      });
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: ProfilePage(repository: ProfileRepository(api))),
+      ));
+      final loadedName = find.text('Connected Profile Member');
+      for (var attempt = 0; attempt < 150 && loadedName.evaluate().isEmpty; attempt++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(loadedName, findsOneWidget);
+
+      await tester.tap(find.text('Edit'));
+      await tester.pumpAndSettle();
+
+      final nameField = find.byWidgetPredicate(
+        (widget) => widget is TextField && widget.decoration?.labelText == 'Name',
+      );
+      await tester.ensureVisible(nameField);
+      await tester.enterText(nameField, 'Updated from Flutter');
+
+      final cityField = find.byWidgetPredicate(
+        (widget) => widget is TextField && widget.decoration?.labelText == 'City',
+      );
+      await tester.ensureVisible(cityField);
+      await tester.enterText(cityField, 'Nashik');
+
+      await tester.ensureVisible(find.text('Save profile'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save profile'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Profile saved.'), findsOneWidget);
+      final persisted = await api.getObject('/api/profile');
+      expect(persisted, containsPair('displayName', 'Updated from Flutter'));
+      expect(persisted, containsPair('address', '42 Jain Society, Pune'));
+      expect(persisted, containsPair('city', 'Nashik'));
+      expect(persisted, containsPair('state', 'Maharashtra'));
+      expect(persisted, containsPair('postalCode', '411014'));
+      expect(persisted, containsPair('email', 'connected-donor@example.test'));
+      expect(tester.takeException(), isNull);
+    },
+    skip: apiUrl.isEmpty,
+  );
+
 }
