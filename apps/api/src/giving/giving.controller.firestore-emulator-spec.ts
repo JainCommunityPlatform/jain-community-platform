@@ -1335,6 +1335,7 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
       .expect(200)
       .expect((response) => expect(response.body).toMatchObject({
         id: donor.id,
+        email: donorSubject + '@example.test',
         displayName: 'Persisted Profile Member',
         address: '42 Jain Society, Pune',
         city: 'Pune',
@@ -1359,12 +1360,14 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
     const donorAfter = await firestore.getUser(donor.id);
     expect(donorAfter).toMatchObject({
       id: donor.id,
+      email: donorSubject + '@example.test',
       displayName: 'Persisted Profile Member',
       address: '42 Jain Society, Pune',
       city: 'Pune',
       state: 'Maharashtra',
       postalCode: '411014',
     });
+    expect(donorAfter?.email).toBe(donorBefore?.email);
     expect(donorAfter?.primaryPhone).toBe(donorBefore?.primaryPhone);
     expect(donorAfter?.phoneNumbers).toEqual(donorBefore?.phoneNumbers);
     expect(await firestore.getUser(otherUser.id)).toMatchObject({
