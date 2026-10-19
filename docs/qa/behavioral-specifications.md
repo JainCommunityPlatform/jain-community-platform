@@ -2019,3 +2019,13 @@ Acceptance boundaries:
 - The connected journey must use real NestJS HTTP and Firestore Emulator persistence; finance operator and approver identities are distinct.
 - The receipt assertion must link to the pledge created by the UI, not only to a separately seeded fixture receipt.
 - This does not verify external UPI/bank settlement or production Firebase identity and staging/device behaviour.
+
+
+## Payment replay and partial-payment acceptance cases (19 October 2026)
+
+- Repeating a payment request with the same idempotency key and payload returns the same persisted payment.
+- Reusing that key with different details returns HTTP 409 without creating a second payment.
+- The recording operator cannot approve their own payment (HTTP 403).
+- Reapproving a verified payment returns HTTP 409 and does not duplicate receipt or paid balance.
+- Two separately recorded and independently approved partial payments complete the pledge, produce one receipt per payment, and leave receipt reconciliation balanced.
+- Test layer: real NestJS HTTP + Firestore Emulator with test identities; no claim of external UPI/bank settlement or production identity.
