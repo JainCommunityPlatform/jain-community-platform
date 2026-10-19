@@ -171,10 +171,10 @@ export class FirestoreService implements OnModuleInit {
         userRef,
         {
           authSubject: input.subject,
-          email: input.email ?? null,
+          ...(input.email !== undefined ? { email: input.email } : {}),
           ...(input.emailVerified !== undefined ? { emailVerified: input.emailVerified } : {}),
           ...(input.verifiedPhoneNumber ? { verifiedPhoneNumber: input.verifiedPhoneNumber } : {}),
-          displayName: input.displayName ?? null,
+          ...(input.displayName !== undefined ? { displayName: input.displayName } : {}),
           ...(existing.exists ? {} : { createdAt: now }),
           updatedAt: now,
         },
