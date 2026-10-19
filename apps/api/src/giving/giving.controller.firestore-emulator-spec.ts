@@ -1089,4 +1089,222 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
     expect(listExpenses).not.toHaveBeenCalled();
   });
 
+
+  it('persists notification preferences per tenant and user with opt-out defaults', async () => {
+    const tenantAHost = 'giving-isolation-emulator.jcp.test';
+    const tenantBHost = 'other-giving-isolation-emulator.jcp.test';
+    const donor = await identity.resolve({
+      subject: donorSubject,
+      email: \`\${donorSubject}@example.test\`,
+    } as AuthenticatedUser);
+    const otherUser = await identity.resolve({
+      subject: operatorSubject,
+      email: \`\${operatorSubject}@example.test\`,
+    } as AuthenticatedUser);
+
+    const initial = await request(app.getHttpServer())
+      .get('/api/notifications/preferences')
+      .set('Host', tenantAHost)
+      .set('x-test-user', donorSubject)
+      .expect(200);
+    expect(initial.body).toMatchObject({
+      tenantId: isolatedTenantId,
+      userId: donor.id,
+      email: false,
+      whatsapp: false,
+      push: false,
+    });
+
+    await request(app.getHttpServer())
+      .put('/api/notifications/preferences')
+      .set('Host', tenantAHost)
+      .set('x-test-user', donorSubject)
+      .send({ email: true, whatsapp: false, push: true })
+      .expect(200)
+      .expect((response) => expect(response.body).toMatchObject({
+        tenantId: isolatedTenantId,
+        userId: donor.id,
+        email: true,
+        whatsapp: false,
+        push: true,
+      }));
+
+    await request(app.getHttpServer())
+      .get('/api/notifications/preferences')
+      .set('Host', tenantAHost)
+      .set('x-test-user', donorSubject)
+      .expect(200)
+      .expect((response) => expect(response.body).toMatchObject({
+        email: true,
+        whatsapp: false,
+        push: true,
+      }));
+
+    const persisted = await firestore.getNotificationPreferences(isolatedTenantId, donor.id);
+    expect(persisted).toMatchObject({
+      tenantId: isolatedTenantId,
+      userId: donor.id,
+      email: true,
+      whatsapp: false,
+      push: true,
+    });
+
+    // The same user in another tenant and another user in this tenant must not
+    // inherit the first user's consent preferences.
+    await request(app.getHttpServer())
+      .get('/api/notifications/preferences')
+      .set('Host', tenantBHost)
+      .set('x-test-user', donorSubject)
+      .expect(200)
+      .expect((response) => expect(response.body).toMatchObject({
+        tenantId: otherIsolatedTenantId,
+        userId: donor.id,
+        email: false,
+        whatsapp: false,
+        push: false,
+      }));
+
+    await request(app.getHttpServer())
+      .get('/api/notifications/preferences')
+      .set('Host', tenantAHost)
+      .set('x-test-user', operatorSubject)
+      .expect(200)
+      .expect((response) => expect(response.body).toMatchObject({
+        tenantId: isolatedTenantId,
+        userId: otherUser.id,
+        email: false,
+        whatsapp: false,
+        push: false,
+      }));
+
+    expect(await firestore.getNotificationPreferences(otherIsolatedTenantId, donor.id))
+      .toMatchObject({ email: false, whatsapp: false, push: false });
+    expect(await firestore.getNotificationPreferences(isolatedTenantId, otherUser.id))
+      .toMatchObject({ email: false, whatsapp: false, push: false });
+  });
+
+  it('persists in-app notification read state and prevents another user or tenant from reading it', async () => {
+    const tenantAHost = 'giving-isolation-emulator.jcp.test';
+    const tenantBHost = 'other-giving-isolation-emulator.jcp.test';
+
+    if (!(await firestore.getMembership(operatorId, isolatedTenantId))) {
+      await firestore.createMembership({
+        userId: operatorId,
+        tenantId: isolatedTenantId,
+        role: 'CONTENT_MANAGER',
+        roles: ['CONTENT_MANAGER', 'FINANCE_OPERATOR'],
+      });
+    }
+
+    const campaignResponse = await request(app.getHttpServer())
+      .post('/api/giving/campaigns')
+      .set('Host', tenantAHost)
+      .set('x-test-user', operatorSubject)
+      .send({
+        name: 'Notification read-state lifecycle',
+        description: 'Persisted notification isolation regression',
+        targetAmountPaise: 10000,
+      })
+      .expect(201);
+    const campaignId = campaignResponse.body.id as string;
+
+    await request(app.getHttpServer())
+      .patch('/api/giving/campaigns/' + campaignId + '/status')
+      .set('Host', tenantAHost)
+      .set('x-test-user', operatorSubject)
+      .send({ status: 'ACTIVE' })
+      .expect(200);
+
+    const pledgeResponse = await request(app.getHttpServer())
+      .post('/api/giving/pledges')
+      .set('Host', tenantAHost)
+      .set('x-test-user', donorSubject)
+      .set('idempotency-key', 'notification-read-pledge-' + isolatedTenantId)
+      .send({ campaignId, pledgedAmountPaise: 5000 })
+      .expect(201);
+    const pledgeId = pledgeResponse.body.id as string;
+    const donor = await identity.resolve({
+      subject: donorSubject,
+      email: \`\${donorSubject}@example.test\`,
+    } as AuthenticatedUser);
+    const otherUser = await identity.resolve({
+      subject: operatorSubject,
+      email: \`\${operatorSubject}@example.test\`,
+    } as AuthenticatedUser);
+
+    const donorNotifications = await request(app.getHttpServer())
+      .get('/api/notifications')
+      .set('Host', tenantAHost)
+      .set('x-test-user', donorSubject)
+      .expect(200);
+    const pledgeNotification = donorNotifications.body.find(
+      (notification: { entityType: string; entityId: string }) =>
+        notification.entityType === 'DonationPledge' && notification.entityId === pledgeId,
+    );
+    expect(pledgeNotification).toBeDefined();
+    expect(pledgeNotification).toMatchObject({
+      tenantId: isolatedTenantId,
+      userId: donor.id,
+      type: 'PLEDGE_CREATED',
+      readAt: null,
+    });
+
+    await request(app.getHttpServer())
+      .post('/api/notifications/' + pledgeNotification.id + '/read')
+      .set('Host', tenantAHost)
+      .set('x-test-user', operatorSubject)
+      .expect(404);
+
+    const otherUserNotifications = await request(app.getHttpServer())
+      .get('/api/notifications')
+      .set('Host', tenantAHost)
+      .set('x-test-user', operatorSubject)
+      .expect(200);
+    expect(otherUserNotifications.body).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: pledgeNotification.id }),
+    ]));
+
+    await request(app.getHttpServer())
+      .get('/api/notifications')
+      .set('Host', tenantBHost)
+      .set('x-test-user', donorSubject)
+      .expect(200)
+      .expect([]);
+
+    const readResponse = await request(app.getHttpServer())
+      .post('/api/notifications/' + pledgeNotification.id + '/read')
+      .set('Host', tenantAHost)
+      .set('x-test-user', donorSubject)
+      .expect(201);
+    expect(readResponse.body).toMatchObject({
+      id: pledgeNotification.id,
+      tenantId: isolatedTenantId,
+      userId: donor.id,
+    });
+    expect(readResponse.body.readAt).toBeTruthy();
+
+    const reloadedNotifications = await request(app.getHttpServer())
+      .get('/api/notifications')
+      .set('Host', tenantAHost)
+      .set('x-test-user', donorSubject)
+      .expect(200);
+    expect(reloadedNotifications.body).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: pledgeNotification.id, readAt: expect.any(String) }),
+    ]));
+
+    const persistedNotifications = await firestore.listNotificationsForUser(isolatedTenantId, donor.id);
+    expect(persistedNotifications).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: pledgeNotification.id,
+        entityId: pledgeId,
+        userId: donor.id,
+        readAt: expect.any(Date),
+      }),
+    ]));
+
+    expect(await firestore.listNotificationsForUser(otherIsolatedTenantId, donor.id)).toEqual([]);
+    expect(await firestore.listNotificationsForUser(isolatedTenantId, otherUser.id))
+      .not.toEqual(expect.arrayContaining([expect.objectContaining({ id: pledgeNotification.id })]));
+  });
+
 });
