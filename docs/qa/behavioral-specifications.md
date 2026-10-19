@@ -2046,3 +2046,19 @@ Acceptance boundaries:
 - A subsequent notification-list request and direct Firestore-emulator read must show the persisted non-null `readAt`.
 - The same donor in another tenant must not see the notification.
 - Test layer: NestJS HTTP + Firestore Emulator. Real provider delivery and production/staging identity are not established by these tests.
+
+
+## Authenticated profile persistence and field ownership (20 October 2026)
+
+### Scenario: An authenticated member updates their own editable profile fields
+
+- A valid `PATCH /api/profile` update is returned by the API, remains present after a new `GET /api/profile`, and matches the persisted Firestore user document.
+- Updating one authenticated user's profile must not mutate another user's profile.
+- The profile update endpoint does not modify primary phone or phone-number indexes.
+
+### Scenario: Invalid and caller-controlled profile fields are rejected before persistence
+
+- Too-short display names, invalid address values, and malformed Indian postal codes return HTTP 400.
+- Caller-supplied `userId`, `email`, `primaryPhone`, or `phoneNumbers` are rejected as non-whitelisted fields.
+- Each rejected request leaves the Firestore profile unchanged.
+- Test layer: NestJS HTTP + Firestore Emulator with test identities; Flutter fake-repository tests and staging/device identity verification remain separate evidence.
