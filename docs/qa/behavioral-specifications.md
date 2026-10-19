@@ -2069,3 +2069,13 @@ Acceptance boundaries:
 - When an authenticated request omits an optional email or display-name claim, identity upsert must preserve existing stored email and display name instead of writing null over user-managed profile values.
 - A successful profile update must survive a subsequent authenticated GET, because that GET resolves identity again.
 - Regression evidence: the Firestore-emulator HTTP read-after-write test initially failed because the second identity resolution erased the display name. The fix conditionally updates identity claims only when they are supplied; profile persistence assertions remain intact.
+
+
+## Connected Flutter profile save and persisted reload (20 October 2026)
+
+### Scenario: A member edits their profile through the real connected UI
+
+- The Flutter profile page loads the authenticated member's saved name and editable address/city/state/postal code from the live NestJS API.
+- Saving an edited name and city through the widget updates the Firestore-backed profile.
+- A fresh authenticated API read returns the updated values and retains the user's email/display name even though the test auth token does not include those optional claims.
+- Test layer: Flutter widget + real NestJS HTTP + Firestore Emulator. This does not establish production Firebase identity or physical-device behavior.

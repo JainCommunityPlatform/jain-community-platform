@@ -92,7 +92,7 @@ jobs:
         if: steps.frontend.outputs.available == 'true'
         working-directory: apps/api
         run: npm install --no-audit --no-fund
-      - name: Verify Flutter → NestJS → Firestore emulator receipt journey
+      - name: Verify connected Flutter → NestJS → Firestore giving and profile journeys
         if: steps.frontend.outputs.available == 'true'
         shell: bash
         run: |
