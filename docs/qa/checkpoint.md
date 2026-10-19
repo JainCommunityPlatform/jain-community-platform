@@ -629,3 +629,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - This was deliberately folded into PR #266 rather than left as a separate small PR. The duplicate working PR #267 is being closed after transferring the test and QA notes to #266.
 - The default-branch run after PR #265, [CI #39234175711](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39234175711), completed successfully: backend, Flutter, repository validation and merge gate passed; Android AAB skipped by design.
 - PR #266's exact-head CI must rerun after these additions; do not merge until all required checks are green and mergeability is confirmed. Android AAB remains manual/on-demand.
+
+
+## PR #266 CI failure triage — wait for refreshed receipt identity (20 October 2026)
+
+- Exact-head [CI #39234773301](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39234773301) failed in the connected Flutter → NestJS → Firestore Emulator journey. Backend lint/unit/integration/emulator/build and repository validation passed; the merge gate correctly failed because the connected Flutter job failed. Android AAB was skipped.
+- The failure was in the UI assertion timing: after tapping refresh, the test waited for the receipt amount, which could already be visible in stale UI state, then immediately asserted the new receipt number. The test output showed the expected receipt number was absent at that instant.
+- Fixed the test to tap the specifically labelled **Refresh giving data** control and wait for the exact receipt number returned by the approved payment before asserting the amount and absence of Flutter exceptions. No business assertion was removed or weakened.
+- Fix commit: `55207097501c230adfa5f80c63080266233c98d7`. Await fresh exact-head CI before merge. PR #266 remains open until all required checks pass; post-merge verification will be checked separately.
