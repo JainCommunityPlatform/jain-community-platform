@@ -619,3 +619,17 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - PR #263 merged as `21867d8b95200ca4c67f8a3eb0d4e25d4e4d05af`; exact-head [CI #39119173399](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39119173399) and post-merge [CI #39119374068](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39119374068) passed all applicable checks. Android AAB skipped by design.
 - Current branch `qa/p0-connected-donor-pledge-e2e-batch` upgrades the connected Flutter → NestJS → Firestore-emulator journey: invalid zero pledge is rejected without changing persisted pledge count; a valid ₹123.45 pledge is created from the UI and verified by a subsequent live API read; seeded receipt remains visible.
 - This is P0 UI-to-API-to-persistence coverage. Do not merge until exact-head CI passes and the read-after-write assertions are green; verify post-merge CI independently. Production/staging identity and external settlement remain separate gates.
+
+
+## Next P0 — persisted cross-tenant donor and campaign isolation (18 October 2026)
+
+- PR #264 merged as `cd4b6a3082880cc0b7fe3ccf93bac60db3ac7add`; exact-head [CI #39119641541](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39119641541) and post-merge [CI #39119849096](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39119849096) passed the connected UI pledge write/read-after-write and all applicable required checks.
+- Current branch `qa/p0-persisted-cross-tenant-donor-isolation-batch` batches persisted tenant-boundary cases: donor pledge/receipt history created in tenant A must be empty in tenant B; tenant B cannot create a pledge against tenant A's campaign; direct Firestore assertions prove no tenant B pledge or receipt was persisted.
+- Use two resolved tenant hosts with the real Firestore Emulator and HTTP pipeline. Merge only after exact-head CI passes and mergeability is confirmed; verify post-merge CI independently. Production/staging identity remains a separate gate.
+
+
+## PR #265 CI repair — isolated tenant fixture (18 October 2026)
+
+- Exact-head CI #39120170312 failed two later reconciliation tests because the new cross-tenant scenario added a receipt to the suite's shared tenant; observed receipt counts increased by one. The new scenario must not pollute other tests' data.
+- Fix: allocate a separate tenant pair/hostnames for the new scenario and seed operator/approver memberships for that isolated tenant. Existing exact-count expectations are preserved.
+- Re-run full exact-head CI and merge only if every required job passes; then verify post-merge CI independently.

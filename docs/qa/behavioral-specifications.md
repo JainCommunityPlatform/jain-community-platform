@@ -1983,3 +1983,18 @@ Executable regression: `apps/flutter/test/features/website/presentation/website_
 - When the donor confirms a valid amount, Flutter sends the pledge through the NestJS API; a subsequent donor-history read returns the same campaign ID and exact paise amount from Firestore.
 - The donor can navigate to Receipts and still see the seeded approved payment receipt.
 - Evidence uses a dedicated Firestore Emulator project and a real NestJS HTTP server. It does not prove production Firebase identity, physical-device behavior, or external UPI/bank settlement.
+
+
+## P0 tenant-isolation acceptance — donor history and foreign campaign references
+
+- Given a donor has a pledge and an approved payment/receipt in tenant A, the same authenticated donor's pledge and receipt endpoints under tenant B return empty results.
+- A pledge request in tenant B that references a campaign belonging to tenant A returns not found and creates no pledge in tenant B.
+- The Firestore Emulator assertions verify the pledge and receipt remain scoped to tenant A and no pledge/receipt is created in tenant B.
+- This test exercises real NestJS HTTP, the tenant-context middleware, and Firestore Emulator; production/staging hostname and identity propagation remain separate verification gates.
+
+
+## Emulator test isolation requirement
+
+- Cross-tenant scenarios that create financial records must use dedicated tenant IDs or clean up all created records.
+- Do not reuse a shared emulator tenant for a test that creates receipts when other tests assert exact reconciliation counts.
+- Preserve the exact-count reconciliation assertions; isolate fixtures instead of weakening expected counts.

@@ -28,6 +28,8 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
   let approverSubject: string;
   let crossTenantFinanceSubject: string;
   let otherTenantId: string;
+  let isolatedTenantId: string;
+  let otherIsolatedTenantId: string;
   let operatorId: string;
   let approverId: string;
   let crossTenantFinanceId: string;
@@ -44,6 +46,8 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
     const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     tenantId = `emulator-http-giving-${suffix}`;
     otherTenantId = `${tenantId}-other`;
+    isolatedTenantId = `${tenantId}-isolation`;
+    otherIsolatedTenantId = `${isolatedTenantId}-other`;
     donorSubject = `donor-${suffix}`;
     operatorSubject = `operator-${suffix}`;
     approverSubject = `approver-${suffix}`;
@@ -61,11 +65,21 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
     };
 
     const tenantResolver = {
-      resolve: async (hostname: string) => ({
-        id: tenantId,
-        name: 'Giving emulator test tenant',
-        hostname: hostname.toLowerCase(),
-      }),
+      resolve: async (hostname: string) => {
+        const normalizedHostname = hostname.toLowerCase();
+        const resolvedTenantId = normalizedHostname === 'other-giving-isolation-emulator.jcp.test'
+          ? otherIsolatedTenantId
+          : normalizedHostname === 'giving-isolation-emulator.jcp.test'
+            ? isolatedTenantId
+            : normalizedHostname === 'other-giving-emulator.jcp.test'
+              ? otherTenantId
+              : tenantId;
+        return {
+          id: resolvedTenantId,
+          name: 'Giving emulator test tenant',
+          hostname: normalizedHostname,
+        };
+      },
     };
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -153,6 +167,137 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
 
     expect(listTenantPayments).not.toHaveBeenCalled();
     expect(createExpense).not.toHaveBeenCalled();
+  });
+
+  it('keeps persisted donor pledge and receipt history tenant-scoped and rejects a pledge against another tenant campaign', async () => {
+    const tenantAHost = 'giving-isolation-emulator.jcp.test';
+    const tenantBHost = 'other-giving-isolation-emulator.jcp.test';
+
+    // Keep this scenario's persisted financial records isolated from the
+    // exact-count reconciliation assertions in the other emulator journeys.
+    await firestore.createMembership({
+      userId: operatorId,
+      tenantId: isolatedTenantId,
+      role: 'CONTENT_MANAGER',
+      roles: ['CONTENT_MANAGER', 'FINANCE_OPERATOR'],
+    });
+    await firestore.createMembership({
+      userId: approverId,
+      tenantId: isolatedTenantId,
+      role: 'FINANCE_APPROVER',
+      roles: ['FINANCE_APPROVER'],
+    });
+
+    const campaignResponse = await request(app.getHttpServer())
+      .post('/api/giving/campaigns')
+      .set('Host', tenantAHost)
+      .set('x-test-user', operatorSubject)
+      .send({
+        name: 'Tenant A private donor journey',
+        description: 'Cross-tenant donor history regression',
+        targetAmountPaise: 50000,
+      })
+      .expect(201);
+    const campaignId = campaignResponse.body.id as string;
+
+    await request(app.getHttpServer())
+      .patch('/api/giving/campaigns/' + campaignId + '/status')
+      .set('Host', tenantAHost)
+      .set('x-test-user', operatorSubject)
+      .send({ status: 'ACTIVE' })
+      .expect(200);
+
+    const pledgeResponse = await request(app.getHttpServer())
+      .post('/api/giving/pledges')
+      .set('Host', tenantAHost)
+      .set('x-test-user', donorSubject)
+      .set('idempotency-key', 'cross-tenant-donor-pledge-' + isolatedTenantId)
+      .send({ campaignId, pledgedAmountPaise: 25000 })
+      .expect(201);
+    const pledgeId = pledgeResponse.body.id as string;
+
+    const paymentResponse = await request(app.getHttpServer())
+      .post('/api/giving/pledges/' + pledgeId + '/payments')
+      .set('Host', tenantAHost)
+      .set('x-test-user', operatorSubject)
+      .set('idempotency-key', 'cross-tenant-donor-payment-' + isolatedTenantId)
+      .send({ amountPaise: 25000, method: 'UPI', reference: 'tenant-a-payment-' + isolatedTenantId })
+      .expect(201);
+    const paymentId = paymentResponse.body.id as string;
+
+    const approvalResponse = await request(app.getHttpServer())
+      .post('/api/giving/payments/' + paymentId + '/approve')
+      .set('Host', tenantAHost)
+      .set('x-test-user', approverSubject)
+      .expect(201);
+    const receiptNumber = approvalResponse.body.receiptNumber as string;
+
+    const tenantAPledges = await request(app.getHttpServer())
+      .get('/api/giving/my-pledges')
+      .set('Host', tenantAHost)
+      .set('x-test-user', donorSubject)
+      .expect(200);
+    expect(tenantAPledges.body).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: pledgeId, campaignId, pledgedAmountPaise: 25000 }),
+    ]));
+
+    const tenantAReceipts = await request(app.getHttpServer())
+      .get('/api/giving/my-receipts')
+      .set('Host', tenantAHost)
+      .set('x-test-user', donorSubject)
+      .expect(200);
+    expect(tenantAReceipts.body).toEqual(expect.arrayContaining([
+      expect.objectContaining({ paymentId, pledgeId, receiptNumber }),
+    ]));
+
+    await request(app.getHttpServer())
+      .get('/api/giving/my-pledges')
+      .set('Host', tenantBHost)
+      .set('x-test-user', donorSubject)
+      .expect(200)
+      .expect([]);
+
+    await request(app.getHttpServer())
+      .get('/api/giving/my-receipts')
+      .set('Host', tenantBHost)
+      .set('x-test-user', donorSubject)
+      .expect(200)
+      .expect([]);
+
+    await request(app.getHttpServer())
+      .post('/api/giving/pledges')
+      .set('Host', tenantBHost)
+      .set('x-test-user', donorSubject)
+      .set('idempotency-key', 'cross-tenant-foreign-campaign-' + isolatedTenantId)
+      .send({ campaignId, pledgedAmountPaise: 1000 })
+      .expect(404);
+
+    await request(app.getHttpServer())
+      .get('/api/giving/my-pledges')
+      .set('Host', tenantBHost)
+      .set('x-test-user', donorSubject)
+      .expect(200)
+      .expect([]);
+    await request(app.getHttpServer())
+      .get('/api/giving/my-receipts')
+      .set('Host', tenantBHost)
+      .set('x-test-user', donorSubject)
+      .expect(200)
+      .expect([]);
+
+    const persistedTenantAPledges = await firestore.listDonationPledgesForTenant(isolatedTenantId);
+    const persistedTenantBPledges = await firestore.listDonationPledgesForTenant(otherIsolatedTenantId);
+    const persistedTenantAReceipts = await firestore.listDonationReceiptsForTenant(isolatedTenantId);
+    const persistedTenantBReceipts = await firestore.listDonationReceiptsForTenant(otherIsolatedTenantId);
+
+    expect(persistedTenantAPledges).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: pledgeId, tenantId: isolatedTenantId, donorUserId: expect.any(String) }),
+    ]));
+    expect(persistedTenantBPledges).toEqual([]);
+    expect(persistedTenantAReceipts).toEqual(expect.arrayContaining([
+      expect.objectContaining({ paymentId, pledgeId, tenantId: isolatedTenantId, receiptNumber }),
+    ]));
+    expect(persistedTenantBReceipts).toEqual([]);
   });
 
   it('creates a pledge, records and approves a payment, then serves the persisted receipt to the donor', async () => {
