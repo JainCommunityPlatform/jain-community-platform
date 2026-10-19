@@ -82,7 +82,7 @@ async function main() {
 
     const port = Number(process.env.JCP_CONNECTED_TEST_PORT ?? 4317);
     await app.listen(port, '0.0.0.0');
-    process.stdout.write(JSON.stringify({ ready: true, port, donorSubject, tenantId }) + '\n');
+    process.stdout.write(JSON.stringify({ ready: true, port, donorSubject, operatorSubject, approverSubject, tenantId }) + '\n');
 
     const shutdown = async () => {
       await app.close();
