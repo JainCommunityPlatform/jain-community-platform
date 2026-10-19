@@ -637,3 +637,12 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - The failure was in the UI assertion timing: after tapping refresh, the test waited for the receipt amount, which could already be visible in stale UI state, then immediately asserted the new receipt number. The test output showed the expected receipt number was absent at that instant.
 - Fixed the test to tap the specifically labelled **Refresh giving data** control and wait for the exact receipt number returned by the approved payment before asserting the amount and absence of Flutter exceptions. No business assertion was removed or weakened.
 - Fix commit: `55207097501c230adfa5f80c63080266233c98d7`. Await fresh exact-head CI before merge. PR #266 remains open until all required checks pass; post-merge verification will be checked separately.
+
+
+## Verified execution — consolidated donation payment lifecycle (20 October 2026)
+
+- **Merged:** [PR #266](https://github.com/JainCommunityPlatform/jain-community-platform/pull/266), merge commit `c9c378da8bf8a43b41e67f8fdb413e7147d4dcad`.
+- **Exact-head CI:** [run #39304067428](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39304067428) passed Flutter analysis/tests including the connected giving journey, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Android AAB skipped by design.
+- **Post-merge CI:** [run #39305120442](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39305120442) was in progress at the last poll; repository validation passed, Flutter tests and backend unit tests were still running. Do not mark post-merge green until every applicable job completes.
+- **Current grouped branch:** `qa/p0-notification-persistence-isolation-batch` adds real HTTP + Firestore-emulator tests for notification preference persistence and opt-out defaults, user/tenant preference isolation, pledge-created in-app notification, persistent read-state after reload, and denial of cross-user/cross-tenant read attempts. This is bundled as a coherent notification persistence/security MR, not one MR per assertion.
+- **Evidence boundary:** Firestore Emulator with test identities only. Real provider delivery, production Firebase identity and staging/device behavior remain open. Android AAB remains manual/on-demand.
