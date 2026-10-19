@@ -641,3 +641,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Current branch `qa/p0-connected-donation-payment-receipt-batch` expands the connected Flutter → NestJS → Firestore-emulator test so the pledge created in the UI is the one paid and approved. It asserts distinct operator/approver identities, persisted receipt association and amount, balanced reconciliation, and receipt visibility after refreshing the donor UI.
 - Merge gate: exact-head required checks green and mergeability confirmed; then verify post-merge CI independently. Do not weaken existing receipt, reconciliation, or tenant-isolation assertions to make CI green.
 - Evidence boundary: emulator-backed integration does not establish production Firebase identity, external UPI/bank settlement, or staging/device behaviour. Android AAB remains manual/on-demand.
+
+
+## Consolidated P0 donation lifecycle MR — UI-linked payment plus replay/reconciliation (19 October 2026)
+
+- PR #266 combines the connected Flutter pledge → NestJS payment → independent approval → Firestore receipt flow with an API/Firestore-emulator regression for idempotent payment retries, conflicting key reuse, maker-checker denial, duplicate approval, two partial payments, persisted donor balance and receipt reconciliation.
+- The related tests are grouped into one MR; PR #267's duplicate changes are transferred here to avoid separate small MRs.
+- PR #265 post-merge [CI #39234175711](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39234175711) passed all applicable checks. PR #266 requires fresh exact-head CI after the combined changes and independent post-merge verification after merge.
