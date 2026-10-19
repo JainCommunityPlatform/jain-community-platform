@@ -2062,3 +2062,10 @@ Acceptance boundaries:
 - Caller-supplied `userId`, `email`, `primaryPhone`, or `phoneNumbers` are rejected as non-whitelisted fields.
 - Each rejected request leaves the Firestore profile unchanged.
 - Test layer: NestJS HTTP + Firestore Emulator with test identities; Flutter fake-repository tests and staging/device identity verification remain separate evidence.
+
+
+## Profile identity upsert must preserve user-managed fields when auth claims are absent (20 October 2026)
+
+- When an authenticated request omits an optional email or display-name claim, identity upsert must preserve existing stored email and display name instead of writing null over user-managed profile values.
+- A successful profile update must survive a subsequent authenticated GET, because that GET resolves identity again.
+- Regression evidence: the Firestore-emulator HTTP read-after-write test initially failed because the second identity resolution erased the display name. The fix conditionally updates identity claims only when they are supplied; profile persistence assertions remain intact.
