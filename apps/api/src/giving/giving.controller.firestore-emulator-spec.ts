@@ -1095,11 +1095,11 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
     const tenantBHost = 'other-giving-isolation-emulator.jcp.test';
     const donor = await identity.resolve({
       subject: donorSubject,
-      email: \`\${donorSubject}@example.test\`,
+      email: `${donorSubject}@example.test`,
     } as AuthenticatedUser);
     const otherUser = await identity.resolve({
       subject: operatorSubject,
-      email: \`\${operatorSubject}@example.test\`,
+      email: `${operatorSubject}@example.test`,
     } as AuthenticatedUser);
 
     const initial = await request(app.getHttpServer())
@@ -1225,11 +1225,11 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
     const pledgeId = pledgeResponse.body.id as string;
     const donor = await identity.resolve({
       subject: donorSubject,
-      email: \`\${donorSubject}@example.test\`,
+      email: `${donorSubject}@example.test`,
     } as AuthenticatedUser);
     const otherUser = await identity.resolve({
       subject: operatorSubject,
-      email: \`\${operatorSubject}@example.test\`,
+      email: `${operatorSubject}@example.test`,
     } as AuthenticatedUser);
 
     const donorNotifications = await request(app.getHttpServer())
