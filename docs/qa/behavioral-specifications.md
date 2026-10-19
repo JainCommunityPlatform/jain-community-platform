@@ -2029,3 +2029,20 @@ Acceptance boundaries:
 - Reapproving a verified payment returns HTTP 409 and does not duplicate receipt or paid balance.
 - Two separately recorded and independently approved partial payments complete the pledge, produce one receipt per payment, and leave receipt reconciliation balanced.
 - Test layer: real NestJS HTTP + Firestore Emulator with test identities; no claim of external UPI/bank settlement or production identity.
+
+
+## Persisted notification preferences and read-state isolation (20 October 2026)
+
+### Scenario: Notification channel preferences are persisted per tenant and user
+
+- A member's email, WhatsApp and push preferences default to false (opt-out).
+- Updating preferences through the authenticated HTTP API is reflected by a subsequent API read and direct Firestore-emulator read.
+- The same user in a second tenant and a different user in the first tenant retain independent opt-out defaults; preferences must not bleed between tenant/user keys.
+
+### Scenario: In-app notification read state is persisted and owner-scoped
+
+- Creating a pledge through the real HTTP API creates a tenant-scoped `PLEDGE_CREATED` notification for the authenticated donor.
+- Only that donor in that tenant can mark the notification read; another user receives not-found and cannot change its state.
+- A subsequent notification-list request and direct Firestore-emulator read must show the persisted non-null `readAt`.
+- The same donor in another tenant must not see the notification.
+- Test layer: NestJS HTTP + Firestore Emulator. Real provider delivery and production/staging identity are not established by these tests.
