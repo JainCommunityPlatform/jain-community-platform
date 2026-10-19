@@ -1998,3 +1998,14 @@ Executable regression: `apps/flutter/test/features/website/presentation/website_
 - Cross-tenant scenarios that create financial records must use dedicated tenant IDs or clean up all created records.
 - Do not reuse a shared emulator tenant for a test that creates receipts when other tests assert exact reconciliation counts.
 - Preserve the exact-count reconciliation assertions; isolate fixtures instead of weakening expected counts.
+
+
+## Payment idempotency, maker-checker and partial-payment replay (19 October 2026)
+
+Given a donor pledge for INR 200.00 and a finance operator recording payment evidence:
+- When the same payment request is retried with the same idempotency key and same payload, the API returns the same payment record and does not create a duplicate.
+- When that idempotency key is reused with a different amount, the API returns HTTP 409 and does not create a second payment.
+- When the recording operator attempts to approve their own payment, the API returns HTTP 403 and the payment remains pending.
+- When a different finance approver approves the payment, a receipt is persisted. A second approval attempt returns HTTP 409 and must not create a second receipt or increase the paid balance again.
+- When a second partial payment is recorded and approved, the donor's persisted pledge reaches the full paid amount; exactly one receipt exists per approved payment and receipt reconciliation reports no missing, orphaned or amount-mismatched receipt.
+- Evidence layer: real NestJS HTTP with Firestore Emulator and test identity; production/staging identity and external payment settlement remain separate.
