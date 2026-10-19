@@ -648,3 +648,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - PR #266 combines the connected Flutter pledge → NestJS payment → independent approval → Firestore receipt flow with an API/Firestore-emulator regression for idempotent payment retries, conflicting key reuse, maker-checker denial, duplicate approval, two partial payments, persisted donor balance and receipt reconciliation.
 - The related tests are grouped into one MR; PR #267's duplicate changes are transferred here to avoid separate small MRs.
 - PR #265 post-merge [CI #39234175711](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39234175711) passed all applicable checks. PR #266 requires fresh exact-head CI after the combined changes and independent post-merge verification after merge.
+
+
+## Next P0/P1 cross-cutting batch — persisted notification preferences and read state (20 October 2026)
+
+- PR #266 merged at `c9c378da8bf8a43b41e67f8fdb413e7147d4dcad`; exact-head [CI #39304067428](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39304067428) passed required checks. Post-merge [CI #39305120442](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39305120442) was still in progress at last poll.
+- Branch `qa/p0-notification-persistence-isolation-batch` groups related persistence/security cases: channel preferences default to opt-out; updates survive HTTP read-after-write; preferences do not leak across tenants or users; pledge-created notifications persist; read state survives a fresh list request; another user and another tenant cannot mark/read the notification.
+- Real NestJS HTTP + Firestore Emulator is the automated evidence layer. Real provider delivery and staging/device identity are separate gates; Android AAB remains manual/on-demand.
