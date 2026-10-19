@@ -659,6 +659,6 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 
 ## Next grouped profile persistence and identity-boundary batch (20 October 2026)
 
-- PR #268 merged as `7c3cb24d32cffd5443c61a6584ebcc335af66d8a`; exact-head [CI #39305782003](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39305782003) passed all required jobs. Post-merge [CI #39306280409](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39306280409) was still in progress at last poll.
+- PR #268 merged as `7c3cb24d32cffd5443c61a6584ebcc335af66d8a`; exact-head [CI #39305782003](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39305782003) passed all required jobs. Post-merge [CI #39306280409](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39306280409) passed all applicable checks on master; Android AAB skipped by design.
 - Branch `qa/p1-profile-persistence-identity-batch` batches the remaining profile API persistence gap: valid field update → HTTP read-after-write → direct Firestore assertion; phone/contact fields remain immutable through this endpoint; malformed values and caller-supplied user/email/phone fields are rejected with no persisted change; another user's profile remains unchanged.
 - This is emulator-backed HTTP evidence, separate from existing fake-repository Flutter widget coverage and from staging/device identity verification.
