@@ -671,3 +671,10 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Post-merge CI:** [run #39307890603](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39307890603) was still running at the last poll; repository validation passed while Flutter/backend jobs were running.
 - **Current grouped branch:** `qa/p1-connected-profile-ui-api-persistence-batch` extends the connected Flutter → NestJS → Firestore emulator test with profile UI save/reload. It seeds a profile through HTTP, edits name/city in the Flutter widget, saves through the live API, then verifies the persisted profile from a fresh API read including retained email.
 - **Evidence boundary:** connected test identities + Firestore Emulator, not production Firebase or a physical device. Android AAB remains manual/on-demand.
+
+
+## PR #270 CI triage — connected profile UI matcher (20 October 2026)
+
+- Initial exact-head [CI #39308187625](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39308187625) passed Flutter analyze, ordinary Flutter tests, backend lint/unit/integration/Firestore-emulator/build and repository validation, but failed the connected UI/API step.
+- Failure was a test matcher, not an application failure: the saved profile name appears twice in the UI (header and Name field), while the test expected exactly one match.
+- Fixed the assertion to explicitly expect both UI representations. No product behavior assertions were removed. Fresh exact-head CI must verify the updated connected journey before merge.
