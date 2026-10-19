@@ -1,3 +1,15 @@
+# JCP Autonomous QA Checkpoint
+
+## Current checkpoint — 19 October 2026
+
+- **Merged:** [PR #265 — persisted cross-tenant donor isolation](https://github.com/JainCommunityPlatform/jain-community-platform/pull/265), merge commit `7cfe8f8c3e03e19471de5980ad392fa7d718f4c4`.
+- **Exact-head CI:** [run #39120375666](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39120375666) passed backend lint/unit/integration/Firestore-emulator/build, Flutter analyze/tests, repository validation and merge gate. Android AAB skipped by design.
+- **Post-merge CI:** [run #39234175711](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39234175711) is in progress; repository validation passed, Flutter and backend jobs were still running at last poll.
+- **Prior failure diagnosis:** CI #39120170312 exposed test-order contamination from creating a receipt in a shared tenant fixture. PR #265 isolated the test tenant and kept existing reconciliation assertions intact.
+- **Current branch:** `qa/p0-connected-donation-payment-receipt-batch` consolidates the remaining connected donation lifecycle gap into one MR: the pledge created by the donor UI is paid by a finance operator, approved by a different finance approver, verified in the donor receipt list against the exact pledge/payment IDs, reconciled by the live API, and shown in the refreshed Flutter receipts view. The test uses the real NestJS HTTP pipeline and Firestore Emulator.
+- **Acceptance gates:** exact-head CI must pass; diagnose and fix real failures without weakening assertions; merge only if every required check passes and the PR is mergeable; verify default-branch post-merge CI separately.
+- **Evidence boundary:** emulator-backed test identities are not production Firebase identity, external UPI/bank settlement, or staging/device evidence. Android AAB remains manual/on-demand.
+
 ## Latest execution — PR #197 merged; website tenant-boundary regression in progress (14 October 2026)
 
 - **Merged:** [PR #197 — cross-tenant finance approver decisions](https://github.com/JainCommunityPlatform/jain-community-platform/pull/197), merge commit `8b73a6d81e71c447e925c193fd62044bdac4da74`.
@@ -608,4 +620,20 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 
 - Exact-head [CI #39120170312](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39120170312) found the new test created an approved receipt in the suite's shared tenant, causing two later reconciliation assertions to observe one extra receipt. The new isolation assertions themselves passed; the failures were test-order contamination.
 - The test now uses a dedicated tenant pair and adds operator/approver memberships only in its isolated tenant. Existing exact-count reconciliation scenarios remain unchanged; no assertions are weakened.
-- PR #265 remains open pending fresh exact-head CI. Merge only after the entire Firestore-emulator suite, connected journey and all required checks pass.
+- PR #265 merged as `7cfe8f8c3e03e19471de5980ad392fa7d718f4c4`. Exact-head [CI #39120375666](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39120375666) passed all required checks after isolating the tenant fixture. Post-merge [CI #39234175711](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39234175711) is running; do not call it green until all required jobs finish.
+
+
+## Added to grouped donation lifecycle MR — payment retry and maker-checker matrix (19 October 2026)
+
+- The existing [PR #266](https://github.com/JainCommunityPlatform/jain-community-platform/pull/266) now also includes an emulator-backed HTTP matrix for same-key payment replay, conflicting key reuse (409), maker self-approval denial (403), duplicate approval denial (409), two partial payments completing one pledge, persisted donor balance, one receipt per payment, and balanced reconciliation.
+- This was deliberately folded into PR #266 rather than left as a separate small PR. The duplicate working PR #267 is being closed after transferring the test and QA notes to #266.
+- The default-branch run after PR #265, [CI #39234175711](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39234175711), completed successfully: backend, Flutter, repository validation and merge gate passed; Android AAB skipped by design.
+- PR #266's exact-head CI must rerun after these additions; do not merge until all required checks are green and mergeability is confirmed. Android AAB remains manual/on-demand.
+
+
+## PR #266 CI failure triage — wait for refreshed receipt identity (20 October 2026)
+
+- Exact-head [CI #39234773301](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39234773301) failed in the connected Flutter → NestJS → Firestore Emulator journey. Backend lint/unit/integration/emulator/build and repository validation passed; the merge gate correctly failed because the connected Flutter job failed. Android AAB was skipped.
+- The failure was in the UI assertion timing: after tapping refresh, the test waited for the receipt amount, which could already be visible in stale UI state, then immediately asserted the new receipt number. The test output showed the expected receipt number was absent at that instant.
+- Fixed the test to tap the specifically labelled **Refresh giving data** control and wait for the exact receipt number returned by the approved payment before asserting the amount and absence of Flutter exceptions. No business assertion was removed or weakened.
+- Fix commit: `55207097501c230adfa5f80c63080266233c98d7`. Await fresh exact-head CI before merge. PR #266 remains open until all required checks pass; post-merge verification will be checked separately.

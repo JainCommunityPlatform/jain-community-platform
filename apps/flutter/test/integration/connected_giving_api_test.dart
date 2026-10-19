@@ -19,6 +19,8 @@ void main() {
     'JCP_CONNECTED_TENANT_ID',
     defaultValue: 'connected-giving-test',
   );
+  const operatorSubject = String.fromEnvironment('JCP_CONNECTED_OPERATOR_ID');
+  const approverSubject = String.fromEnvironment('JCP_CONNECTED_APPROVER_ID');
 
   tearDownAll(connectedHttpClient.close);
 
@@ -48,6 +50,20 @@ void main() {
       final initialPledges = await api.getList('/api/giving/my-pledges');
       await api.getList('/api/giving/my-receipts');
       await api.getList('/api/notifications');
+      final operatorApi = ApiClient(
+        baseUrl: Uri.parse(apiUrl),
+        accessTokenProvider: () async => operatorSubject,
+        tenantIdProvider: () => tenantId,
+        requestTimeout: const Duration(seconds: 15),
+        client: connectedHttpClient,
+      );
+      final approverApi = ApiClient(
+        baseUrl: Uri.parse(apiUrl),
+        accessTokenProvider: () async => approverSubject,
+        tenantIdProvider: () => tenantId,
+        requestTimeout: const Duration(seconds: 15),
+        client: connectedHttpClient,
+      );
 
       await tester.pumpWidget(MaterialApp(home: DonorGivingPage(api: api)));
       final campaignFinder = find.text('Connected API receipt journey');
@@ -81,23 +97,67 @@ void main() {
       expect(createdPledgeAmount, findsOneWidget);
       expect(tester.takeException(), isNull);
 
-      final persistedPledges = await api.getList('/api/giving/my-pledges');
+      final persistedPledges = (await api.getList('/api/giving/my-pledges'))
+          .cast<Map<String, dynamic>>();
+      final createdPledge = persistedPledges.singleWhere((pledge) =>
+          pledge['campaignId'] == seededCampaign['id'] &&
+          pledge['pledgedAmountPaise'] == 12345);
       expect(
-        persistedPledges.cast<Map<String, dynamic>>().any((pledge) =>
-            pledge['campaignId'] == seededCampaign['id'] &&
-            pledge['pledgedAmountPaise'] == 12345),
+        createdPledge['id'],
+        isNotEmpty,
+        reason: 'The donor UI pledge must be persisted and returned by the live API',
+      );
+
+      // Continue the same UI-created pledge through the real API as a finance
+      // operator and an independent approver. The receipt must belong to this
+      // pledge, not merely to the separate fixture receipt seeded at server startup.
+      final payment = await operatorApi.post(
+        '/api/giving/pledges/${createdPledge['id']}/payments',
+        body: {
+          'amountPaise': 12345,
+          'method': 'UPI',
+          'reference': 'connected-ui-pledge-${createdPledge['id']}',
+        },
+        headers: {'Idempotency-Key': 'connected-ui-payment-${createdPledge['id']}'},
+      );
+      expect(payment['pledgeId'], createdPledge['id']);
+      expect(payment['status'], 'PENDING_APPROVAL');
+
+      final approvedPayment = await approverApi.post(
+        '/api/giving/payments/${payment['id']}/approve',
+      );
+      expect(approvedPayment['status'], 'VERIFIED');
+      expect(approvedPayment['pledgeId'], createdPledge['id']);
+      expect(approvedPayment['receiptNumber'], startsWith('JCP-'));
+
+      final persistedReceipts = (await api.getList('/api/giving/my-receipts'))
+          .cast<Map<String, dynamic>>();
+      final pledgeReceipts = persistedReceipts
+          .where((receipt) => receipt['pledgeId'] == createdPledge['id'])
+          .toList();
+      expect(pledgeReceipts, hasLength(1));
+      expect(pledgeReceipts.single['paymentId'], payment['id']);
+      expect(pledgeReceipts.single['amountPaise'], 12345);
+      expect(pledgeReceipts.single['receiptNumber'], approvedPayment['receiptNumber']);
+
+      final reconciliation = await operatorApi.getObject('/api/giving/reports/reconciliation');
+      expect(
+        (reconciliation['receipts'] as Map<String, dynamic>)['isBalanced'],
         isTrue,
-        reason: 'A confirmed pledge must be persisted and returned by the live API',
+        reason: 'Persisted verified payments and issued receipts must reconcile',
       );
 
       await tester.tap(find.text('Receipts'));
-      final receiptFinder = find.textContaining('JCP-');
-      for (var attempt = 0; attempt < 100 && receiptFinder.evaluate().isEmpty; attempt++) {
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Refresh giving data'));
+      final expectedReceiptNumber = find.text(approvedPayment['receiptNumber'] as String);
+      for (var attempt = 0; attempt < 150 && expectedReceiptNumber.evaluate().isEmpty; attempt++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
-
-      expect(receiptFinder, findsOneWidget);
-      expect(find.text('₹250.00'), findsOneWidget);
+      // Wait for the receipt itself, not its amount: the amount may already be
+      // rendered from stale state while the asynchronous refresh is still in flight.
+      expect(expectedReceiptNumber, findsOneWidget);
+      expect(find.text('₹123.45'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
     skip: apiUrl.isEmpty,

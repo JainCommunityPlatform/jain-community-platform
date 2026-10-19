@@ -1998,3 +1998,34 @@ Executable regression: `apps/flutter/test/features/website/presentation/website_
 - Cross-tenant scenarios that create financial records must use dedicated tenant IDs or clean up all created records.
 - Do not reuse a shared emulator tenant for a test that creates receipts when other tests assert exact reconciliation counts.
 - Preserve the exact-count reconciliation assertions; isolate fixtures instead of weakening expected counts.
+
+
+## Connected donation lifecycle — UI-created pledge through receipt and reconciliation (19 October 2026)
+
+### Scenario: The pledge created in the donor UI receives its own verified payment and receipt
+
+Given the connected NestJS API is running against the Firestore emulator with a donor, finance operator, and independent finance approver
+When the donor creates a valid pledge in the Flutter UI
+And the live API returns that exact persisted pledge
+And the finance operator records a payment for the same pledge
+And a different finance approver approves the payment
+Then the live API returns the payment as verified with a receipt number
+And the donor's tenant-scoped receipt history contains exactly one receipt for that pledge and payment
+And the receipt amount matches the payment amount
+And the reconciliation endpoint reports the verified payment and issued receipt as balanced
+And refreshing the Flutter receipts view displays the newly issued receipt
+
+Acceptance boundaries:
+- The connected journey must use real NestJS HTTP and Firestore Emulator persistence; finance operator and approver identities are distinct.
+- The receipt assertion must link to the pledge created by the UI, not only to a separately seeded fixture receipt.
+- This does not verify external UPI/bank settlement or production Firebase identity and staging/device behaviour.
+
+
+## Payment replay and partial-payment acceptance cases (19 October 2026)
+
+- Repeating a payment request with the same idempotency key and payload returns the same persisted payment.
+- Reusing that key with different details returns HTTP 409 without creating a second payment.
+- The recording operator cannot approve their own payment (HTTP 403).
+- Reapproving a verified payment returns HTTP 409 and does not duplicate receipt or paid balance.
+- Two separately recorded and independently approved partial payments complete the pledge, produce one receipt per payment, and leave receipt reconciliation balanced.
+- Test layer: real NestJS HTTP + Firestore Emulator with test identities; no claim of external UPI/bank settlement or production identity.
