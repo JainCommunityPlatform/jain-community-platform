@@ -621,3 +621,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - Exact-head [CI #39120170312](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39120170312) found the new test created an approved receipt in the suite's shared tenant, causing two later reconciliation assertions to observe one extra receipt. The new isolation assertions themselves passed; the failures were test-order contamination.
 - The test now uses a dedicated tenant pair and adds operator/approver memberships only in its isolated tenant. Existing exact-count reconciliation scenarios remain unchanged; no assertions are weakened.
 - PR #265 merged as `7cfe8f8c3e03e19471de5980ad392fa7d718f4c4`. Exact-head [CI #39120375666](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39120375666) passed all required checks after isolating the tenant fixture. Post-merge [CI #39234175711](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39234175711) is running; do not call it green until all required jobs finish.
+
+
+## Added to grouped donation lifecycle MR — payment retry and maker-checker matrix (19 October 2026)
+
+- The existing [PR #266](https://github.com/JainCommunityPlatform/jain-community-platform/pull/266) now also includes an emulator-backed HTTP matrix for same-key payment replay, conflicting key reuse (409), maker self-approval denial (403), duplicate approval denial (409), two partial payments completing one pledge, persisted donor balance, one receipt per payment, and balanced reconciliation.
+- This was deliberately folded into PR #266 rather than left as a separate small PR. The duplicate working PR #267 is being closed after transferring the test and QA notes to #266.
+- The default-branch run after PR #265, [CI #39234175711](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39234175711), completed successfully: backend, Flutter, repository validation and merge gate passed; Android AAB skipped by design.
+- PR #266's exact-head CI must rerun after these additions; do not merge until all required checks are green and mergeability is confirmed. Android AAB remains manual/on-demand.
