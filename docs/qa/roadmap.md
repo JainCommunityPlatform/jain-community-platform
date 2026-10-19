@@ -662,3 +662,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - PR #268 merged as `7c3cb24d32cffd5443c61a6584ebcc335af66d8a`; exact-head [CI #39305782003](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39305782003) passed all required jobs. Post-merge [CI #39306280409](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39306280409) passed all applicable checks on master; Android AAB skipped by design.
 - Branch `qa/p1-profile-persistence-identity-batch` batches the remaining profile API persistence gap: valid field update → HTTP read-after-write → direct Firestore assertion; phone/contact fields remain immutable through this endpoint; malformed values and caller-supplied user/email/phone fields are rejected with no persisted change; another user's profile remains unchanged.
 - This is emulator-backed HTTP evidence, separate from existing fake-repository Flutter widget coverage and from staging/device identity verification.
+
+
+## Next grouped P1 — connected profile UI to persisted API read-after-write (20 October 2026)
+
+- PR #269 merged at `c2b6ac853c63910ec59b229456a88ca1f3b26deb`; exact-head [CI #39307326991](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39307326991) passed all required checks. Post-merge [CI #39307890603](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39307890603) was running at last poll.
+- Branch `qa/p1-connected-profile-ui-api-persistence-batch` extends the existing connected Flutter/NestJS/Firestore emulator run with a profile widget journey: seed editable profile via HTTP, load through the Flutter profile page, update name and city through the UI, then verify the new values and preserved email through a fresh live API read.
+- This closes the current gap between fake-repository profile widget tests and emulator-backed API tests. Physical-device and production identity checks remain separate acceptance gates.
