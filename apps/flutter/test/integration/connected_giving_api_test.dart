@@ -295,8 +295,8 @@ void main() {
       // the status message is the first lazy child, above the theme section.
       await tester.scrollUntilVisible(
         find.text('Theme & header'),
-        editorList,
         300,
+        scrollable: editorList,
         maxScrolls: 30,
       );
       await tester.pumpAndSettle();
