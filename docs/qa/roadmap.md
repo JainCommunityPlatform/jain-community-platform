@@ -684,3 +684,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Root cause from the Flutter test log: the connected website publish test looked for the hero title TextField while `Hero / मुख्य भाग` was collapsed. The test never reached the publish or persistence assertions.
 - Fix: explicitly expand the hero section before editing and after reopening the editor. All substantive assertions remain in place; no test is skipped and no checks are weakened.
 - Fresh exact-head CI is required before merge. Android AAB remains manual/on-demand.
+
+
+## PR #271 — connected website editor async-load timing correction (20 October 2026)
+
+- Exact-head CI #39350905898 failed in the connected Flutter → NestJS → Firestore job because the test attempted to tap the hero section before async editor load exposed it.
+- The latest branch revision waits for the hero section on both initial load and editor reopen, asserting it exists before tapping. The substantive save/publish/version/preservation/HTTP 400/no-mutation/reload assertions are retained.
+- Fresh exact-head CI is required before merge; Android AAB remains manual/on-demand.
