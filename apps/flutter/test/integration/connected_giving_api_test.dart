@@ -7,6 +7,9 @@ import 'package:jain_community_platform/core/api/api_client.dart';
 import 'package:jain_community_platform/features/giving/presentation/donor_giving_page.dart';
 import 'package:jain_community_platform/features/profile/data/profile_repository.dart';
 import 'package:jain_community_platform/features/profile/presentation/profile_page.dart';
+import 'package:jain_community_platform/features/website/data/website_repository.dart';
+import 'package:jain_community_platform/features/website/presentation/website_editor_page.dart';
+import 'package:jain_community_platform/core/api/api_exception.dart';
 
 void main() {
   // Construct the IOClient outside the widget-test zone. Flutter's widget-test
@@ -23,6 +26,7 @@ void main() {
   );
   const operatorSubject = String.fromEnvironment('JCP_CONNECTED_OPERATOR_ID');
   const approverSubject = String.fromEnvironment('JCP_CONNECTED_APPROVER_ID');
+  const contentManagerSubject = String.fromEnvironment('JCP_CONNECTED_CONTENT_MANAGER_ID');
 
   tearDownAll(connectedHttpClient.close);
 
@@ -223,6 +227,91 @@ void main() {
       expect(persisted, containsPair('state', 'Maharashtra'));
       expect(persisted, containsPair('postalCode', '411014'));
       expect(persisted, containsPair('email', 'connected-donor@example.test'));
+      expect(tester.takeException(), isNull);
+    },
+    skip: apiUrl.isEmpty,
+  );
+
+  testWidgets(
+    'publishes website edits through Flutter and verifies persisted reload and validation failure',
+    (tester) async {
+      final api = ApiClient(
+        baseUrl: Uri.parse(apiUrl),
+        accessTokenProvider: () async => contentManagerSubject,
+        tenantIdProvider: () => tenantId,
+        requestTimeout: const Duration(seconds: 15),
+        client: connectedHttpClient,
+      );
+      final repository = WebsiteRepository(api);
+      await repository.updateSite({'contact': {'phone': '+912012345678'}});
+      final beforePublish = await repository.getSite();
+      final originalTitle = (beforePublish['hero'] as Map<String, dynamic>)['title'];
+
+      await tester.pumpWidget(MaterialApp(
+        home: WebsiteEditorPage(
+          repository: repository,
+          tenantName: 'Connected giving test tenant',
+        ),
+      ));
+      final heroTitle = find.byWidgetPredicate(
+        (widget) => widget is TextField &&
+            widget.decoration?.labelText == 'मंदिर का नाम / शीर्षक',
+      );
+      for (var attempt = 0; attempt < 100 && heroTitle.evaluate().isEmpty; attempt++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(heroTitle, findsOneWidget);
+      expect(tester.widget<TextField>(heroTitle).controller!.text, originalTitle);
+
+      await tester.ensureVisible(heroTitle);
+      await tester.enterText(heroTitle, 'Connected Published Website');
+      await tester.tap(find.text('Save & Publish Website'));
+      for (var attempt = 0; attempt < 150 &&
+          find.text('वेबसाइट अपडेट प्रकाशित हो गई।').evaluate().isEmpty; attempt++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(find.text('वेबसाइट अपडेट प्रकाशित हो गई।'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      final persisted = await repository.getSite();
+      expect(persisted['version'], (beforePublish['version'] as num) + 1);
+      expect((persisted['hero'] as Map<String, dynamic>)['title'],
+          'Connected Published Website');
+      expect((persisted['contact'] as Map<String, dynamic>)['phone'],
+          '+912012345678');
+
+      await expectLater(
+        repository.updateSite({'hero': {'title': '   '}}),
+        throwsA(isA<ApiException>().having(
+          (error) => error.statusCode,
+          'statusCode',
+          400,
+        )),
+      );
+      final afterRejectedUpdate = await repository.getSite();
+      expect(afterRejectedUpdate['version'], persisted['version']);
+      expect((afterRejectedUpdate['hero'] as Map<String, dynamic>)['title'],
+          'Connected Published Website');
+      expect((afterRejectedUpdate['contact'] as Map<String, dynamic>)['phone'],
+          '+912012345678');
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpWidget(MaterialApp(
+        home: WebsiteEditorPage(
+          repository: repository,
+          tenantName: 'Connected giving test tenant',
+        ),
+      ));
+      final reloadedHeroTitle = find.byWidgetPredicate(
+        (widget) => widget is TextField &&
+            widget.decoration?.labelText == 'मंदिर का नाम / शीर्षक',
+      );
+      for (var attempt = 0; attempt < 100 && reloadedHeroTitle.evaluate().isEmpty; attempt++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(reloadedHeroTitle, findsOneWidget);
+      expect(tester.widget<TextField>(reloadedHeroTitle).controller!.text,
+          'Connected Published Website');
       expect(tester.takeException(), isNull);
     },
     skip: apiUrl.isEmpty,
