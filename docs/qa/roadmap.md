@@ -728,3 +728,21 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Branch `qa/p1-public-directory-tenant-routing-security-batch` groups resolver precedence/fallback tests, middleware tenant-header propagation, public directory field allowlisting/inactive tenant filtering, and anonymous HTTP reads for the directory and resolved tenant website.
 - Security invariant: a known hostname is authoritative. If it maps to an inactive or unverified tenant, a caller-supplied `x-jcp-tenant-id` must not redirect that request to a different tenant. Explicit tenant-ID fallback remains supported only when the hostname has no tenant mapping (mobile API host case).
 - Exact-head CI and post-merge CI are required. Unit/HTTP tests do not replace real Firestore/staging hostname and device verification. Android AAB remains manual/on-demand.
+
+
+## Verified execution — public directory and tenant-routing security (20 October 2026)
+
+- PR #274 merged as `1ccc6812746dfa6a62202250e1931a0a4a40d0f7`; exact-head CI #39371802595 and post-merge CI #39372227655 passed all applicable checks. Android AAB skipped by design.
+- The resolver now treats a mapped hostname as authoritative. Inactive/unverified mappings fail closed instead of falling back to a caller-supplied tenant ID; explicit-ID fallback remains available for hostnames with no tenant mapping.
+- Initial CI failure was a test expectation mismatch around middleware header trimming. The test was corrected to assert the trimmed tenant ID; product behavior and security assertions were preserved.
+- **Current grouped batch:** `qa/p1-localization-accessibility-responsive-audit-batch` localizes the public tenant landing page in all four supported locales and tests live language changes, semantic headings, accessible touch targets and 200% text scaling at 320px.
+- Require exact-head CI and post-merge CI. Physical screen-reader/keyboard/contrast/device checks remain environment gates; Android AAB remains manual/on-demand.
+
+
+## QA-013 — grouped public landing localization and accessibility
+
+- PR #275 groups public landing copy translations for English/Hindi/Marathi/Gujarati, dynamic language switching, semantic heading roles, decorative icon exclusion, 320px layout and 200% text scaling/touch-target assertions.
+- Code/test head `fcceee666320c3ebffe6509ef40b731e3a66b248` passed [CI #39373383651](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39373383651): Flutter analyze/tests and connected journeys, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Android AAB skipped by design.
+- Repair history: changed unsupported `Icon.excludeFromSemantics` to `ExcludeSemantics`; scrolled lazy-list items into view for locale assertions; removed a leaked test semantics handle. Assertions were retained.
+- The QA checkpoint, inventory and roadmap are included in this batch; inspect and pass CI on the final documentation-updated head before merge.
+- Physical screen-reader/keyboard focus order, contrast and real-device verification remain open environment gates. Android AAB remains manual/on-demand.
