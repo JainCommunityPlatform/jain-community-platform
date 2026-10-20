@@ -686,3 +686,12 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Post-merge CI:** [run #39309084778](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39309084778) passed Flutter analyze/tests and connected giving/profile journeys, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Android AAB skipped by design.
 - **Next grouped P1 branch:** qa/p1-connected-website-publish-persistence-batch connects the Flutter website editor to the real NestJS API and Firestore Emulator. It verifies publish/save, version increment, preservation of unrelated contact fields, rejected blank hero title without persisted mutation, and reopening the editor with the persisted title.
 - **Evidence boundary:** test identities + Firestore Emulator; no claim of production tenant hostname routing, Firebase Storage/public media reachability, or physical-device validation. Android AAB remains manual/on-demand.
+
+
+## CI failure triage — connected website publish journey (20 October 2026)
+
+- PR #271 exact-head [CI #39349173873](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39349173873) failed only in the connected Flutter → NestJS → Firestore Emulator job; backend lint/unit/integration/emulator/build and repository validation passed. Android AAB was skipped by design.
+- Failure: the new connected website widget test searched for the hero-title TextField before expanding the editor's `Hero / मुख्य भाग` ExpansionTile. That section is intentionally collapsed on initial load, so the finder returned zero widgets. This was a test setup/interaction omission, not evidence of an API or Firestore persistence failure.
+- Fix on the same grouped branch: explicitly expand the hero section before editing and again after reopening the editor. Keep publish confirmation, version increment, preservation of contact fields, HTTP 400 on blank title, unchanged persisted version/title, and reload assertions intact.
+- **Current state:** awaiting fresh exact-head CI for the corrected head. PR #271 must remain unmerged until every required job and the merge gate pass.
+- Evidence boundary: the run reached the connected integration suite, but the website case failed before the editor interaction; no successful end-to-end website persistence claim is made yet. Production identity/hostname, public media reachability and device verification remain open.
