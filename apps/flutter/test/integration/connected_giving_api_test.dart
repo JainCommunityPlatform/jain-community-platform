@@ -285,11 +285,27 @@ void main() {
       await tester.ensureVisible(heroTitle);
       await tester.enterText(heroTitle, 'Connected Published Website');
       await tester.tap(find.text('Save & Publish Website'));
+
+      // The editor's status message is placed at the top of the lazy ListView.
+      // We were scrolled to the hero section when publishing, so scroll back to
+      // the status area before asserting the confirmation. Do not mistake an
+      // offscreen, unbuilt message for a failed publish.
+      final editorList = find.byType(ListView).first;
+      await tester.drag(editorList, const Offset(0, 1600));
+      await tester.pump();
+      final publishSuccess = find.text('वेबसाइट अपडेट प्रकाशित हो गई।');
+      final publishError = find.textContaining('सहेजना विफल:');
       for (var attempt = 0; attempt < 150 &&
-          find.text('वेबसाइट अपडेट प्रकाशित हो गई।').evaluate().isEmpty; attempt++) {
+          publishSuccess.evaluate().isEmpty &&
+          publishError.evaluate().isEmpty; attempt++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
-      expect(find.text('वेबसाइट अपडेट प्रकाशित हो गई।'), findsOneWidget);
+      expect(
+        publishError,
+        findsNothing,
+        reason: 'Website publish should succeed; visible error: ${publishError.evaluate().map((e) => (e.widget as Text).data).join('; ')}',
+      );
+      expect(publishSuccess, findsOneWidget);
       expect(tester.takeException(), isNull);
 
       final persisted = await repository.getSite();
