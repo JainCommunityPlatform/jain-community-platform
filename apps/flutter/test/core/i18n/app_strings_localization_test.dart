@@ -55,4 +55,16 @@ void main() {
       semantics.dispose();
     }
   });
+  test('public landing copy exists in every supported locale without English fallback', () {
+    const english = AppStrings('en');
+    for (final code in ['hi', 'mr', 'gu']) {
+      final strings = AppStrings(code);
+      expect(strings.publicHeroTitle, isNotEmpty, reason: '$code hero title');
+      expect(strings.publicHeroTitle, isNot(english.publicHeroTitle));
+      expect(strings.publicActionsHeading, isNot(english.publicActionsHeading));
+      expect(strings.publicEventsTitle, isNot(english.publicEventsTitle));
+      expect(strings.signInContinue, isNot(english.signInContinue));
+    }
+  });
+
 }
