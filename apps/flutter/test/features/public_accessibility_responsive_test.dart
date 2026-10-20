@@ -115,8 +115,18 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(find.bySemanticsLabel('Your Jain Temple Community'), findsOneWidget);
-    expect(find.bySemanticsLabel('Sign in'), findsOneWidget);
+    final heroTitle = find.text('Your Jain Temple Community');
+    expect(heroTitle, findsOneWidget);
+    expect(
+      find.ancestor(
+        of: heroTitle,
+        matching: find.byWidgetPredicate(
+          (widget) => widget is Semantics && widget.properties.header == true,
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Sign in'), findsOneWidget);
     for (final button in tester.widgetList<OutlinedButton>(find.byType(OutlinedButton))) {
       final finder = find.byWidget(button);
       expect(tester.getSize(finder).height, greaterThanOrEqualTo(48));
