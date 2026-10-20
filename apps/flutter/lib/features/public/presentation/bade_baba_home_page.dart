@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/i18n/app_strings.dart';
 import '../../../core/routing/app_routes.dart';
 
 class BadeBabaHomePage extends StatelessWidget {
@@ -10,6 +11,7 @@ class BadeBabaHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final strings = AppStrings.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('MyJinalay'),
@@ -17,41 +19,41 @@ class BadeBabaHomePage extends StatelessWidget {
           TextButton.icon(
             onPressed: () => context.go(AppRoutes.login),
             icon: const Icon(Icons.login),
-            label: const Text('Sign in'),
+            label: Text(strings.signIn),
           ),
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
         children: [
-          _HeroCard(colors: colors),
+          _HeroCard(colors: colors, strings: strings),
           const SizedBox(height: 20),
-          const _SectionTitle('What would you like to do?'),
+          _SectionTitle(strings.publicActionsHeading),
           const SizedBox(height: 12),
-          const _ActionGrid(),
+          _ActionGrid(strings: strings),
           const SizedBox(height: 28),
-          const _SectionTitle('Community'),
+          _SectionTitle(strings.publicCommunityHeading),
           const SizedBox(height: 12),
           _InfoCard(
             icon: Icons.event,
-            title: 'Events & registrations',
-            text: 'Join temple and community events. Your JCP identity keeps your registrations connected across activities.',
+            title: strings.publicEventsTitle,
+            text: strings.publicEventsDescription,
           ),
           _InfoCard(
             icon: Icons.volunteer_activism,
-            title: 'Seva & giving',
-            text: 'Support temple initiatives and keep your participation connected to your JCP account.',
+            title: strings.publicSevaTitle,
+            text: strings.publicSevaDescription,
           ),
           _InfoCard(
             icon: Icons.notifications_active,
-            title: 'Stay connected',
-            text: 'Get important temple updates through the communication channels configured by the temple.',
+            title: strings.publicStayConnectedTitle,
+            text: strings.publicStayConnectedDescription,
           ),
           const SizedBox(height: 20),
           FilledButton.icon(
             onPressed: () => context.go(AppRoutes.login),
             icon: const Icon(Icons.person),
-            label: const Text('Sign in to continue'),
+            label: Text(strings.signInContinue),
           ),
         ],
       ),
@@ -60,9 +62,10 @@ class BadeBabaHomePage extends StatelessWidget {
 }
 
 class _HeroCard extends StatelessWidget {
-  const _HeroCard({required this.colors});
+  const _HeroCard({required this.colors, required this.strings});
 
   final ColorScheme colors;
+  final AppStrings strings;
 
   @override
   Widget build(BuildContext context) {
@@ -80,20 +83,22 @@ class _HeroCard extends StatelessWidget {
         child: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.temple_hindu, size: 52),
+            Icon(Icons.temple_hindu, size: 52, excludeFromSemantics: true),
             SizedBox(height: 16),
-            Text(
-              'Your Jain Temple Community',
+            Semantics(
+              header: true,
+              child: Text(
+              strings.publicHeroTitle,
               style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
-            ),
+            )),
             SizedBox(height: 6),
             Text(
-              'Discover temples and community activities',
+              strings.publicHeroSubtitle,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             SizedBox(height: 12),
             Text(
-              'Explore temple information, events, seva, registrations and community updates in one place.',
+              strings.publicHeroDescription,
               style: TextStyle(height: 1.45),
             ),
           ],
@@ -104,15 +109,17 @@ class _HeroCard extends StatelessWidget {
 }
 
 class _ActionGrid extends StatelessWidget {
-  const _ActionGrid();
+  const _ActionGrid({required this.strings});
+
+  final AppStrings strings;
 
   @override
   Widget build(BuildContext context) {
     final actions = [
-      (Icons.event_available, 'Events'),
-      (Icons.app_registration, 'Register'),
-      (Icons.volunteer_activism, 'Seva'),
-      (Icons.account_balance, 'Temple'),
+      (Icons.event_available, strings.publicActionEvents),
+      (Icons.app_registration, strings.publicActionRegister),
+      (Icons.volunteer_activism, strings.publicActionSeva),
+      (Icons.account_balance, strings.publicActionTemple),
     ];
     return Wrap(
       spacing: 10,
@@ -137,8 +144,10 @@ class _SectionTitle extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) =>
-      Text(text, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800));
+  Widget build(BuildContext context) => Semantics(
+        header: true,
+        child: Text(text, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+      );
 }
 
 class _InfoCard extends StatelessWidget {
