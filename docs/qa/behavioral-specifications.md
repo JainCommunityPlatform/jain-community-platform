@@ -2166,3 +2166,11 @@ Then the older response cannot overwrite the newer user, tenant, or role
 
 - Test layer: Flutter controller unit tests using completers to deterministically control asynchronous response ordering.
 - Evidence boundary: this validates controller race handling; real Firebase credential revocation, app restart, offline UI, and device-level auth persistence remain environment gates.
+
+
+## Public directory and tenant hostname boundary — 20 October 2026
+
+- A known tenant hostname is authoritative even when a caller also supplies `x-jcp-tenant-id`. If the hostname resolves to an inactive or unverified domain, resolution must fail rather than falling back to a different tenant ID.
+- A tenant ID may be used as a mobile-client fallback only when the request hostname has no tenant-domain mapping.
+- The public tenant directory exposes only public identity/location/image fields and excludes inactive tenants and private tenant metadata. Public website and directory GET routes remain anonymous; mutations stay permission-protected.
+- Automated unit/HTTP tests are evidence for code behavior, not proof of real custom-domain DNS/TLS, production Firestore, Storage reachability, or device rendering.
