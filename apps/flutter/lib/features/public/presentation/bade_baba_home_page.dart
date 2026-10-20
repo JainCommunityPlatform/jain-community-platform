@@ -83,7 +83,7 @@ class _HeroCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.temple_hindu, size: 52, excludeFromSemantics: true),
+            const ExcludeSemantics(child: Icon(Icons.temple_hindu, size: 52)),
             const SizedBox(height: 16),
             Semantics(
               header: true,
