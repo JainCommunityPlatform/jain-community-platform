@@ -742,3 +742,10 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - Exact-head [CI #39353935088](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39353935088) passed Flutter analyze, the ordinary 119-test suite, backend lint/unit/integration/Firestore-emulator/build and repository validation, but the connected website case failed in the test harness: scrollUntilVisible was given a ListView finder where Flutter requires a Scrollable finder.
 - Corrected the test to locate the Scrollable descendant of the editor ListView and pass that finder to scrollUntilVisible. This is a test API type correction; publish confirmation, version/persistence, unrelated contact preservation, invalid update/no-mutation, and reopen assertions remain.
 - Fresh exact-head CI required; PR #271 remains unmerged. Android AAB remains manual/on-demand.
+
+
+## PR #271 status-area scroll helper correction — 20 October 2026
+
+- Exact-head CI #39354424678 passed Flutter analysis, ordinary Flutter tests, backend checks and repository validation, but the connected test failed because scrollUntilVisible could not resolve the selected Scrollable descendant in the editor widget tree.
+- Replaced that call with the same dragUntilVisible helper already used successfully to navigate the editor's lazy sections, targeting the first Theme & header section before waiting for publish status. This keeps the status message observable without weakening publish/persistence assertions.
+- Fresh exact-head CI required; do not merge until the connected journey and merge gate pass. Android AAB remains manual/on-demand.
