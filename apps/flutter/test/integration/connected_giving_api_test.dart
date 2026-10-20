@@ -291,11 +291,21 @@ void main() {
       // the status area before asserting the confirmation. Do not mistake an
       // offscreen, unbuilt message for a failed publish.
       final editorList = find.byType(ListView).first;
-      await tester.drag(editorList, const Offset(0, 1600));
-      await tester.pump();
+      // Use the scrollable's visibility helper rather than a single large drag:
+      // the status message is the first lazy child, above the theme section.
+      await tester.scrollUntilVisible(
+        find.text('Theme & header'),
+        editorList,
+        300,
+        maxScrolls: 30,
+      );
+      await tester.pumpAndSettle();
       final publishSuccess = find.text('वेबसाइट अपडेट प्रकाशित हो गई।');
       final publishError = find.textContaining('सहेजना विफल:');
-      for (var attempt = 0; attempt < 150 &&
+      // The API request has a 15-second timeout. Wait beyond that boundary so
+      // an actual request failure is surfaced as text rather than misreported
+      // as a missing success message at the end of the timeout window.
+      for (var attempt = 0; attempt < 300 &&
           publishSuccess.evaluate().isEmpty &&
           publishError.evaluate().isEmpty; attempt++) {
         await tester.pump(const Duration(milliseconds: 100));
