@@ -22,6 +22,7 @@ import { FirestoreService } from '../src/database/firestore.service';
 import { WebsiteService } from '../src/website/website.service';
 import { FirebaseStorageService } from '../src/website/firebase-storage.service';
 import { NotificationsService } from '../src/notifications/notifications.service';
+import { PlatformService } from '../src/platform/platform.service';
 
 describe('API endpoints (integration)', () => {
   let app: INestApplication;
@@ -2846,6 +2847,155 @@ describe('API endpoints (integration)', () => {
 
       expect(route.service).not.toHaveBeenCalled();
     }
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
+
+  it('rejects invalid website configuration DTOs before update or success audit', async () => {
+    website.updateCurrent.mockClear();
+    audit.record.mockClear();
+
+    const invalidBodies = [
+      { theme: 'not-an-object' },
+      { publish: 'yes' },
+      { _versionNote: 'x'.repeat(201) },
+      { contact: {}, tenantId: 'attacker-tenant' },
+    ];
+
+    for (const body of invalidBodies) {
+      await request(app.getHttpServer())
+        .put('/api/website/site')
+        .set('Host', 'badebabakharadi.com')
+        .set('x-test-user', 'user-content-manager')
+        .send(body)
+        .expect(400);
+    }
+
+    expect(website.updateCurrent).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid profile DTO values and caller-controlled fields before profile update', async () => {
+    const profiles = app.get(ProfileService) as unknown as {
+      updateCurrent: jest.Mock;
+    };
+    profiles.updateCurrent.mockClear();
+
+    const invalidBodies = [
+      { displayName: 'A' },
+      { postalCode: 'ABCDE' },
+      { primaryPhone: '9876543210' },
+      { address: 'Pune', tenantId: 'attacker-tenant' },
+    ];
+
+    for (const body of invalidBodies) {
+      await request(app.getHttpServer())
+        .patch('/api/profile')
+        .set('x-test-user', 'user-a')
+        .send(body)
+        .expect(400);
+    }
+
+    expect(profiles.updateCurrent).not.toHaveBeenCalled();
+  });
+
+  it('rejects missing membership roles and caller-supplied tenant scope before member mutations', async () => {
+    tenantMembers.create.mockClear();
+    tenantMembers.update.mockClear();
+    audit.record.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/tenant/members')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .send({ userId: '00000000-0000-4000-8000-000000000099' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/api/tenant/members')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .send({
+        userId: '00000000-0000-4000-8000-000000000099',
+        role: 'CONTENT_MANAGER',
+        tenantId: 'attacker-tenant',
+      })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .patch('/api/tenant/members/00000000-0000-4000-8000-000000000099')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .send({})
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .patch('/api/tenant/members/00000000-0000-4000-8000-000000000099')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .send({ role: 'EVENT_MANAGER', tenantId: 'attacker-tenant' })
+      .expect(400);
+
+    expect(tenantMembers.create).not.toHaveBeenCalled();
+    expect(tenantMembers.update).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
+  it('rejects malformed platform tenant and tenant-admin DTOs before service or audit calls', async () => {
+    const platform = app.get(PlatformService);
+    const createTenant = jest.spyOn(platform, 'createTenant');
+    const updateTenant = jest.spyOn(platform, 'updateTenant');
+    const addTenantAdmin = jest.spyOn(platform, 'addTenantAdmin');
+    createTenant.mockClear();
+    updateTenant.mockClear();
+    addTenantAdmin.mockClear();
+    audit.record.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/platform/tenants')
+      .set('x-test-user', 'user-platform-admin')
+      .send({ name: 'Valid Temple', slug: 'Invalid Slug' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/api/platform/tenants')
+      .set('x-test-user', 'user-platform-admin')
+      .send({ name: 'x'.repeat(121), slug: 'valid-temple' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/api/platform/tenants')
+      .set('x-test-user', 'user-platform-admin')
+      .send({ name: 'Valid Temple', slug: 'valid-temple', tenantId: 'attacker-tenant' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .put('/api/platform/tenants/tenant-finance-a')
+      .set('x-test-user', 'user-platform-admin')
+      .send({ name: 'x'.repeat(121) })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .put('/api/platform/tenants/tenant-finance-a')
+      .set('x-test-user', 'user-platform-admin')
+      .send({ city: 'Pune', slug: 'attacker-slug' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/api/platform/tenants/tenant-finance-a/admins')
+      .set('x-test-user', 'user-platform-admin')
+      .send({ email: 'not-an-email' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/api/platform/tenants/tenant-finance-a/admins')
+      .set('x-test-user', 'user-platform-admin')
+      .send({ email: 'admin@example.test', tenantId: 'attacker-tenant' })
+      .expect(400);
+
+    expect(createTenant).not.toHaveBeenCalled();
+    expect(updateTenant).not.toHaveBeenCalled();
+    expect(addTenantAdmin).not.toHaveBeenCalled();
     expect(audit.record).not.toHaveBeenCalled();
   });
 

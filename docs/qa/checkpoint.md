@@ -756,3 +756,21 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - Exact-head [CI #39354926285](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39354926285) passed Flutter analysis and ordinary tests, backend lint/unit/integration/Firestore-emulator/build, and repository validation, but the connected website publish test still could not find the success message.
 - The latest test correction showed that scrolling only until Theme & header becomes visible does not guarantee the status card inserted before it is in the viewport. The test now makes a series of bounded downward drags on the editor ListView to return fully to the top before waiting for success or error feedback.
 - Publish, persisted version/title/contact, invalid-update HTTP 400/no-mutation, and reopened-editor assertions remain. Require a fresh exact-head CI run; PR #271 remains unmerged. Android AAB remains manual/on-demand.
+
+
+## PR #271 merged; next grouped HTTP DTO validation batch — 20 October 2026
+
+- **Merged:** [PR #271](https://github.com/JainCommunityPlatform/jain-community-platform/pull/271), merge commit `80f2cdb72f2ba12aa3a447dcc8d18b886500a572`.
+- **Exact-head CI:** [run #39355422215](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39355422215) passed Flutter analysis/tests including connected Flutter → NestJS → Firestore website publish/read-after-write, backend lint/unit/integration/Firestore-emulator/build, repository validation, and merge gate. Android AAB skipped by design.
+- **Post-merge CI:** [run #39355751162](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39355751162) was still in progress at the time this checkpoint was written; verify the final outcome before recording post-merge success.
+- **Current branch:** `qa/p1-http-dto-validation-platform-website-profile-batch` consolidates invalid payload/no-side-effect tests for website configuration, profile update, tenant membership create/update, and platform tenant create/update/admin routes. The goal is a single coherent DTO/failure-mapping MR, not one MR per route.
+- **Merge gate:** exact-head CI and merge gate must pass; do not infer post-merge success from PR-head CI. Android AAB remains manual/on-demand.
+
+
+## PR #271 post-merge verification — 20 October 2026
+
+- **Merged:** [PR #271](https://github.com/JainCommunityPlatform/jain-community-platform/pull/271), commit `80f2cdb72f2ba12aa3a447dcc8d18b886500a572`.
+- **Exact-head CI:** [#39355422215](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39355422215) passed Flutter analysis/tests including the connected website publish/reload journey, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate.
+- **Post-merge CI:** [#39355751162](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39355751162) passed all applicable checks on the default branch. Android AAB skipped by design.
+- **Next grouped batch:** PR #272 extends the HTTP DTO failure matrix across website configuration, profile updates, tenant member mutations and platform tenant/admin routes; invalid inputs must return HTTP 400 before service/audit side effects.
+- **Current PR #272 head at this checkpoint edit:** `a0904d9d3b2454bf55990249f324eac04e908760`; fresh exact-head CI must be rechecked after the checkpoint changes. Android AAB remains manual/on-demand.
