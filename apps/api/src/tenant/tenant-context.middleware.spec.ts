@@ -55,4 +55,28 @@ describe('TenantContextMiddleware', () => {
       expect.any(Function),
     );
   });
+
+  it('passes an explicit mobile tenant ID to resolution while using the resolved tenant context', async () => {
+    const tenant = { id: 'tenant-mobile', name: 'Mobile tenant', hostname: 'mobile.example.test' };
+    const tenantService = { resolve: jest.fn().mockResolvedValue(tenant) };
+    const tenantContextStore = { run: jest.fn((context, callback) => callback()) };
+    const middleware = new TenantContextMiddleware(
+      tenantService as unknown as TenantService,
+      tenantContextStore as unknown as TenantContextStore,
+    );
+    const next = jest.fn();
+
+    await middleware.use(
+      { hostname: 'api.jcp.example', header: jest.fn((name: string) =>
+        name.toLowerCase() === 'x-jcp-tenant-id' ? ' tenant-mobile ' : undefined,
+      ) } as never,
+      {} as never,
+      next,
+    );
+
+    expect(tenantService.resolve).toHaveBeenCalledWith('api.jcp.example', ' tenant-mobile ');
+    expect(tenantContextStore.run).toHaveBeenCalledWith(tenant, expect.any(Function));
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
 });
