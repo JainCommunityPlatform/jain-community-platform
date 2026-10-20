@@ -382,3 +382,6 @@ Evidence boundaries:
 
 
 - PR #271 latest failure [CI #39352235703](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39352235703): connected website publish test could not find the success message because the test was scrolled to the hero section and the status message is in the lazy ListView's top area. Test now scrolls to status, surfaces any visible save error, and still requires the success message and subsequent persisted version/title/contact checks. Fresh exact-head CI is required before merge.
+
+
+- PR #271 exact-head CI #39353197227: backend lint/unit/integration/Firestore-emulator/build and repository validation passed; Flutter analyze and regular tests passed; connected website publish test still failed to observe the success message within its 15-second polling window, without a visible save-error message. The next correction uses scrollUntilVisible to return to the first editor section and waits beyond the API request timeout. Core persistence/rejection assertions are retained; rerun exact-head CI before merge.
