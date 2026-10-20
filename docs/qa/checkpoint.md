@@ -678,3 +678,81 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - Initial exact-head [CI #39308187625](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39308187625) passed Flutter analyze, ordinary Flutter tests, backend lint/unit/integration/Firestore-emulator/build and repository validation, but failed the connected UI/API step.
 - Failure was a test matcher, not an application failure: the saved profile name appears twice in the UI (header and Name field), while the test expected exactly one match.
 - Fixed the assertion to explicitly expect both UI representations. No product behavior assertions were removed. Fresh exact-head CI must verify the updated connected journey before merge.
+
+## Verified execution — connected profile UI persistence (20 October 2026)
+
+- **Merged:** [PR #270](https://github.com/JainCommunityPlatform/jain-community-platform/pull/270), merge commit `36fc2e371fd82ccb35ea528a21626aa009f77b0b`.
+- **Exact-head CI:** [run #39308626401](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39308626401) passed.
+- **Post-merge CI:** [run #39309084778](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39309084778) passed Flutter analyze/tests and connected giving/profile journeys, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Android AAB skipped by design.
+- **Next grouped P1 branch:** qa/p1-connected-website-publish-persistence-batch connects the Flutter website editor to the real NestJS API and Firestore Emulator. It verifies publish/save, version increment, preservation of unrelated contact fields, rejected blank hero title without persisted mutation, and reopening the editor with the persisted title.
+- **Evidence boundary:** test identities + Firestore Emulator; no claim of production tenant hostname routing, Firebase Storage/public media reachability, or physical-device validation. Android AAB remains manual/on-demand.
+
+
+## CI failure triage — connected website publish journey (20 October 2026)
+
+- PR #271 exact-head [CI #39349173873](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39349173873) failed only in the connected Flutter → NestJS → Firestore Emulator job; backend lint/unit/integration/emulator/build and repository validation passed. Android AAB was skipped by design.
+- Failure: the new connected website widget test searched for the hero-title TextField before expanding the editor's `Hero / मुख्य भाग` ExpansionTile. That section is intentionally collapsed on initial load, so the finder returned zero widgets. This was a test setup/interaction omission, not evidence of an API or Firestore persistence failure.
+- Fix on the same grouped branch: explicitly expand the hero section before editing and again after reopening the editor. Keep publish confirmation, version increment, preservation of contact fields, HTTP 400 on blank title, unchanged persisted version/title, and reload assertions intact.
+- **Current state:** awaiting fresh exact-head CI for the corrected head. PR #271 must remain unmerged until every required job and the merge gate pass.
+- Evidence boundary: the run reached the connected integration suite, but the website case failed before the editor interaction; no successful end-to-end website persistence claim is made yet. Production identity/hostname, public media reachability and device verification remain open.
+
+
+## PR #271 connected website publish — async editor load follow-up (20 October 2026)
+
+- Latest observed exact-head [CI #39350905898](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39350905898) failed the connected Flutter → NestJS → Firestore journey; backend lint/unit/integration/emulator/build and repository validation passed. Android AAB was skipped by design.
+- The failure log shows the test tapped `Hero / मुख्य भाग` before that section existed in the widget tree. The previous correction expanded the section but did not wait for the editor's asynchronous API load to complete.
+- Current correction waits for the hero section to appear both on initial load and after reopening, with explicit assertions before tapping. Publish/version increment, contact preservation, blank-title HTTP 400/no-mutation, and reload assertions remain intact.
+- **Merge gate:** wait for fresh exact-head CI on this corrected test. PR #271 remains unmerged until all required checks and merge gate pass. Do not count a skipped test as evidence.
+- Next batch after merge: revisit P1 coverage gaps in the inventory and group related remaining tests; production hostname/identity, real media URL reachability and physical-device behavior remain separate acceptance gates. Android AAB remains manual/on-demand.
+
+
+## PR #271 CI triage — scroll lazy editor sections into view (20 October 2026)
+
+- Latest exact-head [CI #39351766590](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39351766590) failed only in the connected Flutter → NestJS → Firestore journey; backend and repository validation passed. Android AAB skipped by design.
+- The website editor renders sections inside a lazy ListView. The connected test waited for `Hero / मुख्य भाग` without scrolling the viewport, so the section could remain unbuilt/offscreen even after the asynchronous editor load completed.
+- Fix on the same grouped PR #271 branch: explicitly wait for the editor scaffold, use `dragUntilVisible` to build/scroll to the hero section both on first load and after reopening, then expand it before editing. Keep publish confirmation, exact version increment, unrelated contact preservation, HTTP 400/no-mutation and persisted reload assertions intact.
+- Fresh exact-head CI is required. Do not merge until the connected journey and all required checks pass; post-merge verification remains separate. Android AAB stays manual/on-demand.
+
+
+## PR #271 connected publish confirmation viewport correction — 20 October 2026
+
+- Latest exact-head [CI #39352235703](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39352235703) passed Flutter analysis and the ordinary 119-test suite, and passed backend lint/unit/integration/Firestore-emulator/build plus repository validation. The connected integration job failed only at the expected success-message assertion.
+- The failure was a lazy-list viewport assumption: the test had scrolled to the hero section, while the editor status message is rendered near the top of that same ListView. A message outside the viewport is not built for a text finder, so the test could not observe the confirmation despite reaching the post-tap assertion.
+- Updated the connected test to scroll back to the status area after tapping Publish, wait for either success or an explicit save-error message, fail with the visible backend/UI error if present, and still require the success confirmation. Persistence version increment, contact preservation, HTTP 400/no-mutation and fresh editor reload assertions remain unchanged.
+- **Current PR #271 remains unmerged.** Require fresh exact-head CI and merge-gate success before merging. Android AAB remains manual/on-demand.
+
+
+## PR #271 connected publish result timeout triage — 20 October 2026
+
+- Exact-head [CI #39353197227](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39353197227): Flutter analyze and ordinary tests passed; backend lint/unit/integration/Firestore-emulator/build and repository validation passed. The connected Flutter → NestJS → Firestore job still failed because the success message was absent after a 15-second polling window; no visible save-error message was found in that window.
+- The single large scroll was replaced with scrollUntilVisible targeting the first editor section, to reliably return to the top of the lazy ListView where status messages render. The wait now extends beyond the API client's 15-second request timeout so a genuine request error can be observed and reported instead of being confused with a missing widget.
+- All core assertions remain: publish success, exactly one version increment, persisted hero title, preserved contact field, HTTP 400 on blank title, unchanged version/title/contact after rejection, and fresh editor reload.
+- **Current state:** a new exact-head CI run is required. Do not merge until the connected journey and merge gate pass. Android AAB remains manual/on-demand.
+
+
+## PR #271 analyzer correction — scroll helper signature (20 October 2026)
+
+- Exact-head [CI #39353752898](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39353752898) exposed a Flutter analyzer error in the latest test harness: scrollUntilVisible expects the scroll delta as its second positional argument and the scrollable as a named argument.
+- Corrected the call to pass delta `300`, `scrollable: editorList`, and `maxScrolls: 30`. This is a test API signature correction; the publish-result wait and all persistence/rejection assertions remain.
+- Fresh exact-head CI is required after this change. PR #271 remains unmerged; Android AAB remains manual/on-demand.
+
+
+## PR #271 scrollable finder correction — 20 October 2026
+
+- Exact-head [CI #39353935088](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39353935088) passed Flutter analyze, the ordinary 119-test suite, backend lint/unit/integration/Firestore-emulator/build and repository validation, but the connected website case failed in the test harness: scrollUntilVisible was given a ListView finder where Flutter requires a Scrollable finder.
+- Corrected the test to locate the Scrollable descendant of the editor ListView and pass that finder to scrollUntilVisible. This is a test API type correction; publish confirmation, version/persistence, unrelated contact preservation, invalid update/no-mutation, and reopen assertions remain.
+- Fresh exact-head CI required; PR #271 remains unmerged. Android AAB remains manual/on-demand.
+
+
+## PR #271 status-area scroll helper correction — 20 October 2026
+
+- Exact-head CI #39354424678 passed Flutter analysis, ordinary Flutter tests, backend checks and repository validation, but the connected test failed because scrollUntilVisible could not resolve the selected Scrollable descendant in the editor widget tree.
+- Replaced that call with the same dragUntilVisible helper already used successfully to navigate the editor's lazy sections, targeting the first Theme & header section before waiting for publish status. This keeps the status message observable without weakening publish/persistence assertions.
+- Fresh exact-head CI required; do not merge until the connected journey and merge gate pass. Android AAB remains manual/on-demand.
+
+
+## PR #271 publish status viewport follow-up — 20 October 2026
+
+- Exact-head [CI #39354926285](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39354926285) passed Flutter analysis and ordinary tests, backend lint/unit/integration/Firestore-emulator/build, and repository validation, but the connected website publish test still could not find the success message.
+- The latest test correction showed that scrolling only until Theme & header becomes visible does not guarantee the status card inserted before it is in the viewport. The test now makes a series of bounded downward drags on the editor ListView to return fully to the top before waiting for success or error feedback.
+- Publish, persisted version/title/contact, invalid-update HTTP 400/no-mutation, and reopened-editor assertions remain. Require a fresh exact-head CI run; PR #271 remains unmerged. Android AAB remains manual/on-demand.

@@ -7,6 +7,9 @@ import 'package:jain_community_platform/core/api/api_client.dart';
 import 'package:jain_community_platform/features/giving/presentation/donor_giving_page.dart';
 import 'package:jain_community_platform/features/profile/data/profile_repository.dart';
 import 'package:jain_community_platform/features/profile/presentation/profile_page.dart';
+import 'package:jain_community_platform/features/website/data/website_repository.dart';
+import 'package:jain_community_platform/features/website/presentation/website_editor_page.dart';
+import 'package:jain_community_platform/core/api/api_exception.dart';
 
 void main() {
   // Construct the IOClient outside the widget-test zone. Flutter's widget-test
@@ -23,6 +26,7 @@ void main() {
   );
   const operatorSubject = String.fromEnvironment('JCP_CONNECTED_OPERATOR_ID');
   const approverSubject = String.fromEnvironment('JCP_CONNECTED_APPROVER_ID');
+  const contentManagerSubject = String.fromEnvironment('JCP_CONNECTED_CONTENT_MANAGER_ID');
 
   tearDownAll(connectedHttpClient.close);
 
@@ -223,6 +227,154 @@ void main() {
       expect(persisted, containsPair('state', 'Maharashtra'));
       expect(persisted, containsPair('postalCode', '411014'));
       expect(persisted, containsPair('email', 'connected-donor@example.test'));
+      expect(tester.takeException(), isNull);
+    },
+    skip: apiUrl.isEmpty,
+  );
+
+  testWidgets(
+    'publishes website edits through Flutter and verifies persisted reload and validation failure',
+    (tester) async {
+      final api = ApiClient(
+        baseUrl: Uri.parse(apiUrl),
+        accessTokenProvider: () async => contentManagerSubject,
+        tenantIdProvider: () => tenantId,
+        requestTimeout: const Duration(seconds: 15),
+        client: connectedHttpClient,
+      );
+      final repository = WebsiteRepository(api);
+      await repository.updateSite({'contact': {'phone': '+912012345678'}});
+      final beforePublish = await repository.getSite();
+      final originalTitle = (beforePublish['hero'] as Map<String, dynamic>)['title'];
+
+      await tester.pumpWidget(MaterialApp(
+        home: WebsiteEditorPage(
+          repository: repository,
+          tenantName: 'Connected giving test tenant',
+        ),
+      ));
+      await tester.pumpAndSettle();
+      // Wait for the async load to finish, then scroll the lazy ListView to the
+      // hero section. Waiting alone cannot build a child that is offscreen.
+      final editorTitle = find.text('Temple Website Editor');
+      for (var attempt = 0; attempt < 150 && editorTitle.evaluate().isEmpty; attempt++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(editorTitle, findsOneWidget);
+      final heroSection = find.text('Hero / मुख्य भाग');
+      await tester.dragUntilVisible(
+        heroSection,
+        find.byType(ListView).first,
+        const Offset(0, -300),
+      );
+      await tester.pumpAndSettle();
+      expect(heroSection, findsOneWidget);
+      // Expand the section before locating its lazily-created text fields.
+      await tester.tap(heroSection);
+      await tester.pumpAndSettle();
+      final heroTitle = find.byWidgetPredicate(
+        (widget) => widget is TextField &&
+            widget.decoration?.labelText == 'मंदिर का नाम / शीर्षक',
+      );
+      for (var attempt = 0; attempt < 100 && heroTitle.evaluate().isEmpty; attempt++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(heroTitle, findsOneWidget);
+      expect(tester.widget<TextField>(heroTitle).controller!.text, originalTitle);
+
+      await tester.ensureVisible(heroTitle);
+      await tester.enterText(heroTitle, 'Connected Published Website');
+      final publishButton = find.text('Save & Publish Website');
+      await tester.ensureVisible(publishButton);
+      await tester.tap(publishButton);
+      await tester.pump();
+
+      // The editor's status message is placed at the top of the lazy ListView.
+      // We were scrolled to the hero section when publishing, so scroll back to
+      // the status area before asserting the confirmation. Do not mistake an
+      // offscreen, unbuilt message for a failed publish.
+      final editorList = find.byType(ListView).first;
+      // Return fully to the top of the lazy list, not merely until the theme
+      // header is visible: the publish status card is inserted before that
+      // header and may otherwise remain above the viewport.
+      for (var scrollAttempt = 0; scrollAttempt < 12; scrollAttempt++) {
+        await tester.drag(editorList, const Offset(0, 250));
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+      final publishSuccess = find.text('वेबसाइट अपडेट प्रकाशित हो गई।');
+      final publishError = find.textContaining('सहेजना विफल:');
+      // The API request has a 15-second timeout. Wait beyond that boundary so
+      // an actual request failure is surfaced as text rather than misreported
+      // as a missing success message at the end of the timeout window.
+      for (var attempt = 0; attempt < 300 &&
+          publishSuccess.evaluate().isEmpty &&
+          publishError.evaluate().isEmpty; attempt++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(
+        publishError,
+        findsNothing,
+        reason: 'Website publish should succeed; visible error: ${publishError.evaluate().map((e) => (e.widget as Text).data).join('; ')}',
+      );
+      expect(publishSuccess, findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      final persisted = await repository.getSite();
+      expect(persisted['version'], (beforePublish['version'] as num) + 1);
+      expect((persisted['hero'] as Map<String, dynamic>)['title'],
+          'Connected Published Website');
+      expect((persisted['contact'] as Map<String, dynamic>)['phone'],
+          '+912012345678');
+
+      await expectLater(
+        repository.updateSite({'hero': {'title': '   '}}),
+        throwsA(isA<ApiException>().having(
+          (error) => error.statusCode,
+          'statusCode',
+          400,
+        )),
+      );
+      final afterRejectedUpdate = await repository.getSite();
+      expect(afterRejectedUpdate['version'], persisted['version']);
+      expect((afterRejectedUpdate['hero'] as Map<String, dynamic>)['title'],
+          'Connected Published Website');
+      expect((afterRejectedUpdate['contact'] as Map<String, dynamic>)['phone'],
+          '+912012345678');
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpWidget(MaterialApp(
+        home: WebsiteEditorPage(
+          repository: repository,
+          tenantName: 'Connected giving test tenant',
+        ),
+      ));
+      await tester.pumpAndSettle();
+      final reloadedEditorTitle = find.text('Temple Website Editor');
+      for (var attempt = 0; attempt < 150 && reloadedEditorTitle.evaluate().isEmpty; attempt++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(reloadedEditorTitle, findsOneWidget);
+      final reloadedHeroSection = find.text('Hero / मुख्य भाग');
+      await tester.dragUntilVisible(
+        reloadedHeroSection,
+        find.byType(ListView).first,
+        const Offset(0, -300),
+      );
+      await tester.pumpAndSettle();
+      expect(reloadedHeroSection, findsOneWidget);
+      await tester.tap(reloadedHeroSection);
+      await tester.pumpAndSettle();
+      final reloadedHeroTitle = find.byWidgetPredicate(
+        (widget) => widget is TextField &&
+            widget.decoration?.labelText == 'मंदिर का नाम / शीर्षक',
+      );
+      for (var attempt = 0; attempt < 100 && reloadedHeroTitle.evaluate().isEmpty; attempt++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(reloadedHeroTitle, findsOneWidget);
+      expect(tester.widget<TextField>(reloadedHeroTitle).controller!.text,
+          'Connected Published Website');
       expect(tester.takeException(), isNull);
     },
     skip: apiUrl.isEmpty,
