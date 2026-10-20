@@ -749,3 +749,10 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - Exact-head CI #39354424678 passed Flutter analysis, ordinary Flutter tests, backend checks and repository validation, but the connected test failed because scrollUntilVisible could not resolve the selected Scrollable descendant in the editor widget tree.
 - Replaced that call with the same dragUntilVisible helper already used successfully to navigate the editor's lazy sections, targeting the first Theme & header section before waiting for publish status. This keeps the status message observable without weakening publish/persistence assertions.
 - Fresh exact-head CI required; do not merge until the connected journey and merge gate pass. Android AAB remains manual/on-demand.
+
+
+## PR #271 publish status viewport follow-up — 20 October 2026
+
+- Exact-head [CI #39354926285](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39354926285) passed Flutter analysis and ordinary tests, backend lint/unit/integration/Firestore-emulator/build, and repository validation, but the connected website publish test still could not find the success message.
+- The latest test correction showed that scrolling only until Theme & header becomes visible does not guarantee the status card inserted before it is in the viewport. The test now makes a series of bounded downward drags on the editor ListView to return fully to the top before waiting for success or error feedback.
+- Publish, persisted version/title/contact, invalid-update HTTP 400/no-mutation, and reopened-editor assertions remain. Require a fresh exact-head CI run; PR #271 remains unmerged. Android AAB remains manual/on-demand.
