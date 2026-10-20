@@ -705,3 +705,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - PR #271 is merged as `80f2cdb72f2ba12aa3a447dcc8d18b886500a572`; exact-head [CI #39355422215](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39355422215) passed Flutter analysis/tests (including connected website publish), backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Default-branch post-merge CI #39355751162 is running and must be verified separately.
 - Current branch `qa/p1-http-dto-validation-platform-website-profile-batch` extends the existing HTTP DTO matrix across website config, authenticated profile updates, tenant member create/update, and platform tenant create/update/admin. Each invalid payload must return 400 before the relevant service or audit is called.
 - Group these related routes into one MR; do not split by DTO. Run exact-head CI, fix actual failures without weakening assertions, merge only when all required checks pass, verify post-merge CI, then continue the highest-priority inventory gap. Android AAB remains manual/on-demand.
+
+
+## Website publish E2E closure and next DTO batch — 20 October 2026
+
+- PR #271 merged as `80f2cdb72f2ba12aa3a447dcc8d18b886500a572`. Exact-head CI #39355422215 and default-branch post-merge CI #39355751162 both passed all applicable checks, including connected Flutter → NestJS → Firestore website publish/reload and the merge gate. Android AAB skipped by design.
+- QA-003 / QA-016 updated with PR #266 connected donation lifecycle evidence: exact-head #39304067428 and post-merge #39305120442 passed.
+- Current grouped MR [PR #272](https://github.com/JainCommunityPlatform/jain-community-platform/pull/272) extends HTTP DTO validation across website config, profile, tenant membership, and platform tenant/admin endpoints. Require HTTP 400 before service/audit side effects for malformed or caller-controlled fields.
+- Do not merge PR #272 until exact-head CI and merge gate pass; verify post-merge CI separately. Continue to state staging/device, production Firebase/Storage, and external settlement as open environment gates. Android AAB remains manual/on-demand.
