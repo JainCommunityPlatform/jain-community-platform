@@ -294,12 +294,16 @@ void main() {
       // the status area before asserting the confirmation. Do not mistake an
       // offscreen, unbuilt message for a failed publish.
       final editorList = find.byType(ListView).first;
+      final editorScrollable = find.descendant(
+        of: editorList,
+        matching: find.byType(Scrollable),
+      ).first;
       // Use the scrollable's visibility helper rather than a single large drag:
       // the status message is the first lazy child, above the theme section.
       await tester.scrollUntilVisible(
         find.text('Theme & header'),
         300,
-        scrollable: editorList,
+        scrollable: editorScrollable,
         maxScrolls: 30,
       );
       await tester.pumpAndSettle();
