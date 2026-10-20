@@ -728,3 +728,10 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - The single large scroll was replaced with scrollUntilVisible targeting the first editor section, to reliably return to the top of the lazy ListView where status messages render. The wait now extends beyond the API client's 15-second request timeout so a genuine request error can be observed and reported instead of being confused with a missing widget.
 - All core assertions remain: publish success, exactly one version increment, persisted hero title, preserved contact field, HTTP 400 on blank title, unchanged version/title/contact after rejection, and fresh editor reload.
 - **Current state:** a new exact-head CI run is required. Do not merge until the connected journey and merge gate pass. Android AAB remains manual/on-demand.
+
+
+## PR #271 analyzer correction — scroll helper signature (20 October 2026)
+
+- Exact-head [CI #39353752898](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39353752898) exposed a Flutter analyzer error in the latest test harness: scrollUntilVisible expects the scroll delta as its second positional argument and the scrollable as a named argument.
+- Corrected the call to pass delta `300`, `scrollable: editorList`, and `maxScrolls: 30`. This is a test API signature correction; the publish-result wait and all persistence/rejection assertions remain.
+- Fresh exact-head CI is required after this change. PR #271 remains unmerged; Android AAB remains manual/on-demand.
