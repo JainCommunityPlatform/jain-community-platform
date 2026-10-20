@@ -2101,3 +2101,37 @@ And the persisted version and last successful title remain unchanged
 
 - Test layer: connected Flutter widget + NestJS HTTP + Firestore Emulator.
 - Evidence boundary: this does not verify production Firebase identity, production hostname routing, media URL reachability, or physical-device behavior.
+
+
+## P1 HTTP DTO validation — website, profile, membership and platform tenant routes (20 October 2026)
+
+### Scenario: Website configuration rejects invalid shapes and caller-controlled tenant scope
+
+Given an authenticated content manager belongs to the resolved tenant
+When PUT /api/website/site submits a string instead of an object section, a non-boolean publish flag, an overlong version note, or an extra tenantId field
+Then the API returns HTTP 400
+And WebsiteService.updateCurrent and the success audit are not called
+
+### Scenario: Profile update rejects invalid field values and caller-controlled fields
+
+Given an authenticated member updates their own profile
+When PATCH /api/profile submits a too-short display name, invalid Indian postal code, phone ownership field, or caller-supplied tenantId
+Then the API returns HTTP 400
+And ProfileService.updateCurrent is not called
+
+### Scenario: Tenant membership DTO rejects missing required role and tenant override
+
+Given an authorized tenant administrator manages membership
+When POST or PATCH /api/tenant/members omits the required role or includes a caller-supplied tenantId
+Then the API returns HTTP 400
+And TenantMemberService create/update is not called
+
+### Scenario: Platform tenant DTO rejects malformed create/update/admin payloads
+
+Given an authenticated platform administrator manages tenant records
+When POST /api/platform/tenants submits an invalid slug/name or unknown tenant field, PUT /api/platform/tenants/:tenantId submits an overlong name or unknown field, or POST /api/platform/tenants/:tenantId/admins submits an invalid email/unknown field
+Then the API returns HTTP 400
+And PlatformService create/update/addTenantAdmin and success audit are not called
+
+- Test layer: NestJS HTTP E2E with the global ValidationPipe configured for whitelist and forbidNonWhitelisted.
+- Evidence boundary: these tests verify request validation and pre-service side-effect prevention; persisted Firestore and staging identity behavior remain separate acceptance layers.
