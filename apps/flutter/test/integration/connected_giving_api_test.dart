@@ -294,13 +294,13 @@ void main() {
       // the status area before asserting the confirmation. Do not mistake an
       // offscreen, unbuilt message for a failed publish.
       final editorList = find.byType(ListView).first;
-      // Return to the first lazy-list section so the publish status message,
-      // which is inserted before it, is built and visible.
-      await tester.dragUntilVisible(
-        find.text('Theme & header'),
-        editorList,
-        const Offset(0, 300),
-      );
+      // Return fully to the top of the lazy list, not merely until the theme
+      // header is visible: the publish status card is inserted before that
+      // header and may otherwise remain above the viewport.
+      for (var scrollAttempt = 0; scrollAttempt < 12; scrollAttempt++) {
+        await tester.drag(editorList, const Offset(0, 250));
+        await tester.pump();
+      }
       await tester.pumpAndSettle();
       final publishSuccess = find.text('वेबसाइट अपडेट प्रकाशित हो गई।');
       final publishError = find.textContaining('सहेजना विफल:');
