@@ -669,3 +669,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - PR #269 merged at `c2b6ac853c63910ec59b229456a88ca1f3b26deb`; exact-head [CI #39307326991](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39307326991) passed all required checks. Post-merge [CI #39307890603](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39307890603) was running at last poll.
 - Branch `qa/p1-connected-profile-ui-api-persistence-batch` extends the existing connected Flutter/NestJS/Firestore emulator run with a profile widget journey: seed editable profile via HTTP, load through the Flutter profile page, update name and city through the UI, then verify the new values and preserved email through a fresh live API read.
 - This closes the current gap between fake-repository profile widget tests and emulator-backed API tests. Physical-device and production identity checks remain separate acceptance gates.
+
+## Next grouped P1 — connected website editor publish and persisted reload (20 October 2026)
+
+- PR #270 merged at `36fc2e371fd82ccb35ea528a21626aa009f77b0b`; exact-head CI #39308626401 and post-merge CI #39309084778 passed all applicable checks. Android AAB skipped by design.
+- Branch qa/p1-connected-website-publish-persistence-batch adds the connected website editor workflow using a content-manager identity against the real NestJS HTTP API and Firestore Emulator.
+- The batch covers UI save/publish and read-after-write, version increment, unrelated contact-field preservation, rejected blank hero title without version/config mutation, and reopening the editor to confirm the saved title.
+- Evidence boundary: no production Firebase/tenant-hostname or physical-device claim; real Storage/public media URL reachability remains open.
