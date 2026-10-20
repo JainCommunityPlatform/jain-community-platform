@@ -735,3 +735,10 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - Exact-head [CI #39353752898](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39353752898) exposed a Flutter analyzer error in the latest test harness: scrollUntilVisible expects the scroll delta as its second positional argument and the scrollable as a named argument.
 - Corrected the call to pass delta `300`, `scrollable: editorList`, and `maxScrolls: 30`. This is a test API signature correction; the publish-result wait and all persistence/rejection assertions remain.
 - Fresh exact-head CI is required after this change. PR #271 remains unmerged; Android AAB remains manual/on-demand.
+
+
+## PR #271 scrollable finder correction — 20 October 2026
+
+- Exact-head [CI #39353935088](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39353935088) passed Flutter analyze, the ordinary 119-test suite, backend lint/unit/integration/Firestore-emulator/build and repository validation, but the connected website case failed in the test harness: scrollUntilVisible was given a ListView finder where Flutter requires a Scrollable finder.
+- Corrected the test to locate the Scrollable descendant of the editor ListView and pass that finder to scrollUntilVisible. This is a test API type correction; publish confirmation, version/persistence, unrelated contact preservation, invalid update/no-mutation, and reopen assertions remain.
+- Fresh exact-head CI required; PR #271 remains unmerged. Android AAB remains manual/on-demand.
