@@ -294,17 +294,12 @@ void main() {
       // the status area before asserting the confirmation. Do not mistake an
       // offscreen, unbuilt message for a failed publish.
       final editorList = find.byType(ListView).first;
-      final editorScrollable = find.descendant(
-        of: editorList,
-        matching: find.byType(Scrollable),
-      ).first;
-      // Use the scrollable's visibility helper rather than a single large drag:
-      // the status message is the first lazy child, above the theme section.
-      await tester.scrollUntilVisible(
+      // Return to the first lazy-list section so the publish status message,
+      // which is inserted before it, is built and visible.
+      await tester.dragUntilVisible(
         find.text('Theme & header'),
-        300,
-        scrollable: editorScrollable,
-        maxScrolls: 30,
+        editorList,
+        const Offset(0, 300),
       );
       await tester.pumpAndSettle();
       final publishSuccess = find.text('वेबसाइट अपडेट प्रकाशित हो गई।');
