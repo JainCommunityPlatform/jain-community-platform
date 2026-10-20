@@ -2079,3 +2079,25 @@ Acceptance boundaries:
 - Saving an edited name and city through the widget updates the Firestore-backed profile.
 - A fresh authenticated API read returns the updated values and retains the user's email/display name even though the test auth token does not include those optional claims.
 - Test layer: Flutter widget + real NestJS HTTP + Firestore Emulator. This does not establish production Firebase identity or physical-device behavior.
+
+## Connected website editor save, publish and recovery (20 October 2026)
+
+### Scenario: Publish website edits and reload the saved configuration
+
+Given a content manager is authenticated against the connected test tenant
+And the existing website configuration contains contact information
+When the manager changes the hero title in the Flutter website editor and selects Save & Publish Website
+Then the NestJS API persists the new title to Firestore
+And the configuration version increments exactly once
+And unrelated contact information remains unchanged
+And reopening the editor loads the published title from the API
+
+### Scenario: Reject invalid website configuration without replacing the published version
+
+Given a valid website configuration has already been saved
+When the client submits a hero title containing only whitespace
+Then the API rejects the update with HTTP 400
+And the persisted version and last successful title remain unchanged
+
+- Test layer: connected Flutter widget + NestJS HTTP + Firestore Emulator.
+- Evidence boundary: this does not verify production Firebase identity, production hostname routing, media URL reachability, or physical-device behavior.
