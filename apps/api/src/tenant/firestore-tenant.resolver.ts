@@ -11,7 +11,11 @@ export class FirestoreTenantResolver implements TenantResolver {
     const normalized = normalizeHostname(hostname);
     if (normalized) {
       const tenant = await this.firestore.getTenantByHostname(normalized);
-      if (tenant && tenant.status !== 'INACTIVE' && tenant.verified) {
+      if (tenant) {
+        // A known hostname is authoritative even when it is inactive or not
+        // verified. Never let an explicit mobile tenant ID bypass that domain
+        // boundary; ID fallback is only for API hosts that have no tenant mapping.
+        if (tenant.status === 'INACTIVE' || !tenant.verified) return null;
         return {
           id: tenant.id,
           name: tenant.name,
