@@ -379,3 +379,6 @@ Evidence boundaries:
 - Exact-head CI #39351766590 failed in the connected website journey while locating the hero section; backend lint/unit/integration/Firestore-emulator/build and repository validation passed.
 - The test now waits for the editor scaffold and scrolls the lazy ListView to the hero section on initial load and after reopening. Persistence/version/contact/validation/reload assertions are preserved.
 - Fresh exact-head CI must pass before merge; Android AAB remains manual/on-demand.
+
+
+- PR #271 latest failure [CI #39352235703](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39352235703): connected website publish test could not find the success message because the test was scrolled to the hero section and the status message is in the lazy ListView's top area. Test now scrolls to status, surfaces any visible save error, and still requires the success message and subsequent persisted version/title/contact checks. Fresh exact-head CI is required before merge.
