@@ -67,12 +67,33 @@ void main() {
       'gu': ['તમારો જૈન મંદિર સમુદાય', 'તમે શું કરવા માંગો છો?', 'કાર્યક્રમો અને નોંધણી', 'આગળ વધવા સાઇન ઇન કરો'],
     };
 
+    final scrollable = find.byType(ListView);
     for (final entry in localizedCopy.entries) {
       await controller.setLocale(Locale(entry.key));
       await tester.pumpAndSettle();
+      await tester.dragUntilVisible(
+        find.text(entry.value[0]),
+        scrollable,
+        const Offset(0, 300),
+      );
+      await tester.pumpAndSettle();
       expect(find.text(entry.value[0]), findsOneWidget, reason: '${entry.key} hero heading');
       expect(find.text(entry.value[1]), findsOneWidget, reason: '${entry.key} action heading');
+
+      await tester.dragUntilVisible(
+        find.text(entry.value[2]),
+        scrollable,
+        const Offset(0, -250),
+      );
+      await tester.pumpAndSettle();
       expect(find.text(entry.value[2]), findsOneWidget, reason: '${entry.key} events card');
+
+      await tester.dragUntilVisible(
+        find.text(entry.value[3]),
+        scrollable,
+        const Offset(0, -250),
+      );
+      await tester.pumpAndSettle();
       expect(find.text(entry.value[3]), findsOneWidget, reason: '${entry.key} sign-in action');
       expect(tester.takeException(), isNull);
     }
