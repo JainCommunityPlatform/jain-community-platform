@@ -29,11 +29,11 @@ class BadeBabaHomePage extends StatelessWidget {
           _HeroCard(colors: colors, strings: strings),
           const SizedBox(height: 20),
           _SectionTitle(strings.publicActionsHeading),
-          const const SizedBox(height: 12),
+          const SizedBox(height: 12),
           _ActionGrid(strings: strings),
           const SizedBox(height: 28),
           _SectionTitle(strings.publicCommunityHeading),
-          const const SizedBox(height: 12),
+          const SizedBox(height: 12),
           _InfoCard(
             icon: Icons.event,
             title: strings.publicEventsTitle,
