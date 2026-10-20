@@ -695,3 +695,12 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - Fix on the same grouped branch: explicitly expand the hero section before editing and again after reopening the editor. Keep publish confirmation, version increment, preservation of contact fields, HTTP 400 on blank title, unchanged persisted version/title, and reload assertions intact.
 - **Current state:** awaiting fresh exact-head CI for the corrected head. PR #271 must remain unmerged until every required job and the merge gate pass.
 - Evidence boundary: the run reached the connected integration suite, but the website case failed before the editor interaction; no successful end-to-end website persistence claim is made yet. Production identity/hostname, public media reachability and device verification remain open.
+
+
+## PR #271 connected website publish — async editor load follow-up (20 October 2026)
+
+- Latest observed exact-head [CI #39350905898](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39350905898) failed the connected Flutter → NestJS → Firestore journey; backend lint/unit/integration/emulator/build and repository validation passed. Android AAB was skipped by design.
+- The failure log shows the test tapped `Hero / मुख्य भाग` before that section existed in the widget tree. The previous correction expanded the section but did not wait for the editor's asynchronous API load to complete.
+- Current correction waits for the hero section to appear both on initial load and after reopening, with explicit assertions before tapping. Publish/version increment, contact preservation, blank-title HTTP 400/no-mutation, and reload assertions remain intact.
+- **Merge gate:** wait for fresh exact-head CI on this corrected test. PR #271 remains unmerged until all required checks and merge gate pass. Do not count a skipped test as evidence.
+- Next batch after merge: revisit P1 coverage gaps in the inventory and group related remaining tests; production hostname/identity, real media URL reachability and physical-device behavior remain separate acceptance gates. Android AAB remains manual/on-demand.
