@@ -381,4 +381,170 @@ void main() {
     controller.dispose();
     await auth.dispose();
   });
+
+  test('does not restore a stale session after Firebase signs out during startup load', () async {
+    final auth = FakeFirebaseAuthProvider();
+    final pendingSession = Completer<AppSession>();
+    final controller = AppSessionController(
+      auth: auth,
+      sessionService: FakeAuthSessionService(() => pendingSession.future),
+    );
+
+    await controller.initialize();
+    auth.emit(const FirebaseAuthUser(uid: 'firebase-user-a'));
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.status, AppSessionStatus.initializing);
+
+    auth.emit(null);
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.status, AppSessionStatus.signedOut);
+    expect(controller.session, AppSession.signedOut);
+
+    pendingSession.complete(const AppSession(
+      isAuthenticated: true,
+      userId: 'stale-user-a',
+      tenantId: 'tenant-a',
+      role: 'TENANT_ADMIN',
+    ));
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.status, AppSessionStatus.signedOut);
+    expect(controller.session, AppSession.signedOut);
+
+    controller.dispose();
+    await auth.dispose();
+  });
+
+  test('a newer Firebase auth event wins over an older pending session load', () async {
+    final auth = FakeFirebaseAuthProvider();
+    final olderSession = Completer<AppSession>();
+    final newerSession = Completer<AppSession>();
+    var loadCount = 0;
+    final controller = AppSessionController(
+      auth: auth,
+      sessionService: FakeAuthSessionService(() {
+        loadCount++;
+        return loadCount == 1 ? olderSession.future : newerSession.future;
+      }),
+    );
+
+    await controller.initialize();
+    auth.emit(const FirebaseAuthUser(uid: 'firebase-user-a'));
+    await Future<void>.delayed(Duration.zero);
+    auth.emit(const FirebaseAuthUser(uid: 'firebase-user-b'));
+    await Future<void>.delayed(Duration.zero);
+
+    newerSession.complete(const AppSession(
+      isAuthenticated: true,
+      userId: 'backend-user-b',
+      tenantId: 'tenant-b',
+      role: 'CONTENT_MANAGER',
+    ));
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.session.userId, 'backend-user-b');
+
+    olderSession.complete(const AppSession(
+      isAuthenticated: true,
+      userId: 'backend-user-a',
+      tenantId: 'tenant-a',
+      role: 'TENANT_ADMIN',
+    ));
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.status, AppSessionStatus.authenticated);
+    expect(controller.session.userId, 'backend-user-b');
+    expect(controller.session.tenantId, 'tenant-b');
+
+    controller.dispose();
+    await auth.dispose();
+  });
+
+  test('a pending session refresh cannot restore access after Firebase signs out', () async {
+    final auth = FakeFirebaseAuthProvider(initiallySignedIn: true);
+    final pendingSession = Completer<AppSession>();
+    final controller = AppSessionController(
+      auth: auth,
+      sessionService: FakeAuthSessionService(() => pendingSession.future),
+      initialSession: const AppSession(
+        isAuthenticated: true,
+        userId: 'active-user',
+        tenantId: 'tenant-a',
+        role: 'TENANT_ADMIN',
+      ),
+    );
+
+    await controller.initialize();
+    final refresh = controller.refreshCurrentSession();
+    expect(controller.status, AppSessionStatus.initializing);
+
+    auth.emit(null);
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.status, AppSessionStatus.signedOut);
+
+    pendingSession.complete(const AppSession(
+      isAuthenticated: true,
+      userId: 'stale-refreshed-user',
+      tenantId: 'tenant-a',
+      role: 'TENANT_ADMIN',
+    ));
+    await refresh;
+
+    expect(controller.status, AppSessionStatus.signedOut);
+    expect(controller.session, AppSession.signedOut);
+
+    controller.dispose();
+    await auth.dispose();
+  });
+
+  test('an older overlapping refresh cannot overwrite the latest session', () async {
+    final auth = FakeFirebaseAuthProvider(initiallySignedIn: true);
+    final olderSession = Completer<AppSession>();
+    final newerSession = Completer<AppSession>();
+    var loadCount = 0;
+    final controller = AppSessionController(
+      auth: auth,
+      sessionService: FakeAuthSessionService(() {
+        loadCount++;
+        return loadCount == 1 ? olderSession.future : newerSession.future;
+      }),
+      initialSession: const AppSession(
+        isAuthenticated: true,
+        userId: 'initial-user',
+        tenantId: 'tenant-initial',
+        role: 'TENANT_ADMIN',
+      ),
+    );
+
+    await controller.initialize();
+    final olderRefresh = controller.refreshCurrentSession();
+    final newerRefresh = controller.refreshCurrentSession();
+
+    newerSession.complete(const AppSession(
+      isAuthenticated: true,
+      userId: 'latest-user',
+      tenantId: 'tenant-latest',
+      role: 'CONTENT_MANAGER',
+    ));
+    await newerRefresh;
+    expect(controller.session.userId, 'latest-user');
+
+    olderSession.complete(const AppSession(
+      isAuthenticated: true,
+      userId: 'stale-user',
+      tenantId: 'tenant-stale',
+      role: 'TENANT_ADMIN',
+    ));
+    await olderRefresh;
+
+    expect(controller.status, AppSessionStatus.authenticated);
+    expect(controller.session.userId, 'latest-user');
+    expect(controller.session.tenantId, 'tenant-latest');
+
+    controller.dispose();
+    await auth.dispose();
+  });
+
 }

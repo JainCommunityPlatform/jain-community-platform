@@ -713,3 +713,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - QA-003 / QA-016 updated with PR #266 connected donation lifecycle evidence: exact-head #39304067428 and post-merge #39305120442 passed.
 - Current grouped MR [PR #272](https://github.com/JainCommunityPlatform/jain-community-platform/pull/272) extends HTTP DTO validation across website config, profile, tenant membership, and platform tenant/admin endpoints. Require HTTP 400 before service/audit side effects for malformed or caller-controlled fields.
 - Do not merge PR #272 until exact-head CI and merge gate pass; verify post-merge CI separately. Continue to state staging/device, production Firebase/Storage, and external settlement as open environment gates. Android AAB remains manual/on-demand.
+
+
+## Next grouped P0 — stale asynchronous session restoration and refresh races (20 October 2026)
+
+- PR #272 merged as `bbf3495c2f431139255c91360f45b577447094ae`; exact-head CI #39356281196 passed and default-branch post-merge CI #39356659872 passed all applicable checks including merge gate. Android AAB skipped by design.
+- Current branch `qa/p0-session-stale-async-resurrection-batch` adds four race regressions: Firebase signs out while initial backend session load is pending; a newer auth event overtakes an older load; sign-out overtakes a session refresh; and an older overlapping refresh cannot overwrite the latest session.
+- The controller uses a monotonically increasing generation to ignore stale async completions. Keep all race cases together in one MR; do not split one test per race. Require exact-head CI and merge gate, then independently verify post-merge CI.
+- Real Firebase credential revocation, device restart, offline UI and live role propagation remain environment gates. Android AAB remains manual/on-demand.
