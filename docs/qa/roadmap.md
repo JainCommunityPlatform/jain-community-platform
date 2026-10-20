@@ -676,3 +676,11 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Branch qa/p1-connected-website-publish-persistence-batch adds the connected website editor workflow using a content-manager identity against the real NestJS HTTP API and Firestore Emulator.
 - The batch covers UI save/publish and read-after-write, version increment, unrelated contact-field preservation, rejected blank hero title without version/config mutation, and reopening the editor to confirm the saved title.
 - Evidence boundary: no production Firebase/tenant-hostname or physical-device claim; real Storage/public media URL reachability remains open.
+
+
+## PR #271 CI failure and correction — 20 October 2026
+
+- Exact-head [CI #39349173873](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39349173873) failed the connected Flutter → NestJS → Firestore Emulator job; backend checks and repository validation passed.
+- Root cause from the Flutter test log: the connected website publish test looked for the hero title TextField while `Hero / मुख्य भाग` was collapsed. The test never reached the publish or persistence assertions.
+- Fix: explicitly expand the hero section before editing and after reopening the editor. All substantive assertions remain in place; no test is skipped and no checks are weakened.
+- Fresh exact-head CI is required before merge. Android AAB remains manual/on-demand.
