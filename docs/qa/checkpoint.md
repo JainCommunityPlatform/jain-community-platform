@@ -2,107 +2,14 @@
 
 ## Current checkpoint — 20 October 2026
 
-- **Latest master:** [CI #39357376815](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39357376815) passed repository validation, Flutter analysis/tests, backend lint/unit/integration/Firestore-emulator/build, and merge gate on `42f889762a53df4f969f5eea17bc042e0df3a1bb`. Android AAB skipped by design.
-- **Recently merged:** [PR #273](https://github.com/JainCommunityPlatform/jain-community-platform/pull/273) stale asynchronous session restoration/refresh race matrix; [PR #272](https://github.com/JainCommunityPlatform/jain-community-platform/pull/272) grouped HTTP DTO validation; [PR #271](https://github.com/JainCommunityPlatform/jain-community-platform/pull/271) connected website publish/reload; [PR #270](https://github.com/JainCommunityPlatform/jain-community-platform/pull/270) connected profile save/reload; [PR #268](https://github.com/JainCommunityPlatform/jain-community-platform/pull/268) persisted notification read-state/tenant isolation; and [PR #266](https://github.com/JainCommunityPlatform/jain-community-platform/pull/266) connected donation payment lifecycle.
-- **Current PR:** [PR #274](https://github.com/JainCommunityPlatform/jain-community-platform/pull/274), branch `qa/p1-public-directory-tenant-routing-security-batch`, batches public directory field allowlisting/inactive filtering, anonymous public directory and website reads, hostname precedence over a caller-supplied tenant ID, and fail-closed handling for known inactive/unverified domains.
-- **Acceptance gate:** exact-head CI must pass; fix real failures without weakening assertions; merge only if all required checks pass and the PR is mergeable; verify post-merge CI independently.
-- **Evidence boundary:** automated unit/HTTP tests do not prove live production Firestore, real custom-domain DNS/TLS, Storage reachability, or device rendering. These remain environment gates. Android AAB remains manual/on-demand.
-
----
-
-## Current checkpoint — 19 October 2026
-
-- **Merged:** [PR #265 — persisted cross-tenant donor isolation](https://github.com/JainCommunityPlatform/jain-community-platform/pull/265), merge commit `7cfe8f8c3e03e19471de5980ad392fa7d718f4c4`.
-- **Exact-head CI:** [run #39120375666](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39120375666) passed backend lint/unit/integration/Firestore-emulator/build, Flutter analyze/tests, repository validation and merge gate. Android AAB skipped by design.
-- **Post-merge CI:** [run #39234175711](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39234175711) is in progress; repository validation passed, Flutter and backend jobs were still running at last poll.
-- **Prior failure diagnosis:** CI #39120170312 exposed test-order contamination from creating a receipt in a shared tenant fixture. PR #265 isolated the test tenant and kept existing reconciliation assertions intact.
-- **Current branch:** `qa/p0-connected-donation-payment-receipt-batch` consolidates the remaining connected donation lifecycle gap into one MR: the pledge created by the donor UI is paid by a finance operator, approved by a different finance approver, verified in the donor receipt list against the exact pledge/payment IDs, reconciled by the live API, and shown in the refreshed Flutter receipts view. The test uses the real NestJS HTTP pipeline and Firestore Emulator.
-- **Acceptance gates:** exact-head CI must pass; diagnose and fix real failures without weakening assertions; merge only if every required check passes and the PR is mergeable; verify default-branch post-merge CI separately.
-- **Evidence boundary:** emulator-backed test identities are not production Firebase identity, external UPI/bank settlement, or staging/device evidence. Android AAB remains manual/on-demand.
-
-## Latest execution — PR #197 merged; website tenant-boundary regression in progress (14 October 2026)
-
-- **Merged:** [PR #197 — cross-tenant finance approver decisions](https://github.com/JainCommunityPlatform/jain-community-platform/pull/197), merge commit `8b73a6d81e71c447e925c193fd62044bdac4da74`.
-- **Exact-head CI:** [CI #858](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38513835626) passed backend lint/unit/integration/Firestore-emulator/build, Flutter analyze/tests, repository validation and merge gate.
-- **Post-merge CI:** [CI #859](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38552926706) passed the same applicable checks on the default branch. Android AAB was skipped by design.
-- **Current branch:** `qa/website-config-tenant-boundary` adds HTTP integration regressions for a content manager from tenant B attempting to update or reset tenant A's website configuration, and for a finance viewer attempting an unauthorized website update. Each must return 403 before the website service is invoked.
-- **Evidence boundary:** mocked membership and WebsiteService HTTP tests; persisted website configuration, actual Storage upload and staging identity checks remain open.
-- **Next:** inspect exact-head CI, repair genuine failures without weakening assertions, merge only when all required checks pass and the PR is mergeable, verify post-merge CI, then continue P0 route inventory and persisted donation lifecycle. Android build/upload remains manual/on-demand.
-
----
-
-
-## Latest execution — PR #194 merged; finance revocation matrix in progress (14 October 2026)
-
-- **Merged:** [PR #194 — cross-tenant expense and adjustment rejection denial](https://github.com/JainCommunityPlatform/jain-community-platform/pull/194), merge commit `1cf74488f16e643aca4835c222102d3b0f63a867`.
-- **Exact-head CI:** [run #853](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38505114157) passed backend lint/unit/integration/Firestore-emulator/build, Flutter analyze/tests, repository validation and merge gate on head `caf88ebaa0d8455b77871c1fe5fe102bab2b91a0`. Android AAB was skipped by design.
-- **Post-merge CI:** UNKNOWN. Commit workflow lookup returned no run for the merge commit; do not infer post-merge success from PR-head CI.
-- **Current branch:** `qa/finance-role-revocation-protected-route-matrix` extends QA-006 so revoking finance access is checked against seven tenant-scoped read routes: expenses, payments, adjustments, pledges, receipts, summary, and reconciliation. Each request must return 403 and avoid calling its read service.
-- **Evidence boundary:** the HTTP test models the membership role transition in memory. Persisted Firestore revocation, token/session propagation, and staging verification remain open.
-- **Next:** run exact-head CI, repair genuine failures without weakening assertions, merge only if green/mergeable, verify post-merge CI, then continue the P0 route matrix and persisted donation lifecycle. Android build/upload remains manual/on-demand.
-
----
-
-## Latest execution — cross-tenant expense/adjustment rejection route coverage in progress (14 October 2026)
-
-- **Previous P0 item merged:** [PR #193 — deny cross-tenant payment rejection](https://github.com/JainCommunityPlatform/jain-community-platform/pull/193), merge commit `daf2a43d8f1c0d3209fc3afae1a505d6063f7927`; exact-head [CI #851](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38504621506) passed.
-- **Current branch:** `qa/cross-tenant-expense-adjustment-rejection-denial` adds two route-matrix cases to the existing cross-tenant financial-write regression: rejecting an expense and rejecting an adjustment must return 403 before invoking the decision service or emitting a success audit event.
-- **Scenario evidence:** executable in `apps/api/test/app.e2e-spec.ts`; behavioural specification and QA inventory updated in this branch. These are HTTP tests with mocked membership/service/audit; persisted Firestore isolation remains separately covered and staging/device verification is still open.
-- **CI status:** new branch CI not yet confirmed. Do not merge before every required check passes on the exact latest head and mergeability is confirmed. Post-merge CI for PR #193 is not exposed by the available commit-run lookup, so it remains UNKNOWN until directly verified.
-- **Next:** close this route gap, then continue the P0 persisted UI → API → Firestore donation lifecycle and finish the complete role × protected-route inventory. Android build/upload remains manual/on-demand.
-
----
-
-## Latest execution — PR #192 merged; cross-tenant payment rejection denial in progress (14 October 2026)
-
-- **Merged:** [PR #192 — deny cross-tenant payment recording](https://github.com/JainCommunityPlatform/jain-community-platform/pull/192), merge commit `a071ebb6ab88f33178d09fe44aa98b65293cd9ea`.
-- **Exact-head CI:** [CI #846](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38504152722) passed backend lint/unit/integration/Firestore-emulator/build, Flutter analyze/tests, repository validation and merge gate on `d89f826d3d1248c2136d3db177e54b9947bd4608`; Android AAB was skipped by design.
-- **Post-merge CI:** [CI #847](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38504392374) completed successfully on the merge commit. Backend lint/unit/integration/Firestore-emulator/build, Flutter analyze/tests, repository validation and merge gate passed; Android AAB was skipped by design.
-- **Current P0:** [PR to be opened] — deny a finance approver whose membership belongs to another tenant from rejecting a payment; assert HTTP 403, no rejection-service call and no success audit.
-- **Evidence boundary:** HTTP test uses mocked membership, GivingService and audit. Persisted Firestore cross-tenant payment decision isolation is covered separately by emulator tests; staging/device verification remains open.
-- **Release policy:** Android build/upload remains manual/on-demand.
-
----
-
-## Latest execution — PR #191 merged; cross-tenant payment recording denial in progress (14 October 2026)
-
-- **Merged:** [PR #191 — deny cross-tenant payment approval](https://github.com/JainCommunityPlatform/jain-community-platform/pull/191), merge commit `a3918a09fe7a8cd64d5259a2511ab76e05209acf`.
-- **Exact-head CI:** [CI #842](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38503605901) passed backend lint/unit/integration/Firestore-emulator/build, Flutter analyze/tests, repository validation and merge gate on `48bb1a356f040ae4b9f29afa050b550b0d7e70fd`; Android AAB was skipped by design.
-- **Post-merge CI:** [CI #843](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38503917818) completed successfully on the merge commit. Backend lint/unit/integration/Firestore-emulator/build, Flutter analyze/tests, repository validation and merge gate passed; Android AAB was skipped by design.
-- **Current P0:** [PR to be opened] — deny a finance operator whose membership belongs to another tenant from recording a payment in the active tenant; expect HTTP 403, no payment service call and no success audit.
-- **Evidence boundary:** HTTP test uses mocked membership, GivingService and audit. Persisted Firestore cross-tenant payment/pledge isolation is covered separately by emulator tests; staging/device verification remains open.
-- **Release policy:** Android build/upload remains manual/on-demand.
-
----
-
-## Latest execution — PR #190 merged; cross-tenant payment approval denial in progress (14 October 2026)
-
-- **Merged:** [PR #190 — donor receipt after approval refresh](https://github.com/JainCommunityPlatform/jain-community-platform/pull/190), merge commit `56e8d986b96ac48027881148475dc98f9d6ad590`.
-- **Exact-head CI:** [CI #835](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38502664984) passed on `2ea0fa41264a2979de8be50e16932df717e57205`; backend, Flutter analyze/tests, repository validation and merge gate passed. Android AAB was skipped by design.
-- **Post-merge CI:** [CI #836](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38503267430) completed successfully on the merge commit. Backend lint/tests/build, Flutter analyze/tests, repository validation and merge gate passed; Android AAB was skipped by design.
-- **Current P0:** [PR #191 — deny cross-tenant payment approval](https://github.com/JainCommunityPlatform/jain-community-platform/pull/191) denies a finance approver whose membership belongs to another tenant from approving a payment. New HTTP regression in `apps/api/test/app.e2e-spec.ts` asserts HTTP 403, no approval-service call and no success audit.
-- **Evidence boundary:** HTTP authorization test uses mocked membership, GivingService and audit; persisted cross-tenant denial is covered separately by Firestore-emulator tests. Production/staging verification remains open.
-- **Release policy:** Android build/upload remains manual/on-demand.
-
----
-
-## Latest execution — PR #189 merged; donor receipt refresh regression in progress (14 October 2026)
-
-- **Merged:** [PR #189 — Flutter donor pledge journey](https://github.com/JainCommunityPlatform/jain-community-platform/pull/189), merge commit `88adb21d0330d2cc03d45b1b0c1b07ca3b759147`.
-- **Exact-head CI:** [CI #822](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38435636205) passed on `ebd3c0aade33e0aa11e687bfa347d06a58053213`.
-- **Post-merge CI:** [CI #823](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38495571718) completed successfully: repository validation, backend lint/unit/integration/Firestore-emulator/build, Flutter analyze/tests, and merge gate all passed on merge commit `88adb21d0330d2cc03d45b1b0c1b07ca3b759147`; Android AAB was skipped by design.
-- **Current branch:** `qa/donor-receipt-after-approval-refresh`. Adds a donor widget regression: receipts are absent before the API reflects an approved payment, then appear with receipt number, method/date and amount after refresh.
-- **Evidence boundary:** mocked HTTP/widget state transition only; no claim of approval API execution, persisted Firestore receipt issuance, or staging/device verification.
-- **Next:** exact-head CI on this branch, fix real failures without weakening assertions, merge only when required checks are green and mergeable, verify default-branch CI, update issue #162, and continue the remaining persisted payment-to-receipt P0. Android build/upload remains manual/on-demand.
-
----
-
-## CI failure and repair — PR #189 Flutter donor pledge journey (13 October 2026)
-
-- **Failed exact-head run:** [CI #820](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/38432132112) on head `1039c6d4e9dae1701deb462833fe3f12fe902b20`. Backend lint/unit/integration/Firestore-emulator/build, Flutter analyze, and repository validation passed; Flutter tests failed and the merge gate failed. Android AAB was skipped by design.
-- **Root cause:** the new widget test expected `₹500.00` twice in “My pledges”; the actual UI renders one amount label. The remaining 72 Flutter tests passed, including the negative inactive-donor case. This is a test expectation mismatch, not a product defect indicated by the observed failure.
-- **Repair committed:** [`4b4f5e7f0e0b52fc02d71e493184a98561732064`](https://github.com/JainCommunityPlatform/jain-community-platform/commit/4b4f5e7f0e0b52fc02d71e493184a98561732064) changes the amount-label assertion to exactly one visible match. The pledge request body, idempotency-key, success feedback, visible pledge status, and negative-path assertions remain intact.
-- **Current status:** rerun CI on the new head and inspect every required job. PR #189 remains open; do not merge until all required checks are green and it is mergeable. Post-merge CI must be verified separately or recorded UNKNOWN. Android build/upload remains manual/on-demand.
+- **Latest merged batch:** [PR #274 — public directory and tenant-routing security](https://github.com/JainCommunityPlatform/jain-community-platform/pull/274), merge commit `1ccc6812746dfa6a62202250e1931a0a4a40d0f7`.
+- **Exact-head CI:** [#39371802595](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39371802595) passed Flutter analysis/tests and connected giving/profile journeys, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate on `9a897ec9f1d086db136c037219dc4afdc2775432`.
+- **Post-merge CI:** [#39372227655](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39372227655) passed all applicable checks on the default branch. Android AAB skipped by design.
+- **CI repair:** initial run #39371554969 exposed a test expectation mismatch because middleware trims `x-jcp-tenant-id`; the test was corrected to expect the normalized value. No product assertions were weakened.
+- **Recently merged:** PR #273 session restore/refresh race matrix; #272 grouped HTTP DTO validation; #271 connected website publish/reload; #270 connected profile save/reload; #268 persisted notification read-state/tenant isolation; #266 connected donation payment lifecycle.
+- **Current branch:** `qa/p1-localization-accessibility-responsive-audit-batch` closes a grouped QA-013 gap: localize all public landing copy in English/Hindi/Marathi/Gujarati, verify live locale switching, strengthen semantic headings, and test 200% text scaling and accessible touch targets on a 320px viewport.
+- **Acceptance gate:** open one grouped MR, verify exact-head CI, fix genuine failures without weakening assertions, merge only when all required checks pass and the PR is mergeable, then independently verify post-merge CI.
+- **Evidence boundary:** widget/unit tests do not replace physical screen-reader, keyboard/focus, contrast, real-device, production Firebase, custom-domain or Storage checks. Android AAB remains manual/on-demand.
 
 ---
 
