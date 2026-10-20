@@ -720,3 +720,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - The failure was a lazy-list viewport assumption: the test had scrolled to the hero section, while the editor status message is rendered near the top of that same ListView. A message outside the viewport is not built for a text finder, so the test could not observe the confirmation despite reaching the post-tap assertion.
 - Updated the connected test to scroll back to the status area after tapping Publish, wait for either success or an explicit save-error message, fail with the visible backend/UI error if present, and still require the success confirmation. Persistence version increment, contact preservation, HTTP 400/no-mutation and fresh editor reload assertions remain unchanged.
 - **Current PR #271 remains unmerged.** Require fresh exact-head CI and merge-gate success before merging. Android AAB remains manual/on-demand.
+
+
+## PR #271 connected publish result timeout triage — 20 October 2026
+
+- Exact-head [CI #39353197227](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39353197227): Flutter analyze and ordinary tests passed; backend lint/unit/integration/Firestore-emulator/build and repository validation passed. The connected Flutter → NestJS → Firestore job still failed because the success message was absent after a 15-second polling window; no visible save-error message was found in that window.
+- The single large scroll was replaced with scrollUntilVisible targeting the first editor section, to reliably return to the top of the lazy ListView where status messages render. The wait now extends beyond the API client's 15-second request timeout so a genuine request error can be observed and reported instead of being confused with a missing widget.
+- All core assertions remain: publish success, exactly one version increment, persisted hero title, preserved contact field, HTTP 400 on blank title, unchanged version/title/contact after rejection, and fresh editor reload.
+- **Current state:** a new exact-head CI run is required. Do not merge until the connected journey and merge gate pass. Android AAB remains manual/on-demand.
