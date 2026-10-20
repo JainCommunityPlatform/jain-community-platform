@@ -704,3 +704,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - Current correction waits for the hero section to appear both on initial load and after reopening, with explicit assertions before tapping. Publish/version increment, contact preservation, blank-title HTTP 400/no-mutation, and reload assertions remain intact.
 - **Merge gate:** wait for fresh exact-head CI on this corrected test. PR #271 remains unmerged until all required checks and merge gate pass. Do not count a skipped test as evidence.
 - Next batch after merge: revisit P1 coverage gaps in the inventory and group related remaining tests; production hostname/identity, real media URL reachability and physical-device behavior remain separate acceptance gates. Android AAB remains manual/on-demand.
+
+
+## PR #271 CI triage — scroll lazy editor sections into view (20 October 2026)
+
+- Latest exact-head [CI #39351766590](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39351766590) failed only in the connected Flutter → NestJS → Firestore journey; backend and repository validation passed. Android AAB skipped by design.
+- The website editor renders sections inside a lazy ListView. The connected test waited for `Hero / मुख्य भाग` without scrolling the viewport, so the section could remain unbuilt/offscreen even after the asynchronous editor load completed.
+- Fix on the same grouped PR #271 branch: explicitly wait for the editor scaffold, use `dragUntilVisible` to build/scroll to the hero section both on first load and after reopening, then expand it before editing. Keep publish confirmation, exact version increment, unrelated contact preservation, HTTP 400/no-mutation and persisted reload assertions intact.
+- Fresh exact-head CI is required. Do not merge until the connected journey and all required checks pass; post-merge verification remains separate. Android AAB stays manual/on-demand.
