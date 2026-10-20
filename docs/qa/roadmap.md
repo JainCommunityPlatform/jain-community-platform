@@ -691,3 +691,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Exact-head CI #39350905898 failed in the connected Flutter → NestJS → Firestore job because the test attempted to tap the hero section before async editor load exposed it.
 - The latest branch revision waits for the hero section on both initial load and editor reopen, asserting it exists before tapping. The substantive save/publish/version/preservation/HTTP 400/no-mutation/reload assertions are retained.
 - Fresh exact-head CI is required before merge; Android AAB remains manual/on-demand.
+
+
+## PR #271 connected editor viewport correction — 20 October 2026
+
+- Exact-head CI #39351766590 failed the connected Flutter → NestJS → Firestore website test because it could not find the hero section while it was outside the lazy ListView viewport.
+- Corrected the test to wait for the editor scaffold and use `dragUntilVisible` before expanding the hero section, both before publishing and after reopening. All persistence and rejection assertions remain.
+- Run fresh exact-head CI; do not merge until all required checks pass. Android AAB remains manual/on-demand.
