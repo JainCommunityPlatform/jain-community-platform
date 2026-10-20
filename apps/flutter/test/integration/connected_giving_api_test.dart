@@ -254,14 +254,22 @@ void main() {
         ),
       ));
       await tester.pumpAndSettle();
-      // Wait for the asynchronous website load before looking for editor sections.
-      final heroSection = find.text('Hero / मुख्य भाग');
-      for (var attempt = 0; attempt < 150 && heroSection.evaluate().isEmpty; attempt++) {
+      // Wait for the async load to finish, then scroll the lazy ListView to the
+      // hero section. Waiting alone cannot build a child that is offscreen.
+      final editorTitle = find.text('Temple Website Editor');
+      for (var attempt = 0; attempt < 150 && editorTitle.evaluate().isEmpty; attempt++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
+      expect(editorTitle, findsOneWidget);
+      final heroSection = find.text('Hero / मुख्य भाग');
+      await tester.dragUntilVisible(
+        heroSection,
+        find.byType(ListView).first,
+        const Offset(0, -300),
+      );
+      await tester.pumpAndSettle();
       expect(heroSection, findsOneWidget);
-      // The editor intentionally keeps most sections collapsed on first load.
-      // Expand the hero section before locating its lazily-created text fields.
+      // Expand the section before locating its lazily-created text fields.
       await tester.tap(heroSection);
       await tester.pumpAndSettle();
       final heroTitle = find.byWidgetPredicate(
@@ -314,10 +322,18 @@ void main() {
         ),
       ));
       await tester.pumpAndSettle();
-      final reloadedHeroSection = find.text('Hero / मुख्य भाग');
-      for (var attempt = 0; attempt < 150 && reloadedHeroSection.evaluate().isEmpty; attempt++) {
+      final reloadedEditorTitle = find.text('Temple Website Editor');
+      for (var attempt = 0; attempt < 150 && reloadedEditorTitle.evaluate().isEmpty; attempt++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
+      expect(reloadedEditorTitle, findsOneWidget);
+      final reloadedHeroSection = find.text('Hero / मुख्य भाग');
+      await tester.dragUntilVisible(
+        reloadedHeroSection,
+        find.byType(ListView).first,
+        const Offset(0, -300),
+      );
+      await tester.pumpAndSettle();
       expect(reloadedHeroSection, findsOneWidget);
       await tester.tap(reloadedHeroSection);
       await tester.pumpAndSettle();
