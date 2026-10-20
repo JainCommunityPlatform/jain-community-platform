@@ -29,11 +29,11 @@ class BadeBabaHomePage extends StatelessWidget {
           _HeroCard(colors: colors, strings: strings),
           const SizedBox(height: 20),
           _SectionTitle(strings.publicActionsHeading),
-          const SizedBox(height: 12),
+          const const SizedBox(height: 12),
           _ActionGrid(strings: strings),
           const SizedBox(height: 28),
           _SectionTitle(strings.publicCommunityHeading),
-          const SizedBox(height: 12),
+          const const SizedBox(height: 12),
           _InfoCard(
             icon: Icons.event,
             title: strings.publicEventsTitle,
@@ -84,7 +84,7 @@ class _HeroCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Icon(Icons.temple_hindu, size: 52, excludeFromSemantics: true),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Semantics(
               header: true,
               child: Text(
@@ -92,12 +92,12 @@ class _HeroCard extends StatelessWidget {
                 style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
               ),
             ),
-            SizedBox(height: 6),
+            const SizedBox(height: 6),
             Text(
               strings.publicHeroSubtitle,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text(
               strings.publicHeroDescription,
               style: const TextStyle(height: 1.45),
