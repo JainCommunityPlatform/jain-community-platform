@@ -284,7 +284,10 @@ void main() {
 
       await tester.ensureVisible(heroTitle);
       await tester.enterText(heroTitle, 'Connected Published Website');
-      await tester.tap(find.text('Save & Publish Website'));
+      final publishButton = find.text('Save & Publish Website');
+      await tester.ensureVisible(publishButton);
+      await tester.tap(publishButton);
+      await tester.pump();
 
       // The editor's status message is placed at the top of the lazy ListView.
       // We were scrolled to the hero section when publishing, so scroll back to
