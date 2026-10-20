@@ -698,3 +698,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Exact-head CI #39351766590 failed the connected Flutter → NestJS → Firestore website test because it could not find the hero section while it was outside the lazy ListView viewport.
 - Corrected the test to wait for the editor scaffold and use `dragUntilVisible` before expanding the hero section, both before publishing and after reopening. All persistence and rejection assertions remain.
 - Run fresh exact-head CI; do not merge until all required checks pass. Android AAB remains manual/on-demand.
+
+
+## Next grouped P1 — HTTP DTO validation and failure mapping (20 October 2026)
+
+- PR #271 is merged as `80f2cdb72f2ba12aa3a447dcc8d18b886500a572`; exact-head [CI #39355422215](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39355422215) passed Flutter analysis/tests (including connected website publish), backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Default-branch post-merge CI #39355751162 is running and must be verified separately.
+- Current branch `qa/p1-http-dto-validation-platform-website-profile-batch` extends the existing HTTP DTO matrix across website config, authenticated profile updates, tenant member create/update, and platform tenant create/update/admin. Each invalid payload must return 400 before the relevant service or audit is called.
+- Group these related routes into one MR; do not split by DTO. Run exact-head CI, fix actual failures without weakening assertions, merge only when all required checks pass, verify post-merge CI, then continue the highest-priority inventory gap. Android AAB remains manual/on-demand.
