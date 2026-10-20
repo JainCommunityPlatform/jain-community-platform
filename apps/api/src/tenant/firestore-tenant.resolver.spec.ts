@@ -89,4 +89,48 @@ describe('FirestoreTenantResolver', () => {
     await expect(mobileResolver.resolve('example.com')).resolves.toBeNull();
     await expect(mobileResolver.resolve('example.com', 'missing')).resolves.toBeNull();
   });
+
+  it('keeps a verified hostname authoritative when a conflicting tenant ID is supplied', async () => {
+    getTenantByHostname.mockResolvedValue({
+      id: 'tenant-a',
+      name: 'Tenant A',
+      hostname: 'tenant-a.example.test',
+      status: 'ACTIVE',
+      verified: true,
+    });
+    const getTenantById = jest.fn().mockResolvedValue({
+      id: 'tenant-b', name: 'Tenant B', hostname: 'tenant-b.example.test', status: 'ACTIVE',
+    });
+    const instance = new FirestoreTenantResolver({ getTenantByHostname, getTenantById } as never);
+
+    await expect(instance.resolve('tenant-a.example.test', 'tenant-b')).resolves.toEqual({
+      id: 'tenant-a', name: 'Tenant A', hostname: 'tenant-a.example.test',
+    });
+    expect(getTenantById).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['unverified', { id: 'tenant-a', name: 'Tenant A', hostname: 'tenant-a.example.test', status: 'ACTIVE', verified: false }],
+    ['inactive', { id: 'tenant-a', name: 'Tenant A', hostname: 'tenant-a.example.test', status: 'INACTIVE', verified: true }],
+  ])('does not let a %s hostname fall back to a caller-selected tenant ID', async (_state, mappedTenant) => {
+    getTenantByHostname.mockResolvedValue(mappedTenant);
+    const getTenantById = jest.fn().mockResolvedValue({
+      id: 'tenant-b', name: 'Tenant B', hostname: 'tenant-b.example.test', status: 'ACTIVE',
+    });
+    const instance = new FirestoreTenantResolver({ getTenantByHostname, getTenantById } as never);
+
+    await expect(instance.resolve('tenant-a.example.test', 'tenant-b')).resolves.toBeNull();
+    expect(getTenantById).not.toHaveBeenCalled();
+  });
+
+  it('rejects an inactive tenant selected by ID on an API hostname', async () => {
+    getTenantByHostname.mockResolvedValue(null);
+    const getTenantById = jest.fn().mockResolvedValue({
+      id: 'tenant-a', name: 'Tenant A', hostname: 'tenant-a.example.test', status: 'INACTIVE',
+    });
+    const instance = new FirestoreTenantResolver({ getTenantByHostname, getTenantById } as never);
+
+    await expect(instance.resolve('api.jcp.example', 'tenant-a')).resolves.toBeNull();
+  });
+
 });
