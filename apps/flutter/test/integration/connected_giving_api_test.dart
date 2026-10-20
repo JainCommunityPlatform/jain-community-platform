@@ -254,9 +254,15 @@ void main() {
         ),
       ));
       await tester.pumpAndSettle();
+      // Wait for the asynchronous website load before looking for editor sections.
+      final heroSection = find.text('Hero / मुख्य भाग');
+      for (var attempt = 0; attempt < 150 && heroSection.evaluate().isEmpty; attempt++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(heroSection, findsOneWidget);
       // The editor intentionally keeps most sections collapsed on first load.
       // Expand the hero section before locating its lazily-created text fields.
-      await tester.tap(find.text('Hero / मुख्य भाग'));
+      await tester.tap(heroSection);
       await tester.pumpAndSettle();
       final heroTitle = find.byWidgetPredicate(
         (widget) => widget is TextField &&
@@ -308,7 +314,12 @@ void main() {
         ),
       ));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Hero / मुख्य भाग'));
+      final reloadedHeroSection = find.text('Hero / मुख्य भाग');
+      for (var attempt = 0; attempt < 150 && reloadedHeroSection.evaluate().isEmpty; attempt++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(reloadedHeroSection, findsOneWidget);
+      await tester.tap(reloadedHeroSection);
       await tester.pumpAndSettle();
       final reloadedHeroTitle = find.byWidgetPredicate(
         (widget) => widget is TextField &&
