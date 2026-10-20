@@ -372,3 +372,10 @@ Evidence boundaries:
 - Latest exact-head CI #39350905898 failed because the test attempted to tap the hero section before the asynchronous website load made it available.
 - Updated the connected test to wait for the section on initial load and after reopening. Existing persistence, version, unrelated-field and rejection assertions remain unchanged.
 - Await fresh exact-head CI; PR #271 must remain unmerged until required checks pass.
+
+
+## PR #271 connected editor viewport correction — 20 October 2026
+
+- Exact-head CI #39351766590 failed in the connected website journey while locating the hero section; backend lint/unit/integration/Firestore-emulator/build and repository validation passed.
+- The test now waits for the editor scaffold and scrolls the lazy ListView to the hero section on initial load and after reopening. Persistence/version/contact/validation/reload assertions are preserved.
+- Fresh exact-head CI must pass before merge; Android AAB remains manual/on-demand.
