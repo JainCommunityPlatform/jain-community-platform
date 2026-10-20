@@ -721,3 +721,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Current branch `qa/p0-session-stale-async-resurrection-batch` adds four race regressions: Firebase signs out while initial backend session load is pending; a newer auth event overtakes an older load; sign-out overtakes a session refresh; and an older overlapping refresh cannot overwrite the latest session.
 - The controller uses a monotonically increasing generation to ignore stale async completions. Keep all race cases together in one MR; do not split one test per race. Require exact-head CI and merge gate, then independently verify post-merge CI.
 - Real Firebase credential revocation, device restart, offline UI and live role propagation remain environment gates. Android AAB remains manual/on-demand.
+
+
+## Grouped public directory and tenant-routing security batch — 20 October 2026
+
+- Branch `qa/p1-public-directory-tenant-routing-security-batch` groups resolver precedence/fallback tests, middleware tenant-header propagation, public directory field allowlisting/inactive tenant filtering, and anonymous HTTP reads for the directory and resolved tenant website.
+- Security invariant: a known hostname is authoritative. If it maps to an inactive or unverified tenant, a caller-supplied `x-jcp-tenant-id` must not redirect that request to a different tenant. Explicit tenant-ID fallback remains supported only when the hostname has no tenant mapping (mobile API host case).
+- Exact-head CI and post-merge CI are required. Unit/HTTP tests do not replace real Firestore/staging hostname and device verification. Android AAB remains manual/on-demand.
