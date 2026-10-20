@@ -253,6 +253,11 @@ void main() {
           tenantName: 'Connected giving test tenant',
         ),
       ));
+      await tester.pumpAndSettle();
+      // The editor intentionally keeps most sections collapsed on first load.
+      // Expand the hero section before locating its lazily-created text fields.
+      await tester.tap(find.text('Hero / मुख्य भाग'));
+      await tester.pumpAndSettle();
       final heroTitle = find.byWidgetPredicate(
         (widget) => widget is TextField &&
             widget.decoration?.labelText == 'मंदिर का नाम / शीर्षक',
@@ -302,6 +307,9 @@ void main() {
           tenantName: 'Connected giving test tenant',
         ),
       ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Hero / मुख्य भाग'));
+      await tester.pumpAndSettle();
       final reloadedHeroTitle = find.byWidgetPredicate(
         (widget) => widget is TextField &&
             widget.decoration?.labelText == 'मंदिर का नाम / शीर्षक',
