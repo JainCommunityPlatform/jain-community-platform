@@ -712,3 +712,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - The website editor renders sections inside a lazy ListView. The connected test waited for `Hero / मुख्य भाग` without scrolling the viewport, so the section could remain unbuilt/offscreen even after the asynchronous editor load completed.
 - Fix on the same grouped PR #271 branch: explicitly wait for the editor scaffold, use `dragUntilVisible` to build/scroll to the hero section both on first load and after reopening, then expand it before editing. Keep publish confirmation, exact version increment, unrelated contact preservation, HTTP 400/no-mutation and persisted reload assertions intact.
 - Fresh exact-head CI is required. Do not merge until the connected journey and all required checks pass; post-merge verification remains separate. Android AAB stays manual/on-demand.
+
+
+## PR #271 connected publish confirmation viewport correction — 20 October 2026
+
+- Latest exact-head [CI #39352235703](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39352235703) passed Flutter analysis and the ordinary 119-test suite, and passed backend lint/unit/integration/Firestore-emulator/build plus repository validation. The connected integration job failed only at the expected success-message assertion.
+- The failure was a lazy-list viewport assumption: the test had scrolled to the hero section, while the editor status message is rendered near the top of that same ListView. A message outside the viewport is not built for a text finder, so the test could not observe the confirmation despite reaching the post-tap assertion.
+- Updated the connected test to scroll back to the status area after tapping Publish, wait for either success or an explicit save-error message, fail with the visible backend/UI error if present, and still require the success confirmation. Persistence version increment, contact preservation, HTTP 400/no-mutation and fresh editor reload assertions remain unchanged.
+- **Current PR #271 remains unmerged.** Require fresh exact-head CI and merge-gate success before merging. Android AAB remains manual/on-demand.
