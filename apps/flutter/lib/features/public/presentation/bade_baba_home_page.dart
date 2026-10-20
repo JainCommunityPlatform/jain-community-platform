@@ -80,26 +80,27 @@ class _HeroCard extends StatelessWidget {
             end: Alignment.bottomRight,
           ),
         ),
-        child: const Column(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.temple_hindu, size: 52, excludeFromSemantics: true),
+            const Icon(Icons.temple_hindu, size: 52, excludeFromSemantics: true),
             SizedBox(height: 16),
             Semantics(
               header: true,
               child: Text(
-              strings.publicHeroTitle,
-              style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
-            )),
+                strings.publicHeroTitle,
+                style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
+              ),
+            ),
             SizedBox(height: 6),
             Text(
               strings.publicHeroSubtitle,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             SizedBox(height: 12),
             Text(
               strings.publicHeroDescription,
-              style: TextStyle(height: 1.45),
+              style: const TextStyle(height: 1.45),
             ),
           ],
         ),
