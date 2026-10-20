@@ -56,7 +56,7 @@ describe('TenantContextMiddleware', () => {
     );
   });
 
-  it('passes an explicit mobile tenant ID to resolution while using the resolved tenant context', async () => {
+  it('trims the explicit mobile tenant ID before resolution and uses the resolved context', async () => {
     const tenant = { id: 'tenant-mobile', name: 'Mobile tenant', hostname: 'mobile.example.test' };
     const tenantService = { resolve: jest.fn().mockResolvedValue(tenant) };
     const tenantContextStore = { run: jest.fn((context, callback) => callback()) };
@@ -74,7 +74,7 @@ describe('TenantContextMiddleware', () => {
       next,
     );
 
-    expect(tenantService.resolve).toHaveBeenCalledWith('api.jcp.example', ' tenant-mobile ');
+    expect(tenantService.resolve).toHaveBeenCalledWith('api.jcp.example', 'tenant-mobile');
     expect(tenantContextStore.run).toHaveBeenCalledWith(tenant, expect.any(Function));
     expect(next).toHaveBeenCalledTimes(1);
   });
