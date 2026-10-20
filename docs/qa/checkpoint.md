@@ -678,3 +678,11 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - Initial exact-head [CI #39308187625](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39308187625) passed Flutter analyze, ordinary Flutter tests, backend lint/unit/integration/Firestore-emulator/build and repository validation, but failed the connected UI/API step.
 - Failure was a test matcher, not an application failure: the saved profile name appears twice in the UI (header and Name field), while the test expected exactly one match.
 - Fixed the assertion to explicitly expect both UI representations. No product behavior assertions were removed. Fresh exact-head CI must verify the updated connected journey before merge.
+
+## Verified execution — connected profile UI persistence (20 October 2026)
+
+- **Merged:** [PR #270](https://github.com/JainCommunityPlatform/jain-community-platform/pull/270), merge commit `36fc2e371fd82ccb35ea528a21626aa009f77b0b`.
+- **Exact-head CI:** [run #39308626401](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39308626401) passed.
+- **Post-merge CI:** [run #39309084778](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39309084778) passed Flutter analyze/tests and connected giving/profile journeys, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Android AAB skipped by design.
+- **Next grouped P1 branch:** qa/p1-connected-website-publish-persistence-batch connects the Flutter website editor to the real NestJS API and Firestore Emulator. It verifies publish/save, version increment, preservation of unrelated contact fields, rejected blank hero title without persisted mutation, and reopening the editor with the persisted title.
+- **Evidence boundary:** test identities + Firestore Emulator; no claim of production tenant hostname routing, Firebase Storage/public media reachability, or physical-device validation. Android AAB remains manual/on-demand.
