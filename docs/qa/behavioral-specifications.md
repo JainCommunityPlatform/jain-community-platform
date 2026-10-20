@@ -2135,3 +2135,34 @@ And PlatformService create/update/addTenantAdmin and success audit are not calle
 
 - Test layer: NestJS HTTP E2E with the global ValidationPipe configured for whitelist and forbidNonWhitelisted.
 - Evidence boundary: these tests verify request validation and pre-service side-effect prevention; persisted Firestore and staging identity behavior remain separate acceptance layers.
+
+
+## P0 authentication/session race safety — stale async completion scenarios (20 October 2026)
+
+### Scenario: Firebase sign-out wins over a pending startup session restore
+
+Given Firebase emits an authenticated user and the backend session load is still pending
+When Firebase emits a signed-out state before the backend response returns
+Then the app remains signed out when the stale authenticated response completes
+And protected access is not restored by that response
+
+### Scenario: A newer Firebase identity wins over an older session response
+
+Given the first Firebase identity has a pending backend session load
+When a newer Firebase auth-state event starts another session load and returns first
+Then the newer user's session remains active when the older response eventually completes
+
+### Scenario: Sign-out wins over a pending session refresh
+
+Given a signed-in user starts a backend session refresh
+When Firebase emits sign-out before the refresh completes
+Then the late refresh response cannot restore authenticated status or tenant/role access
+
+### Scenario: The latest overlapping refresh wins
+
+Given two session refresh requests are in flight
+When the newer refresh completes before the older request
+Then the older response cannot overwrite the newer user, tenant, or role
+
+- Test layer: Flutter controller unit tests using completers to deterministically control asynchronous response ordering.
+- Evidence boundary: this validates controller race handling; real Firebase credential revocation, app restart, offline UI, and device-level auth persistence remain environment gates.

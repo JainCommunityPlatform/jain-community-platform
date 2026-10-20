@@ -774,3 +774,12 @@ Open a focused PR for the timeout fix, inspect every exact-head CI job, repair a
 - **Post-merge CI:** [#39355751162](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39355751162) passed all applicable checks on the default branch. Android AAB skipped by design.
 - **Next grouped batch:** PR #272 extends the HTTP DTO failure matrix across website configuration, profile updates, tenant member mutations and platform tenant/admin routes; invalid inputs must return HTTP 400 before service/audit side effects.
 - **Current PR #272 head at this checkpoint edit:** `a0904d9d3b2454bf55990249f324eac04e908760`; fresh exact-head CI must be rechecked after the checkpoint changes. Android AAB remains manual/on-demand.
+
+
+## PR #272 post-merge verification and next P0 session-race batch — 20 October 2026
+
+- **Merged:** [PR #272](https://github.com/JainCommunityPlatform/jain-community-platform/pull/272), commit `bbf3495c2f431139255c91360f45b577447094ae`.
+- **Exact-head CI:** [#39356281196](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39356281196) passed Flutter analysis/tests, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate.
+- **Post-merge CI:** [#39356659872](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39356659872) passed the same applicable checks on the default branch. Android AAB skipped by design.
+- **Current branch:** `qa/p0-session-stale-async-resurrection-batch` adds four controller tests and generation guards against late session restore/refresh responses after sign-out and out-of-order overlapping loads.
+- **Next:** verify exact-head CI, repair actual failures without weakening assertions, merge only after all required checks pass, verify post-merge CI separately, then reassess the P0 inventory. Real Firebase/device/offline verification remains open; Android AAB remains manual/on-demand.
