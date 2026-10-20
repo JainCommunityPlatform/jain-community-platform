@@ -95,4 +95,45 @@ void main() {
     expect(find.text('Sign in to continue'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+  testWidgets('public landing controls retain accessible touch targets at 200% text scale',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final semantics = tester.ensureSemantics();
+    addTearDown(semantics.dispose);
+    await tester.pumpWidget(MaterialApp(
+      home: MediaQuery(
+        data: const MediaQueryData(
+          size: Size(320, 640),
+          textScaler: TextScaler.linear(2),
+        ),
+        child: const BadeBabaHomePage(),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.bySemanticsLabel('Your Jain Temple Community'), findsOneWidget);
+    expect(find.bySemanticsLabel('Sign in'), findsOneWidget);
+    for (final button in tester.widgetList<OutlinedButton>(find.byType(OutlinedButton))) {
+      final finder = find.byWidget(button);
+      expect(tester.getSize(finder).height, greaterThanOrEqualTo(48));
+    }
+
+    await tester.dragUntilVisible(
+      find.text('Sign in to continue'),
+      find.byType(ListView),
+      const Offset(0, -300),
+    );
+    await tester.pumpAndSettle();
+    final continueButton = find.ancestor(
+      of: find.text('Sign in to continue'),
+      matching: find.byType(FilledButton),
+    );
+    expect(tester.getSize(continueButton).height, greaterThanOrEqualTo(48));
+    expect(tester.takeException(), isNull);
+  });
+
 }
