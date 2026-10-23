@@ -88,7 +88,7 @@ export default async function HomePage() {
                 <div className="temple-body"><div className="arch"><span>ॐ</span></div><div className="door" /></div>
                 <div className="steps" />
               </div>
-            </>}
+            </> : null}
             <div className="art-caption"><span>{config?.about.title ?? "श्री आदिनाथ जिनालय"}</span><span>{contactAddress ?? "खाराड़ी · पुणे"}</span></div>
           </div>
           <span className="art-seal">णमो<br />अरिहंताणं</span>
