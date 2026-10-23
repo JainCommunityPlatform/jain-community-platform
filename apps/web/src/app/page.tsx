@@ -70,7 +70,7 @@ export default async function HomePage() {
           {config?.quickInfo.length ? <div className="hero-info">{config.quickInfo.slice(0, 2).map((item) => <div key={item.title}><strong>{item.title}</strong><span>{item.value}</span>{item.secondary ? <small>{item.secondary}</small> : null}</div>)}</div> : null}
         </div>
         <div className="hero-art" role="img" aria-label={config?.hero.imageUrl ? "मंदिर की तस्वीर" : "मंदिर का चित्र"}>
-          <div className="art-frame" style={config?.hero.imageUrl ? { backgroundImage: `linear-gradient(180deg, transparent 55%, #251b12a8), url("${config.hero.imageUrl.replace(/["\\\\]/g, "")}")`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
+          <div className="art-frame" style={config?.hero.imageUrl?.startsWith("https://") ? { backgroundImage: `linear-gradient(180deg, transparent 55%, #251b12a8), url("${config.hero.imageUrl}")`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
             {!config?.hero.imageUrl ? <>
               <div className="sun-disc" />
               <div className="temple-drawing" aria-hidden="true">
