@@ -23,7 +23,7 @@ export interface WebsitePageData {
 
 export async function getWebsitePageData(): Promise<WebsitePageData> {
   const apiBase = process.env.JCP_API_BASE_URL?.trim().replace(/\/+$/, "");
-  if (!apiBase) return { config: null, apiConfigured: false };
+  if (!apiBase) return { config: null, apiConfigured: process.env.NODE_ENV === "production" };
 
   const requestHeaders = await headers();
   const forwardedHost = requestHeaders.get("x-forwarded-host")?.split(",")[0]?.trim();
