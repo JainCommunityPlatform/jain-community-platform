@@ -65,7 +65,7 @@ export async function getWebsitePageData(): Promise<WebsitePageData> {
 export function safeHref(value?: string): string | undefined {
   if (!value) return undefined;
   const trimmed = value.trim();
-  if (/^(#|\/)/.test(trimmed)) return trimmed;
-  if (/^(https?:|mailto:|tel:|upi:)/i.test(trimmed)) return trimmed;
+  if (/^(#|\/(?!\/))/.test(trimmed)) return trimmed;
+  if (/^(#|\/(?!\/))/.test(trimmed)) return trimmed;
   return undefined;
 }
