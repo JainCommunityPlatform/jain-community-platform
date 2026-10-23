@@ -37,10 +37,17 @@ export default async function HomePage() {
   const events = config?.events.enabled ? config.events.items : [];
   const gallery = config?.gallery.enabled ? config.gallery.items : [];
   const sevaItems = config?.seva.enabled ? config.seva.items : [];
-  const primary = config?.theme.primary;
+
+  const tenantTheme = config ? ({
+    "--saffron": config.theme.primary,
+    "--green": config.theme.secondary,
+    "--paper": config.theme.background,
+    "--surface": config.theme.surface,
+    "--gold": config.theme.accent,
+  } as CSSProperties) : undefined;
 
   return (
-    <main style={primary ? ({ "--saffron": primary } as CSSProperties) : undefined}>
+    <main style={tenantTheme}>
       <div className="announcement">{config?.hero.eyebrow ?? "श्री आदिनाथ जिनालय · खाराड़ी, पुणे"}</div>
       <header className="site-header">
         <Link className="brand" href="/" aria-label="मंदिर होम">
