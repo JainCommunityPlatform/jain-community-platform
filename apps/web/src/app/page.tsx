@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getWebsitePageData, safeHref, type WebsiteSiteConfig } from "@/lib/website";
+import { getWebsitePageData, safeHref } from "@/lib/website";
 
 const fallbackNavigation = [
   { label: "मंदिर परिचय", target: "#about" },
