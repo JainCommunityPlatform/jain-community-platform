@@ -25,3 +25,8 @@
 .footer-contact{font-size:11px;color:#e4c99d}
 @media(max-width:900px){.events-band{flex-wrap:wrap}.event-list{max-width:none;min-width:45%}}
 @media(max-width:680px){.hero-info{gap:12px}.event-list{width:100%;min-width:0}.gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tenant-logo{width:36px;height:36px}}
+
+.hero-photo{position:absolute;inset:13px;width:calc(100% - 26px);height:calc(100% - 26px);object-fit:cover}
+.art-caption{z-index:1;background:linear-gradient(90deg,#fbf7efdd,#fbf7efdd)}
+.quick-card{background:var(--surface,#fffaf2)}
+.gallery-grid figure{background:var(--surface,#fffaf2)}
