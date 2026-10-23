@@ -51,7 +51,7 @@ export default async function HomePage() {
       <div className="announcement">{config?.hero.eyebrow ?? "श्री आदिनाथ जिनालय · खाराड़ी, पुणे"}</div>
       <header className="site-header">
         <Link className="brand" href="/" aria-label="मंदिर होम">
-          {config?.header.logoUrl
+          {config?.header.logoUrl?.startsWith("https://")
             ? <img className="tenant-logo" src={config.header.logoUrl} alt="" />
             : <span className="brand-mark" aria-hidden="true">ॐ</span>}
           <span><strong>{config?.hero.title ?? "बड़े बाबा खाराड़ी"}</strong><small>{config?.about.title ?? "श्री आदिनाथ जिनालय"}</small></span>
@@ -127,7 +127,7 @@ export default async function HomePage() {
 
       {gallery.length ? <section className="gallery-section section-wrap" id="gallery">
         <div className="section-kicker">{config?.gallery.title ?? "मंदिर गैलरी"} <span>✳</span></div>
-        <div className="gallery-grid">{gallery.slice(0, 12).map((item) => <figure key={item.id}><img src={item.imageUrl} alt={item.alt ?? item.title ?? "मंदिर की तस्वीर"} loading="lazy" /><figcaption>{item.title}</figcaption></figure>)}</div>
+        <div className="gallery-grid">{gallery.filter((item) => item.imageUrl.startsWith("https://")).slice(0, 12).map((item) => <figure key={item.id}><img src={item.imageUrl} alt={item.alt ?? item.title ?? "मंदिर की तस्वीर"} loading="lazy" /><figcaption>{item.title}</figcaption></figure>)}</div>
       </section> : null}
 
       <section className="seva-section section-wrap" id="seva">
