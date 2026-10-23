@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { notFound } from "next/navigation";
 import { getWebsitePageData, safeHref } from "@/lib/website";
 
@@ -38,7 +39,7 @@ export default async function HomePage() {
   const primary = config?.theme.primary;
 
   return (
-    <main style={primary ? ({ "--saffron": primary } as React.CSSProperties) : undefined}>
+    <main style={primary ? ({ "--saffron": primary } as CSSProperties) : undefined}>
       <div className="announcement">{config?.hero.eyebrow ?? "श्री आदिनाथ जिनालय · खाराड़ी, पुणे"}</div>
       <header className="site-header">
         <a className="brand" href="/" aria-label="मंदिर होम">
