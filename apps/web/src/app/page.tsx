@@ -48,7 +48,7 @@ export default async function HomePage() {
             ? <img className="tenant-logo" src={config.header.logoUrl} alt="" />
             : <span className="brand-mark" aria-hidden="true">ॐ</span>}
           <span><strong>{config?.hero.title ?? "बड़े बाबा खाराड़ी"}</strong><small>{config?.about.title ?? "श्री आदिनाथ जिनालय"}</small></span>
-        </a>
+        </Link>
         <nav aria-label="मुख्य नेविगेशन">
           {navigation.map((item, index) => {
             const href = safeHref(item.target);
