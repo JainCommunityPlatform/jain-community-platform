@@ -78,9 +78,9 @@ export default async function HomePage() {
           <div className="hero-note"><span className="note-symbol">✳</span><span><strong>एक साथ, धर्म और सेवा के पथ पर</strong><small>{config?.footer.tagline ?? "बड़े बाबा खाराड़ी जैन समाज"}</small></span></div>
           {config?.quickInfo.length ? <div className="hero-info">{config.quickInfo.slice(0, 2).map((item) => <div key={item.title}><strong>{item.title}</strong><span>{item.value}</span>{item.secondary ? <small>{item.secondary}</small> : null}</div>)}</div> : null}
         </div>
-        <div className="hero-art" role="img" aria-label={config?.hero.imageUrl ? "मंदिर की तस्वीर" : "मंदिर का चित्र"}>
-          <div className="art-frame" style={config?.hero.imageUrl?.startsWith("https://") ? { backgroundImage: `linear-gradient(180deg, transparent 55%, #251b12a8), url("${config.hero.imageUrl}")`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
-            {!config?.hero.imageUrl ? <>
+        <div className="hero-art" role="img" aria-label={config?.hero.imageUrl?.startsWith("https://") ? "मंदिर की तस्वीर" : "मंदिर का चित्र"}>
+          <div className="art-frame">
+            {config?.hero.imageUrl?.startsWith("https://") ? <img className="hero-photo" src={config.hero.imageUrl} alt="मंदिर की तस्वीर" /> : <>
               <div className="sun-disc" />
               <div className="temple-drawing" aria-hidden="true">
                 <div className="spire"><i /><i /><i /><b /></div>
