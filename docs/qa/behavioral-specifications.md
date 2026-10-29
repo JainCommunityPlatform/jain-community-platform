@@ -2198,3 +2198,14 @@ And no successful media-upload audit is written
 And the request is not misreported as an internal server error
 
 The HTTP regression asserts controller-level failure mapping; the storage service's signature detection remains the source of the validation decision, and live Firebase Storage remains a separate environment gate.
+
+
+## Website media validation — empty and oversized service inputs
+
+Given a caller invokes the website storage service with an empty buffer or a buffer larger than 10 MB
+When the storage service validates the payload
+Then it raises a NestJS `BadRequestException` with an actionable message
+And Firebase Storage is not contacted
+And validation does not leak as a generic internal-server error
+
+The upload controller also rejects an empty multipart file, and the multipart interceptor enforces its own file-size limit. These service-level assertions cover callers that reach `FirebaseStorageService` directly; they do not replace HTTP-level tests for the interceptor.
