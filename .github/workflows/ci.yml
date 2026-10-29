@@ -21,6 +21,7 @@ on:
           - frontend
           - backend
           - repository
+          - web
           - android
 
 permissions:
@@ -179,6 +180,26 @@ jobs:
         working-directory: apps/api
         run: npm run build --if-present
 
+  web:
+    name: Public website - Next.js lint and build
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.scope == 'full' || inputs.scope == 'web' }}
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Install website dependencies
+        working-directory: apps/web
+        run: npm install --no-audit --no-fund
+      - name: Lint and type-check website
+        working-directory: apps/web
+        run: npm run lint
+      - name: Build standalone website
+        working-directory: apps/web
+        run: npm run build
   android:
     name: Android - Build and Verify AAB
     if: ${{ github.event_name == 'workflow_dispatch' && (inputs.scope == 'full' || inputs.scope == 'android') }}
@@ -311,7 +332,7 @@ jobs:
   merge-gate:
     name: Merge gate
     if: ${{ always() }}
-    needs: [repository, frontend, backend, android]
+    needs: [repository, frontend, backend, web, android]
     runs-on: ubuntu-26.04
     steps:
       - name: Verify required validation jobs
@@ -321,10 +342,12 @@ jobs:
           echo "Repository: ${{ needs.repository.result }}"
           echo "Frontend: ${{ needs.frontend.result }}"
           echo "Backend: ${{ needs.backend.result }}"
+          echo "Website: ${{ needs.web.result }}"
           echo "Android: ${{ needs.android.result }}"
           if [[ "${{ needs.repository.result }}" == "failure" || "${{ needs.repository.result }}" == "cancelled" ||
                 "${{ needs.frontend.result }}" == "failure" || "${{ needs.frontend.result }}" == "cancelled" ||
                 "${{ needs.backend.result }}" == "failure" || "${{ needs.backend.result }}" == "cancelled" ||
+                "${{ needs.web.result }}" == "failure" || "${{ needs.web.result }}" == "cancelled" ||
                 "${{ needs.android.result }}" == "failure" || "${{ needs.android.result }}" == "cancelled" ]]; then
             echo "One or more validation jobs failed or were cancelled."
             exit 1

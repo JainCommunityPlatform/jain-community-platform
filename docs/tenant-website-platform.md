@@ -1,6 +1,6 @@
 # Multi-tenant Temple Website Platform
 
-The JCP implementation uses one reusable temple website template backed by tenant-scoped configuration. The same configuration is consumed by the responsive Flutter Web experience and the MyJinalay Flutter mobile application.
+The JCP implementation uses one reusable temple website configuration backed by tenant-scoped data. The standalone Next.js application in `apps/web` renders public tenant domains, while the MyJinalay Android application remains Flutter. The website and mobile app consume the same configuration; the Next.js application is a separate deployment and does not depend on Flutter Web.
 
 ## Runtime model
 
@@ -48,14 +48,16 @@ The configuration is intentionally data-driven and shared across web and mobile.
 
 ## Deployment requirements
 
-The CI pipeline is the validation gate for the reusable tenant capability and remains mandatory before merge.
+The CI pipeline is the validation gate for the reusable tenant capability and remains mandatory before merge. A dedicated website job installs dependencies, runs ESLint/type-checking and builds the standalone Next.js output. It runs on pull requests without triggering the Android publishing pipeline.
 
 For generated tenant subdomains, configure:
 
 - JCP_TENANT_BASE_DOMAIN;
 - wildcard DNS for that domain;
-- the web host/reverse proxy to route the wildcard host to the Flutter Web application;
-- the API to be reachable under the same origin or an explicitly configured API base URL.
+- the web host/reverse proxy to route verified tenant hostnames to the standalone Next.js application;
+- set server-only `JCP_API_BASE_URL` to the JCP API base URL including the `/api` prefix;
+- the API to be reachable from the Next.js server. The Next.js server resolves the incoming hostname through `/tenant/resolve` and then reads `/website/site` using the returned tenant ID. If hostname resolution fails, it returns a not-found page rather than displaying another tenant's content;
+- keep Android/Flutter CI and release workflows independent from the website build.
 
 For image uploads, FIREBASE_STORAGE_BUCKET may be set explicitly. If it is omitted, the backend resolves the Firebase project's current default bucket (<project>.firebasestorage.app) and falls back to the legacy <project>.appspot.com bucket.
 
