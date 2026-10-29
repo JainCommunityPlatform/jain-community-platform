@@ -760,3 +760,9 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Added explicit client-error mapping for unsupported image bytes and an HTTP integration regression requiring 400 rather than 500, with no success audit.
 - Gate: exact-head backend lint/unit/integration/Firestore-emulator/build and all other required CI jobs must pass; fix genuine failures without weakening assertions, merge only when green/mergeable, then verify default-branch CI separately.
 - Evidence boundary: mocked storage rejection exercises HTTP mapping; signature recognition is implemented in the storage service, while live bucket/IAM/public URL/device behavior remains an environment gate. Android AAB stays manual/on-demand.
+
+
+## P1 follow-up — assert storage validation HTTP exception type (29 October 2026)
+
+- Follow-up to PR #279: strengthen the direct storage-service regression so disguised non-image bytes must throw NestJS `BadRequestException` rather than an arbitrary exception. Keep the existing message and no-Firebase-call assertions.
+- Merge gate: exact-head backend lint/unit/integration/Firestore-emulator/build and other required checks green; verify default-branch CI independently after merge. Android AAB remains manual/on-demand.

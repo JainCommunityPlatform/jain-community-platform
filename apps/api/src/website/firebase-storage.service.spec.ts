@@ -1,3 +1,5 @@
+import { BadRequestException } from '@nestjs/common';
+
 jest.mock('firebase-admin/storage', () => ({
   getStorage: jest.fn(),
 }));
@@ -276,6 +278,13 @@ describe('FirebaseStorageService', () => {
       { getFirebaseApp: jest.fn() } as never,
       { get: jest.fn().mockReturnValue('bucket') } as never,
     );
+
+    await expect(service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'disguised.jpg',
+      contentType: 'image/jpeg',
+      buffer: Buffer.from('this is not an image'),
+    })).rejects.toBeInstanceOf(BadRequestException);
 
     await expect(service.uploadTenantImage({
       tenantId: 't1',

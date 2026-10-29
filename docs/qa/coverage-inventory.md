@@ -406,3 +406,10 @@ Evidence boundaries:
 - Updated `FirebaseStorageService` to throw `BadRequestException` when uploaded bytes do not match a supported image signature, instead of leaking a generic error that becomes HTTP 500.
 - Added an HTTP integration regression asserting HTTP 400, tenant-scoped upload attempt, actionable error message, and no success audit when the storage validator rejects unsupported bytes.
 - Exact-head CI and post-merge verification pending; live Firebase Storage and device upload remain environment gates.
+
+
+## P1 storage validation exception contract — 29 October 2026
+
+- Added a direct `FirebaseStorageService` unit assertion that unsupported bytes disguised as `image/jpeg` raise NestJS `BadRequestException`, not merely any error.
+- The existing assertion still checks the actionable message and that Firebase Storage is never contacted for invalid bytes.
+- Complements PR #279's HTTP 400 regression; exact-head CI and post-merge verification for this contract are pending.
