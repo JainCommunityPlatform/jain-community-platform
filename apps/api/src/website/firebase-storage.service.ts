@@ -43,11 +43,11 @@ export class FirebaseStorageService {
     }
 
     if (input.buffer.length === 0) {
-      throw new Error('The uploaded image is empty');
+      throw new BadRequestException('The uploaded image is empty');
     }
 
     if (input.buffer.length > 10 * 1024 * 1024) {
-      throw new Error('Image upload exceeds the 10 MB limit');
+      throw new BadRequestException('Image upload exceeds the 10 MB limit');
     }
 
     // Mobile/browser file pickers sometimes label valid image bytes as
