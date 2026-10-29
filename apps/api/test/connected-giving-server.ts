@@ -1,6 +1,7 @@
 import { ExecutionContext, INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { deleteApp, getApps } from 'firebase-admin/app';
+import { writeFileSync } from 'node:fs';
 import request from 'supertest';
 
 import { AppModule } from '../src/app.module';
@@ -87,7 +88,9 @@ async function main() {
 
     const port = Number(process.env.JCP_CONNECTED_TEST_PORT ?? 4317);
     await app.listen(port, '0.0.0.0');
-    process.stdout.write(JSON.stringify({ ready: true, port, donorSubject, operatorSubject, approverSubject, contentManagerSubject, tenantId }) + '\n');
+    const metadataPath = process.env.JCP_CONNECTED_METADATA_FILE ?? '/tmp/jcp-connected-metadata.json';
+    writeFileSync(metadataPath, JSON.stringify({ donorSubject, operatorSubject, approverSubject, contentManagerSubject, tenantId }), { mode: 0o600 });
+    process.stdout.write(JSON.stringify({ ready: true, port }) + '\n');
 
     const shutdown = async () => {
       await app.close();
