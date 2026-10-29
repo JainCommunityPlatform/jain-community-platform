@@ -36,12 +36,6 @@ export class FirebaseStorageService {
         Boolean(value) && values.indexOf(value) === index,
       );
 
-    if (bucketNames.length === 0) {
-      throw new ServiceUnavailableException(
-        'Firebase Storage is not configured. Set FIREBASE_PROJECT_ID or FIREBASE_STORAGE_BUCKET.',
-      );
-    }
-
     if (input.buffer.length === 0) {
       throw new BadRequestException('The uploaded image is empty');
     }
@@ -60,6 +54,12 @@ export class FirebaseStorageService {
 
     if (!contentType) {
       throw new BadRequestException('Only image uploads are supported');
+    }
+
+    if (bucketNames.length === 0) {
+      throw new ServiceUnavailableException(
+        'Firebase Storage is not configured. Set FIREBASE_PROJECT_ID or FIREBASE_STORAGE_BUCKET.',
+      );
     }
 
     const safeName = input.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
