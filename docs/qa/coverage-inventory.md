@@ -427,3 +427,10 @@ Evidence boundaries:
 - Ensures empty, oversized, and unsupported payloads are rejected as client errors before checking whether Firebase Storage is configured. Invalid requests should not be misreported as HTTP 503 just because storage configuration is absent.
 - Added direct service regression with missing storage configuration for all three invalid payload classes and asserts Firebase Storage is never contacted.
 - This is service-boundary validation; valid uploads still require configured Firebase Storage. Exact-head CI and post-merge verification pending.
+
+
+## P1 media validation/configuration precedence — valid payload regression (29 October 2026)
+
+- Added the complementary service-boundary assertion: a supported image with missing Firebase Storage configuration must raise `ServiceUnavailableException`, while empty, oversized, and unsupported images raise `BadRequestException`.
+- The valid-payload test also asserts Firebase Storage is not initialized when configuration is absent. This protects the new validation order from accidentally converting a genuine infrastructure/configuration failure into success or a client error.
+- Exact-head CI and post-merge verification pending; live bucket/IAM and public URL reachability remain environment gates.

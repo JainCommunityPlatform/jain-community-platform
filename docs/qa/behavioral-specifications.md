@@ -2221,3 +2221,14 @@ And Firebase Storage is not contacted
 Given a valid supported image payload is uploaded
 When storage configuration is missing
 Then the service reports a service-unavailable configuration error
+
+
+## Website media — valid payload still requires storage configuration
+
+Given a valid supported image payload is submitted while Firebase Storage configuration is missing
+When the media storage service validates and prepares the upload
+Then the service raises `ServiceUnavailableException` with a storage configuration error
+And Firebase Storage is not initialized or contacted
+
+- Test layer: direct service unit test with missing configuration.
+- Evidence boundary: this proves error classification and no storage initialization at the service boundary; live Firebase configuration, bucket/IAM permissions, public URL reachability and device upload remain environment checks.

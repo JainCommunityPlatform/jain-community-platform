@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
 
 jest.mock('firebase-admin/storage', () => ({
   getStorage: jest.fn(),
@@ -39,6 +39,22 @@ describe('FirebaseStorageService', () => {
       contentType: 'image/jpeg',
       buffer: Buffer.from('not an image'),
     })).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(getStorage).not.toHaveBeenCalled();
+  });
+
+  it('reports missing storage configuration for valid media after validation', async () => {
+    const service = new FirebaseStorageService(
+      { getFirebaseApp: jest.fn() } as never,
+      { get: jest.fn().mockReturnValue(undefined) } as never,
+    );
+
+    await expect(service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'valid.jpg',
+      contentType: 'image/jpeg',
+      buffer: validJpeg,
+    })).rejects.toBeInstanceOf(ServiceUnavailableException);
 
     expect(getStorage).not.toHaveBeenCalled();
   });
