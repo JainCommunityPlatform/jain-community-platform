@@ -766,3 +766,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 
 - Follow-up to PR #279: strengthen the direct storage-service regression so disguised non-image bytes must throw NestJS `BadRequestException` rather than an arbitrary exception. Keep the existing message and no-Firebase-call assertions.
 - Merge gate: exact-head backend lint/unit/integration/Firestore-emulator/build and other required checks green; verify default-branch CI independently after merge. Android AAB remains manual/on-demand.
+
+
+## Next P1 — storage empty/oversize validation contract (29 October 2026)
+
+- Follow-up to the invalid-signature exception contract: empty buffers and service-level payloads over 10 MB must produce NestJS `BadRequestException`, not generic exceptions that may be mapped to HTTP 500.
+- Tests preserve the actionable message and assert rejection before Firebase Storage is called. The multipart interceptor's HTTP size-limit behavior remains a separate endpoint boundary.
+- Merge only after exact-head required CI passes; verify default-branch CI independently. Android AAB remains manual/on-demand.
