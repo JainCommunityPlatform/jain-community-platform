@@ -1,4 +1,4 @@
-import { ExecutionContext, ForbiddenException, INestApplication, NotFoundException, ValidationPipe } from '@nestjs/common';
+import { ExecutionContext, ForbiddenException, INestApplication, NotFoundException, ServiceUnavailableException, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
@@ -2626,6 +2626,32 @@ describe('API endpoints (integration)', () => {
       .expect(413);
 
     expect(storage.uploadTenantImage).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
+  it('returns a service-unavailable response when website media storage fails without a success audit', async () => {
+    storage.uploadTenantImage.mockRejectedValueOnce(
+      new ServiceUnavailableException('Firebase Storage is not configured'),
+    );
+    audit.record.mockClear();
+    const image = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
+
+    await request(app.getHttpServer())
+      .post('/api/website/media')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .attach('file', image, { filename: 'hero.jpg', contentType: 'image/jpeg' })
+      .expect(503)
+      .expect((response) => {
+        expect(response.body.message).toBe('Firebase Storage is not configured');
+      });
+
+    expect(storage.uploadTenantImage).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: '00000000-0000-0000-0000-000000000001',
+      filename: 'hero.jpg',
+      contentType: 'image/jpeg',
+      buffer: image,
+    }));
     expect(audit.record).not.toHaveBeenCalled();
   });
 
