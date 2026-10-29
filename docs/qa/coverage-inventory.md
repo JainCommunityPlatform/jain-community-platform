@@ -391,3 +391,11 @@ Evidence boundaries:
 
 
 - **Current P0 batch:** `qa/p0-session-stale-async-resurrection-batch` adds four deterministic race tests and generation guards so stale startup/refresh completions cannot re-authenticate a signed-out user or overwrite a newer session. Exact-head CI has not run yet.
+
+
+## P1 website media failure mapping — 29 October 2026
+
+- Added an HTTP integration regression for the website media endpoint when the storage service reports Firebase Storage unavailable/misconfigured.
+- Acceptance: HTTP 503 with the service/configuration message; upload service is called with the resolved tenant scope and image bytes; no success audit is emitted.
+- Evidence boundary: mocked storage failure at the HTTP boundary. Live bucket configuration, IAM, public URL reachability and device upload remain separate environment gates.
+- Branch: `qa/p1-website-media-failure-batch`; exact-head CI and post-merge verification pending.

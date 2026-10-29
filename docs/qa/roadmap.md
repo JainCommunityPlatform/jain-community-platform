@@ -746,3 +746,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Repair history: changed unsupported `Icon.excludeFromSemantics` to `ExcludeSemantics`; scrolled lazy-list items into view for locale assertions; removed a leaked test semantics handle. Assertions were retained.
 - The QA checkpoint, inventory and roadmap are included in this batch; inspect and pass CI on the final documentation-updated head before merge.
 - Physical screen-reader/keyboard focus order, contrast and real-device verification remain open environment gates. Android AAB remains manual/on-demand.
+
+
+## Next grouped P1 — website media failure mapping (29 October 2026)
+
+- Branch `qa/p1-website-media-failure-batch` adds an HTTP integration regression for Firebase Storage outage/configuration failure on `POST /api/website/media`.
+- The test requires HTTP 503, tenant-scoped upload arguments, and no successful media-upload audit. It complements existing empty-file, size-limit, non-image signature, successful upload and storage-service unit coverage.
+- Require exact-head CI and merge gate; fix failures without weakening assertions, then verify default-branch post-merge CI. Live Firebase Storage bucket/IAM/public URL and physical-device checks remain separate environment gates. Android AAB remains manual/on-demand.

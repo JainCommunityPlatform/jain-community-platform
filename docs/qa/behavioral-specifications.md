@@ -2174,3 +2174,17 @@ Then the older response cannot overwrite the newer user, tenant, or role
 - A tenant ID may be used as a mobile-client fallback only when the request hostname has no tenant-domain mapping.
 - The public tenant directory exposes only public identity/location/image fields and excludes inactive tenants and private tenant metadata. Public website and directory GET routes remain anonymous; mutations stay permission-protected.
 - Automated unit/HTTP tests are evidence for code behavior, not proof of real custom-domain DNS/TLS, production Firestore, Storage reachability, or device rendering.
+
+
+## Website media storage outage and audit safety (29 October 2026)
+
+### Scenario: Storage outage does not look like a successful media upload
+
+Given an authenticated content manager has a valid image and resolved tenant context
+When the website media endpoint cannot upload the image because Firebase Storage is unavailable or misconfigured
+Then the API returns HTTP 503 with a useful configuration/service error
+And no successful WEBSITE_MEDIA_UPLOADED audit event is recorded
+And the upload remains failed rather than returning a public media URL
+
+- Test layer: NestJS HTTP integration with the storage service failure represented by a ServiceUnavailableException.
+- Evidence boundary: validates API error mapping and audit ordering; live Firebase Storage permissions, bucket availability, public URL reachability and device upload behavior remain environment checks.
