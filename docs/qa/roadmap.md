@@ -780,3 +780,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Validation errors must win over infrastructure configuration errors: empty, oversized, and unsupported media should be classified as client errors even when Firebase Storage is not configured.
 - Regression uses an unconfigured storage service and asserts all invalid payload classes raise `BadRequestException` without touching Firebase Storage; valid uploads continue to require configuration.
 - Require exact-head CI and merge gate; verify default-branch CI separately. Android AAB remains manual/on-demand.
+
+
+## Next P1 — preserve valid-media storage configuration failure (29 October 2026)
+
+- Complement PR #283's invalid-payload precedence test with the positive validation boundary: a valid supported image and absent Firebase Storage configuration must still raise `ServiceUnavailableException`.
+- Assert Firebase Storage is not initialized without configuration. Keep the invalid-payload BadRequest assertions unchanged.
+- Require exact-head backend lint/unit/integration/Firestore-emulator/build and all other required checks; merge only when green, then verify default-branch CI independently. Android AAB remains manual/on-demand.
