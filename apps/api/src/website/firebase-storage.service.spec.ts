@@ -13,6 +13,36 @@ describe('FirebaseStorageService', () => {
 
   const validJpeg = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
 
+  it('rejects invalid media before checking Firebase Storage configuration', async () => {
+    const service = new FirebaseStorageService(
+      { getFirebaseApp: jest.fn() } as never,
+      { get: jest.fn().mockReturnValue(undefined) } as never,
+    );
+
+    await expect(service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'empty.jpg',
+      contentType: 'image/jpeg',
+      buffer: Buffer.alloc(0),
+    })).rejects.toBeInstanceOf(BadRequestException);
+
+    await expect(service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'oversized.jpg',
+      contentType: 'image/jpeg',
+      buffer: Buffer.alloc(10 * 1024 * 1024 + 1),
+    })).rejects.toBeInstanceOf(BadRequestException);
+
+    await expect(service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'disguised.jpg',
+      contentType: 'image/jpeg',
+      buffer: Buffer.from('not an image'),
+    })).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(getStorage).not.toHaveBeenCalled();
+  });
+
   it('uses the Firebase project default bucket when no explicit bucket is configured', async () => {
     const file = {
       save: jest.fn().mockResolvedValue(undefined),
