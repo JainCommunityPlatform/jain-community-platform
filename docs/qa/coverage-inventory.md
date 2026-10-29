@@ -420,3 +420,10 @@ Evidence boundaries:
 - Changed `FirebaseStorageService` to raise NestJS `BadRequestException` for empty image buffers and service-level uploads over 10 MB, rather than generic errors that can surface as HTTP 500.
 - Added unit assertions for the exception type, actionable messages, and early rejection before Firebase Storage is contacted.
 - Endpoint-level multipart size enforcement remains a separate boundary; this service contract protects direct/internal callers too. Exact-head CI and post-merge verification pending.
+
+
+## P1 media validation precedence over storage configuration — 29 October 2026
+
+- Ensures empty, oversized, and unsupported payloads are rejected as client errors before checking whether Firebase Storage is configured. Invalid requests should not be misreported as HTTP 503 just because storage configuration is absent.
+- Added direct service regression with missing storage configuration for all three invalid payload classes and asserts Firebase Storage is never contacted.
+- This is service-boundary validation; valid uploads still require configured Firebase Storage. Exact-head CI and post-merge verification pending.
