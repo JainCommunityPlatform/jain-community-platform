@@ -2209,3 +2209,15 @@ And Firebase Storage is not contacted
 And validation does not leak as a generic internal-server error
 
 The upload controller also rejects an empty multipart file, and the multipart interceptor enforces its own file-size limit. These service-level assertions cover callers that reach `FirebaseStorageService` directly; they do not replace HTTP-level tests for the interceptor.
+
+
+## Website media — validation takes precedence over storage configuration
+
+Given the media storage service is missing Firebase bucket/project configuration
+When a request contains an empty, oversized, or unsupported image payload
+Then the service reports the appropriate client validation error rather than a storage-configuration 503
+And Firebase Storage is not contacted
+
+Given a valid supported image payload is uploaded
+When storage configuration is missing
+Then the service reports a service-unavailable configuration error

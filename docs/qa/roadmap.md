@@ -773,3 +773,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Follow-up to the invalid-signature exception contract: empty buffers and service-level payloads over 10 MB must produce NestJS `BadRequestException`, not generic exceptions that may be mapped to HTTP 500.
 - Tests preserve the actionable message and assert rejection before Firebase Storage is called. The multipart interceptor's HTTP size-limit behavior remains a separate endpoint boundary.
 - Merge only after exact-head required CI passes; verify default-branch CI independently. Android AAB remains manual/on-demand.
+
+
+## Next P1 — validate media before storage configuration (29 October 2026)
+
+- Validation errors must win over infrastructure configuration errors: empty, oversized, and unsupported media should be classified as client errors even when Firebase Storage is not configured.
+- Regression uses an unconfigured storage service and asserts all invalid payload classes raise `BadRequestException` without touching Firebase Storage; valid uploads continue to require configuration.
+- Require exact-head CI and merge gate; verify default-branch CI separately. Android AAB remains manual/on-demand.
