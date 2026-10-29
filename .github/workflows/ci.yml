@@ -101,7 +101,7 @@ jobs:
           npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-jcp '
             set -euo pipefail
             cd apps/api
-            NODE_ENV=test FIREBASE_PROJECT_ID=demo-jcp FIRESTORE_DATABASE_ID="(default)" JCP_CONNECTED_TEST_PORT=4317 ./node_modules/.bin/ts-node test/connected-giving-server.ts > /tmp/jcp-connected-api.log 2>&1 &
+            NODE_ENV=test FIREBASE_PROJECT_ID=demo-jcp FIRESTORE_DATABASE_ID="(default)" JCP_CONNECTED_TEST_PORT=4317 JCP_CONNECTED_METADATA_FILE=/tmp/jcp-connected-metadata.json ./node_modules/.bin/ts-node test/connected-giving-server.ts > /tmp/jcp-connected-api.log 2>&1 &
             server_pid=$!
             trap "kill \\$server_pid 2>/dev/null || true" EXIT
             server_ready=false
@@ -121,10 +121,10 @@ jobs:
               echo "Connected giving API did not become ready"
               exit 1
             fi
-            tenant_id=$(node -e '\''const fs=require("fs"); const lines=fs.readFileSync("/tmp/jcp-connected-api.log","utf8").split(/\r?\n/); const ready=lines.map(line=>{try{return JSON.parse(line)}catch{return null}}).find(value=>value && value.ready===true && value.tenantId); if(!ready) process.exit(2); process.stdout.write(ready.tenantId);'\'')
-            operator_id=$(node -e '\''const fs=require("fs"); const lines=fs.readFileSync("/tmp/jcp-connected-api.log","utf8").split(/\r?\n/); const ready=lines.map(line=>{try{return JSON.parse(line)}catch{return null}}).find(value=>value && value.ready===true && value.operatorSubject); if(!ready) process.exit(2); process.stdout.write(ready.operatorSubject);'\'')
-            approver_id=$(node -e '\''const fs=require("fs"); const lines=fs.readFileSync("/tmp/jcp-connected-api.log","utf8").split(/\r?\n/); const ready=lines.map(line=>{try{return JSON.parse(line)}catch{return null}}).find(value=>value && value.ready===true && value.approverSubject); if(!ready) process.exit(2); process.stdout.write(ready.approverSubject);'\'')
-            content_manager_id=$(node -e '\''const fs=require("fs"); const lines=fs.readFileSync("/tmp/jcp-connected-api.log","utf8").split(/\r?\n/); const ready=lines.map(line=>{try{return JSON.parse(line)}catch{return null}}).find(value=>value && value.ready===true && value.contentManagerSubject); if(!ready) process.exit(2); process.stdout.write(ready.contentManagerSubject);'\'')
+            tenant_id=$(node -e '\''const fs=require("fs"); const meta=JSON.parse(fs.readFileSync("/tmp/jcp-connected-metadata.json","utf8")); if(!meta.tenantId) process.exit(2); process.stdout.write(meta.tenantId);'\'')
+            operator_id=$(node -e '\''const fs=require("fs"); const meta=JSON.parse(fs.readFileSync("/tmp/jcp-connected-metadata.json","utf8")); if(!meta.operatorSubject) process.exit(2); process.stdout.write(meta.operatorSubject);'\'')
+            approver_id=$(node -e '\''const fs=require("fs"); const meta=JSON.parse(fs.readFileSync("/tmp/jcp-connected-metadata.json","utf8")); if(!meta.approverSubject) process.exit(2); process.stdout.write(meta.approverSubject);'\'')
+            content_manager_id=$(node -e '\''const fs=require("fs"); const meta=JSON.parse(fs.readFileSync("/tmp/jcp-connected-metadata.json","utf8")); if(!meta.contentManagerSubject) process.exit(2); process.stdout.write(meta.contentManagerSubject);'\'')
             curl --silent --show-error --fail -H "Authorization: Bearer connected-donor" -H "X-JCP-Tenant-ID: $tenant_id" http://127.0.0.1:4317/api/giving/my-receipts > /tmp/jcp-connected-receipts.json
             curl --silent --show-error --fail -H "Authorization: Bearer connected-donor" -H "X-JCP-Tenant-ID: $tenant_id" http://127.0.0.1:4317/api/giving/campaigns > /tmp/jcp-connected-campaigns.json
             grep -q "receiptNumber" /tmp/jcp-connected-receipts.json
