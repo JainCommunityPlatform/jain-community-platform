@@ -208,6 +208,13 @@ describe('FirebaseStorageService', () => {
       filename: 'hero.jpg',
       contentType: 'image/jpeg',
       buffer: Buffer.alloc(10 * 1024 * 1024 + 1),
+    })).rejects.toBeInstanceOf(BadRequestException);
+
+    await expect(service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'hero.jpg',
+      contentType: 'image/jpeg',
+      buffer: Buffer.alloc(10 * 1024 * 1024 + 1),
     })).rejects.toThrow('10 MB limit');
   });
 
@@ -261,6 +268,13 @@ describe('FirebaseStorageService', () => {
       { getFirebaseApp: jest.fn() } as never,
       { get: jest.fn().mockReturnValue('bucket') } as never,
     );
+
+    await expect(service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'empty.jpg',
+      contentType: 'image/jpeg',
+      buffer: Buffer.alloc(0),
+    })).rejects.toBeInstanceOf(BadRequestException);
 
     await expect(service.uploadTenantImage({
       tenantId: 't1',
