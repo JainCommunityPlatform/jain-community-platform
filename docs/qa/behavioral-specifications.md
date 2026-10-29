@@ -2188,3 +2188,13 @@ And the upload remains failed rather than returning a public media URL
 
 - Test layer: NestJS HTTP integration with the storage service failure represented by a ServiceUnavailableException.
 - Evidence boundary: validates API error mapping and audit ordering; live Firebase Storage permissions, bucket availability, public URL reachability and device upload behavior remain environment checks.
+
+
+### Scenario: Reject unsupported image bytes with a client error
+Given a tenant content manager uploads a file whose bytes are not a recognized image format
+When the website media endpoint validates the upload
+Then the API responds with HTTP 400 and an actionable unsupported-image message
+And no successful media-upload audit is written
+And the request is not misreported as an internal server error
+
+The HTTP regression asserts controller-level failure mapping; the storage service's signature detection remains the source of the validation decision, and live Firebase Storage remains a separate environment gate.
