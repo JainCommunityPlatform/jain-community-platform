@@ -80,15 +80,19 @@ export default async function HomePage() {
         </div>
         <div className="hero-art" role="img" aria-label={config?.hero.imageUrl?.startsWith("https://") ? "मंदिर की तस्वीर" : "मंदिर का चित्र"}>
           <div className="art-frame">
-            {config?.hero.imageUrl?.startsWith("https://") ? <img className="hero-photo" src={config.hero.imageUrl} alt="मंदिर की तस्वीर" /> : <>
-              <div className="sun-disc" />
-              <div className="temple-drawing" aria-hidden="true">
-                <div className="spire"><i /><i /><i /><b /></div>
-                <div className="roof roof-one" /><div className="roof roof-two" />
-                <div className="temple-body"><div className="arch"><span>ॐ</span></div><div className="door" /></div>
-                <div className="steps" />
-              </div>
-            </> : null}
+            {config?.hero.imageUrl?.startsWith("https://") ? (
+              <img className="hero-photo" src={config.hero.imageUrl} alt="मंदिर की तस्वीर" />
+            ) : (
+              <>
+                <div className="sun-disc" />
+                <div className="temple-drawing" aria-hidden="true">
+                  <div className="spire"><i /><i /><i /><b /></div>
+                  <div className="roof roof-one" /><div className="roof roof-two" />
+                  <div className="temple-body"><div className="arch"><span>ॐ</span></div><div className="door" /></div>
+                  <div className="steps" />
+                </div>
+              </>
+            )}
             <div className="art-caption"><span>{config?.about.title ?? "श्री आदिनाथ जिनालय"}</span><span>{contactAddress ?? "खाराड़ी · पुणे"}</span></div>
           </div>
           <span className="art-seal">णमो<br />अरिहंताणं</span>
