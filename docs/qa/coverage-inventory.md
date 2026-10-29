@@ -399,3 +399,10 @@ Evidence boundaries:
 - Acceptance: HTTP 503 with the service/configuration message; upload service is called with the resolved tenant scope and image bytes; no success audit is emitted.
 - Evidence boundary: mocked storage failure at the HTTP boundary. Live bucket configuration, IAM, public URL reachability and device upload remain separate environment gates.
 - Branch: `qa/p1-website-media-failure-batch`; exact-head CI and post-merge verification pending.
+
+
+## P1 unsupported media HTTP failure mapping — 29 October 2026
+
+- Updated `FirebaseStorageService` to throw `BadRequestException` when uploaded bytes do not match a supported image signature, instead of leaking a generic error that becomes HTTP 500.
+- Added an HTTP integration regression asserting HTTP 400, tenant-scoped upload attempt, actionable error message, and no success audit when the storage validator rejects unsupported bytes.
+- Exact-head CI and post-merge verification pending; live Firebase Storage and device upload remain environment gates.

@@ -1,4 +1,4 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import { getStorage } from 'firebase-admin/storage';
@@ -59,7 +59,7 @@ export class FirebaseStorageService {
     const contentType = detectedContentType;
 
     if (!contentType) {
-      throw new Error('Only image uploads are supported');
+      throw new BadRequestException('Only image uploads are supported');
     }
 
     const safeName = input.filename.replace(/[^a-zA-Z0-9._-]/g, '_');

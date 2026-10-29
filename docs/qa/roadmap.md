@@ -753,3 +753,10 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - Branch `qa/p1-website-media-failure-batch` adds an HTTP integration regression for Firebase Storage outage/configuration failure on `POST /api/website/media`.
 - The test requires HTTP 503, tenant-scoped upload arguments, and no successful media-upload audit. It complements existing empty-file, size-limit, non-image signature, successful upload and storage-service unit coverage.
 - Require exact-head CI and merge gate; fix failures without weakening assertions, then verify default-branch post-merge CI. Live Firebase Storage bucket/IAM/public URL and physical-device checks remain separate environment gates. Android AAB remains manual/on-demand.
+
+
+## Next grouped P1 — unsupported website media failure mapping (29 October 2026)
+
+- Added explicit client-error mapping for unsupported image bytes and an HTTP integration regression requiring 400 rather than 500, with no success audit.
+- Gate: exact-head backend lint/unit/integration/Firestore-emulator/build and all other required CI jobs must pass; fix genuine failures without weakening assertions, merge only when green/mergeable, then verify default-branch CI separately.
+- Evidence boundary: mocked storage rejection exercises HTTP mapping; signature recognition is implemented in the storage service, while live bucket/IAM/public URL/device behavior remains an environment gate. Android AAB stays manual/on-demand.

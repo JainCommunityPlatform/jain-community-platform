@@ -1,4 +1,4 @@
-import { ExecutionContext, ForbiddenException, INestApplication, NotFoundException, ServiceUnavailableException, ValidationPipe } from '@nestjs/common';
+import { BadRequestException, ExecutionContext, ForbiddenException, INestApplication, NotFoundException, ServiceUnavailableException, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
@@ -2626,6 +2626,32 @@ describe('API endpoints (integration)', () => {
       .expect(413);
 
     expect(storage.uploadTenantImage).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
+  it('maps unsupported website image payloads to HTTP 400 without a success audit', async () => {
+    storage.uploadTenantImage.mockRejectedValueOnce(
+      new BadRequestException('Only image uploads are supported'),
+    );
+    audit.record.mockClear();
+    const payload = Buffer.from('not an image');
+
+    await request(app.getHttpServer())
+      .post('/api/website/media')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .attach('file', payload, { filename: 'hero.jpg', contentType: 'image/jpeg' })
+      .expect(400)
+      .expect((response) => {
+        expect(response.body.message).toBe('Only image uploads are supported');
+      });
+
+    expect(storage.uploadTenantImage).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: '00000000-0000-0000-0000-000000000001',
+      filename: 'hero.jpg',
+      contentType: 'image/jpeg',
+      buffer: payload,
+    }));
     expect(audit.record).not.toHaveBeenCalled();
   });
 
