@@ -413,3 +413,10 @@ Evidence boundaries:
 - Added a direct `FirebaseStorageService` unit assertion that unsupported bytes disguised as `image/jpeg` raise NestJS `BadRequestException`, not merely any error.
 - The existing assertion still checks the actionable message and that Firebase Storage is never contacted for invalid bytes.
 - Complements PR #279's HTTP 400 regression; exact-head CI and post-merge verification for this contract are pending.
+
+
+## P1 storage size and empty-payload exception contract — 29 October 2026
+
+- Changed `FirebaseStorageService` to raise NestJS `BadRequestException` for empty image buffers and service-level uploads over 10 MB, rather than generic errors that can surface as HTTP 500.
+- Added unit assertions for the exception type, actionable messages, and early rejection before Firebase Storage is contacted.
+- Endpoint-level multipart size enforcement remains a separate boundary; this service contract protects direct/internal callers too. Exact-head CI and post-merge verification pending.
