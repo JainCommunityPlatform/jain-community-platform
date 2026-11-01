@@ -1,4 +1,4 @@
-import { ExecutionContext, ForbiddenException, INestApplication, NotFoundException, ValidationPipe } from '@nestjs/common';
+import { BadRequestException, ExecutionContext, ForbiddenException, INestApplication, NotFoundException, ServiceUnavailableException, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
@@ -22,6 +22,7 @@ import { FirestoreService } from '../src/database/firestore.service';
 import { WebsiteService } from '../src/website/website.service';
 import { FirebaseStorageService } from '../src/website/firebase-storage.service';
 import { NotificationsService } from '../src/notifications/notifications.service';
+import { PlatformService } from '../src/platform/platform.service';
 
 describe('API endpoints (integration)', () => {
   let app: INestApplication;
@@ -59,8 +60,8 @@ describe('API endpoints (integration)', () => {
     grantFinancialRoleByEmail: jest.Mock;
     revokeFinancialRole: jest.Mock;
   };
-  let firestore: { getTenantById: jest.Mock; recordAudit: jest.Mock; findUserByEmail: jest.Mock; getMembership: jest.Mock };
-  let website: { updateCurrent: jest.Mock; resetCurrent: jest.Mock };
+  let firestore: { getTenantById: jest.Mock; recordAudit: jest.Mock; findUserByEmail: jest.Mock; getMembership: jest.Mock; listPublicTenants: jest.Mock };
+  let website: { getCurrent: jest.Mock; updateCurrent: jest.Mock; resetCurrent: jest.Mock };
   let storage: { uploadTenantImage: jest.Mock };
   let notifications: { listForUser: jest.Mock; getPreferences: jest.Mock; updatePreferences: jest.Mock; markRead: jest.Mock };
 
@@ -211,6 +212,9 @@ describe('API endpoints (integration)', () => {
         tenantId === 'tenant-finance-a' ? { id: tenantId, name: 'Finance Test Tenant' } : null,
       ),
       recordAudit: jest.fn().mockResolvedValue(undefined),
+      listPublicTenants: jest.fn().mockResolvedValue([
+        { id: 'tenant-public', slug: 'public-temple', name: 'Public Temple', hostname: 'badebabakharadi.com', city: 'Pune', state: 'Maharashtra', primaryImageUrl: 'https://cdn.example.test/public.jpg' },
+      ]),
     };
 
     giving = {
@@ -277,6 +281,7 @@ describe('API endpoints (integration)', () => {
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     website = {
+      getCurrent: jest.fn().mockResolvedValue({ tenantId: '00000000-0000-0000-0000-000000000001', version: 4, hero: { title: 'Bade Baba Kharadi' }, events: { items: [] }, seva: { items: [] } }),
       updateCurrent: jest.fn().mockResolvedValue({ title: 'Updated tenant site' }),
       resetCurrent: jest.fn().mockResolvedValue({ title: 'Default tenant site' }),
     };
@@ -337,6 +342,42 @@ describe('API endpoints (integration)', () => {
 
   afterAll(async () => {
     await app.close();
+  });
+
+  it('serves the public tenant directory without authentication and returns only the directory projection', async () => {
+    firestore.listPublicTenants.mockClear();
+    await request(app.getHttpServer())
+      .get('/api/directory/temples')
+      .set('Host', 'badebabakharadi.com')
+      .expect(200)
+      .expect([{
+        id: 'tenant-public',
+        slug: 'public-temple',
+        name: 'Public Temple',
+        hostname: 'badebabakharadi.com',
+        city: 'Pune',
+        state: 'Maharashtra',
+        primaryImageUrl: 'https://cdn.example.test/public.jpg',
+      }]);
+    expect(firestore.listPublicTenants).toHaveBeenCalledTimes(1);
+  });
+
+  it('serves the resolved tenant website anonymously without exposing finance or admin data', async () => {
+    website.getCurrent.mockClear();
+    await request(app.getHttpServer())
+      .get('/api/website/site')
+      .set('Host', 'badebabakharadi.com')
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toMatchObject({
+          tenantId: '00000000-0000-0000-0000-000000000001',
+          version: 4,
+          hero: { title: 'Bade Baba Kharadi' },
+        });
+        expect(response.body).not.toHaveProperty('financeBalancePaise');
+        expect(response.body).not.toHaveProperty('admins');
+      });
+    expect(website.getCurrent).toHaveBeenCalledTimes(1);
   });
 
   it('GET /api/health returns 200 and a healthy status', async () => {
@@ -2588,6 +2629,58 @@ describe('API endpoints (integration)', () => {
     expect(audit.record).not.toHaveBeenCalled();
   });
 
+  it('maps unsupported website image payloads to HTTP 400 without a success audit', async () => {
+    storage.uploadTenantImage.mockRejectedValueOnce(
+      new BadRequestException('Only image uploads are supported'),
+    );
+    audit.record.mockClear();
+    const payload = Buffer.from('not an image');
+
+    await request(app.getHttpServer())
+      .post('/api/website/media')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .attach('file', payload, { filename: 'hero.jpg', contentType: 'image/jpeg' })
+      .expect(400)
+      .expect((response) => {
+        expect(response.body.message).toBe('Only image uploads are supported');
+      });
+
+    expect(storage.uploadTenantImage).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: '00000000-0000-0000-0000-000000000001',
+      filename: 'hero.jpg',
+      contentType: 'image/jpeg',
+      buffer: payload,
+    }));
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
+  it('returns a service-unavailable response when website media storage fails without a success audit', async () => {
+    storage.uploadTenantImage.mockRejectedValueOnce(
+      new ServiceUnavailableException('Firebase Storage is not configured'),
+    );
+    audit.record.mockClear();
+    const image = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
+
+    await request(app.getHttpServer())
+      .post('/api/website/media')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .attach('file', image, { filename: 'hero.jpg', contentType: 'image/jpeg' })
+      .expect(503)
+      .expect((response) => {
+        expect(response.body.message).toBe('Firebase Storage is not configured');
+      });
+
+    expect(storage.uploadTenantImage).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: '00000000-0000-0000-0000-000000000001',
+      filename: 'hero.jpg',
+      contentType: 'image/jpeg',
+      buffer: image,
+    }));
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
   it('uploads website media for an authorized tenant admin and records tenant-scoped audit metadata', async () => {
     storage.uploadTenantImage.mockClear();
     audit.record.mockClear();
@@ -2846,6 +2939,155 @@ describe('API endpoints (integration)', () => {
 
       expect(route.service).not.toHaveBeenCalled();
     }
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
+
+  it('rejects invalid website configuration DTOs before update or success audit', async () => {
+    website.updateCurrent.mockClear();
+    audit.record.mockClear();
+
+    const invalidBodies = [
+      { theme: 'not-an-object' },
+      { publish: 'yes' },
+      { _versionNote: 'x'.repeat(201) },
+      { contact: {}, tenantId: 'attacker-tenant' },
+    ];
+
+    for (const body of invalidBodies) {
+      await request(app.getHttpServer())
+        .put('/api/website/site')
+        .set('Host', 'badebabakharadi.com')
+        .set('x-test-user', 'user-content-manager')
+        .send(body)
+        .expect(400);
+    }
+
+    expect(website.updateCurrent).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid profile DTO values and caller-controlled fields before profile update', async () => {
+    const profiles = app.get(ProfileService) as unknown as {
+      updateCurrent: jest.Mock;
+    };
+    profiles.updateCurrent.mockClear();
+
+    const invalidBodies = [
+      { displayName: 'A' },
+      { postalCode: 'ABCDE' },
+      { primaryPhone: '9876543210' },
+      { address: 'Pune', tenantId: 'attacker-tenant' },
+    ];
+
+    for (const body of invalidBodies) {
+      await request(app.getHttpServer())
+        .patch('/api/profile')
+        .set('x-test-user', 'user-a')
+        .send(body)
+        .expect(400);
+    }
+
+    expect(profiles.updateCurrent).not.toHaveBeenCalled();
+  });
+
+  it('rejects missing membership roles and caller-supplied tenant scope before member mutations', async () => {
+    tenantMembers.create.mockClear();
+    tenantMembers.update.mockClear();
+    audit.record.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/tenant/members')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .send({ userId: '00000000-0000-4000-8000-000000000099' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/api/tenant/members')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .send({
+        userId: '00000000-0000-4000-8000-000000000099',
+        role: 'CONTENT_MANAGER',
+        tenantId: 'attacker-tenant',
+      })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .patch('/api/tenant/members/00000000-0000-4000-8000-000000000099')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .send({})
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .patch('/api/tenant/members/00000000-0000-4000-8000-000000000099')
+      .set('Host', 'badebabakharadi.com')
+      .set('x-test-user', 'user-a')
+      .send({ role: 'EVENT_MANAGER', tenantId: 'attacker-tenant' })
+      .expect(400);
+
+    expect(tenantMembers.create).not.toHaveBeenCalled();
+    expect(tenantMembers.update).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
+  it('rejects malformed platform tenant and tenant-admin DTOs before service or audit calls', async () => {
+    const platform = app.get(PlatformService);
+    const createTenant = jest.spyOn(platform, 'createTenant');
+    const updateTenant = jest.spyOn(platform, 'updateTenant');
+    const addTenantAdmin = jest.spyOn(platform, 'addTenantAdmin');
+    createTenant.mockClear();
+    updateTenant.mockClear();
+    addTenantAdmin.mockClear();
+    audit.record.mockClear();
+
+    await request(app.getHttpServer())
+      .post('/api/platform/tenants')
+      .set('x-test-user', 'user-platform-admin')
+      .send({ name: 'Valid Temple', slug: 'Invalid Slug' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/api/platform/tenants')
+      .set('x-test-user', 'user-platform-admin')
+      .send({ name: 'x'.repeat(121), slug: 'valid-temple' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/api/platform/tenants')
+      .set('x-test-user', 'user-platform-admin')
+      .send({ name: 'Valid Temple', slug: 'valid-temple', tenantId: 'attacker-tenant' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .put('/api/platform/tenants/tenant-finance-a')
+      .set('x-test-user', 'user-platform-admin')
+      .send({ name: 'x'.repeat(121) })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .put('/api/platform/tenants/tenant-finance-a')
+      .set('x-test-user', 'user-platform-admin')
+      .send({ city: 'Pune', slug: 'attacker-slug' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/api/platform/tenants/tenant-finance-a/admins')
+      .set('x-test-user', 'user-platform-admin')
+      .send({ email: 'not-an-email' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/api/platform/tenants/tenant-finance-a/admins')
+      .set('x-test-user', 'user-platform-admin')
+      .send({ email: 'admin@example.test', tenantId: 'attacker-tenant' })
+      .expect(400);
+
+    expect(createTenant).not.toHaveBeenCalled();
+    expect(updateTenant).not.toHaveBeenCalled();
+    expect(addTenantAdmin).not.toHaveBeenCalled();
     expect(audit.record).not.toHaveBeenCalled();
   });
 

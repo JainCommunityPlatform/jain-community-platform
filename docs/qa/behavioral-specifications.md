@@ -2079,3 +2079,156 @@ Acceptance boundaries:
 - Saving an edited name and city through the widget updates the Firestore-backed profile.
 - A fresh authenticated API read returns the updated values and retains the user's email/display name even though the test auth token does not include those optional claims.
 - Test layer: Flutter widget + real NestJS HTTP + Firestore Emulator. This does not establish production Firebase identity or physical-device behavior.
+
+## Connected website editor save, publish and recovery (20 October 2026)
+
+### Scenario: Publish website edits and reload the saved configuration
+
+Given a content manager is authenticated against the connected test tenant
+And the existing website configuration contains contact information
+When the manager changes the hero title in the Flutter website editor and selects Save & Publish Website
+Then the NestJS API persists the new title to Firestore
+And the configuration version increments exactly once
+And unrelated contact information remains unchanged
+And reopening the editor loads the published title from the API
+
+### Scenario: Reject invalid website configuration without replacing the published version
+
+Given a valid website configuration has already been saved
+When the client submits a hero title containing only whitespace
+Then the API rejects the update with HTTP 400
+And the persisted version and last successful title remain unchanged
+
+- Test layer: connected Flutter widget + NestJS HTTP + Firestore Emulator.
+- Evidence boundary: this does not verify production Firebase identity, production hostname routing, media URL reachability, or physical-device behavior.
+
+
+## P1 HTTP DTO validation — website, profile, membership and platform tenant routes (20 October 2026)
+
+### Scenario: Website configuration rejects invalid shapes and caller-controlled tenant scope
+
+Given an authenticated content manager belongs to the resolved tenant
+When PUT /api/website/site submits a string instead of an object section, a non-boolean publish flag, an overlong version note, or an extra tenantId field
+Then the API returns HTTP 400
+And WebsiteService.updateCurrent and the success audit are not called
+
+### Scenario: Profile update rejects invalid field values and caller-controlled fields
+
+Given an authenticated member updates their own profile
+When PATCH /api/profile submits a too-short display name, invalid Indian postal code, phone ownership field, or caller-supplied tenantId
+Then the API returns HTTP 400
+And ProfileService.updateCurrent is not called
+
+### Scenario: Tenant membership DTO rejects missing required role and tenant override
+
+Given an authorized tenant administrator manages membership
+When POST or PATCH /api/tenant/members omits the required role or includes a caller-supplied tenantId
+Then the API returns HTTP 400
+And TenantMemberService create/update is not called
+
+### Scenario: Platform tenant DTO rejects malformed create/update/admin payloads
+
+Given an authenticated platform administrator manages tenant records
+When POST /api/platform/tenants submits an invalid slug/name or unknown tenant field, PUT /api/platform/tenants/:tenantId submits an overlong name or unknown field, or POST /api/platform/tenants/:tenantId/admins submits an invalid email/unknown field
+Then the API returns HTTP 400
+And PlatformService create/update/addTenantAdmin and success audit are not called
+
+- Test layer: NestJS HTTP E2E with the global ValidationPipe configured for whitelist and forbidNonWhitelisted.
+- Evidence boundary: these tests verify request validation and pre-service side-effect prevention; persisted Firestore and staging identity behavior remain separate acceptance layers.
+
+
+## P0 authentication/session race safety — stale async completion scenarios (20 October 2026)
+
+### Scenario: Firebase sign-out wins over a pending startup session restore
+
+Given Firebase emits an authenticated user and the backend session load is still pending
+When Firebase emits a signed-out state before the backend response returns
+Then the app remains signed out when the stale authenticated response completes
+And protected access is not restored by that response
+
+### Scenario: A newer Firebase identity wins over an older session response
+
+Given the first Firebase identity has a pending backend session load
+When a newer Firebase auth-state event starts another session load and returns first
+Then the newer user's session remains active when the older response eventually completes
+
+### Scenario: Sign-out wins over a pending session refresh
+
+Given a signed-in user starts a backend session refresh
+When Firebase emits sign-out before the refresh completes
+Then the late refresh response cannot restore authenticated status or tenant/role access
+
+### Scenario: The latest overlapping refresh wins
+
+Given two session refresh requests are in flight
+When the newer refresh completes before the older request
+Then the older response cannot overwrite the newer user, tenant, or role
+
+- Test layer: Flutter controller unit tests using completers to deterministically control asynchronous response ordering.
+- Evidence boundary: this validates controller race handling; real Firebase credential revocation, app restart, offline UI, and device-level auth persistence remain environment gates.
+
+
+## Public directory and tenant hostname boundary — 20 October 2026
+
+- A known tenant hostname is authoritative even when a caller also supplies `x-jcp-tenant-id`. If the hostname resolves to an inactive or unverified domain, resolution must fail rather than falling back to a different tenant ID.
+- A tenant ID may be used as a mobile-client fallback only when the request hostname has no tenant-domain mapping.
+- The public tenant directory exposes only public identity/location/image fields and excludes inactive tenants and private tenant metadata. Public website and directory GET routes remain anonymous; mutations stay permission-protected.
+- Automated unit/HTTP tests are evidence for code behavior, not proof of real custom-domain DNS/TLS, production Firestore, Storage reachability, or device rendering.
+
+
+## Website media storage outage and audit safety (29 October 2026)
+
+### Scenario: Storage outage does not look like a successful media upload
+
+Given an authenticated content manager has a valid image and resolved tenant context
+When the website media endpoint cannot upload the image because Firebase Storage is unavailable or misconfigured
+Then the API returns HTTP 503 with a useful configuration/service error
+And no successful WEBSITE_MEDIA_UPLOADED audit event is recorded
+And the upload remains failed rather than returning a public media URL
+
+- Test layer: NestJS HTTP integration with the storage service failure represented by a ServiceUnavailableException.
+- Evidence boundary: validates API error mapping and audit ordering; live Firebase Storage permissions, bucket availability, public URL reachability and device upload behavior remain environment checks.
+
+
+### Scenario: Reject unsupported image bytes with a client error
+Given a tenant content manager uploads a file whose bytes are not a recognized image format
+When the website media endpoint validates the upload
+Then the API responds with HTTP 400 and an actionable unsupported-image message
+And no successful media-upload audit is written
+And the request is not misreported as an internal server error
+
+The HTTP regression asserts controller-level failure mapping; the storage service's signature detection remains the source of the validation decision, and live Firebase Storage remains a separate environment gate.
+
+
+## Website media validation — empty and oversized service inputs
+
+Given a caller invokes the website storage service with an empty buffer or a buffer larger than 10 MB
+When the storage service validates the payload
+Then it raises a NestJS `BadRequestException` with an actionable message
+And Firebase Storage is not contacted
+And validation does not leak as a generic internal-server error
+
+The upload controller also rejects an empty multipart file, and the multipart interceptor enforces its own file-size limit. These service-level assertions cover callers that reach `FirebaseStorageService` directly; they do not replace HTTP-level tests for the interceptor.
+
+
+## Website media — validation takes precedence over storage configuration
+
+Given the media storage service is missing Firebase bucket/project configuration
+When a request contains an empty, oversized, or unsupported image payload
+Then the service reports the appropriate client validation error rather than a storage-configuration 503
+And Firebase Storage is not contacted
+
+Given a valid supported image payload is uploaded
+When storage configuration is missing
+Then the service reports a service-unavailable configuration error
+
+
+## Website media — valid payload still requires storage configuration
+
+Given a valid supported image payload is submitted while Firebase Storage configuration is missing
+When the media storage service validates and prepares the upload
+Then the service raises `ServiceUnavailableException` with a storage configuration error
+And Firebase Storage is not initialized or contacted
+
+- Test layer: direct service unit test with missing configuration.
+- Evidence boundary: this proves error classification and no storage initialization at the service boundary; live Firebase configuration, bucket/IAM permissions, public URL reachability and device upload remain environment checks.

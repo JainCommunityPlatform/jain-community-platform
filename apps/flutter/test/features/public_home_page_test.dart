@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:jain_community_platform/core/i18n/app_language.dart';
 import 'package:jain_community_platform/core/routing/app_routes.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jain_community_platform/features/public/presentation/bade_baba_home_page.dart';
 
 void main() {
@@ -46,4 +48,56 @@ void main() {
     expect(find.text('Login destination'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+  testWidgets('public landing updates all critical copy when switching supported languages',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final controller = AppLanguageController(initialLocale: const Locale('en'));
+    await tester.pumpWidget(MaterialApp(
+      home: AppLanguageScope(
+        controller: controller,
+        child: const BadeBabaHomePage(),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final localizedCopy = <String, List<String>>{
+      'en': ['Your Jain Temple Community', 'What would you like to do?', 'Events & registrations', 'Sign in to continue'],
+      'hi': ['आपका जैन मंदिर समुदाय', 'आप क्या करना चाहेंगे?', 'कार्यक्रम और पंजीकरण', 'जारी रखने के लिए साइन इन करें'],
+      'mr': ['तुमचा जैन मंदिर समुदाय', 'तुम्हाला काय करायचे आहे?', 'कार्यक्रम आणि नोंदणी', 'पुढे जाण्यासाठी साइन इन करा'],
+      'gu': ['તમારો જૈન મંદિર સમુદાય', 'તમે શું કરવા માંગો છો?', 'કાર્યક્રમો અને નોંધણી', 'આગળ વધવા સાઇન ઇન કરો'],
+    };
+
+    final scrollable = find.byType(ListView);
+    for (final entry in localizedCopy.entries) {
+      await controller.setLocale(Locale(entry.key));
+      await tester.pumpAndSettle();
+      await tester.dragUntilVisible(
+        find.text(entry.value[0]),
+        scrollable,
+        const Offset(0, 300),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(entry.value[0]), findsOneWidget, reason: '${entry.key} hero heading');
+      expect(find.text(entry.value[1]), findsOneWidget, reason: '${entry.key} action heading');
+
+      await tester.dragUntilVisible(
+        find.text(entry.value[2]),
+        scrollable,
+        const Offset(0, -250),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(entry.value[2]), findsOneWidget, reason: '${entry.key} events card');
+
+      await tester.dragUntilVisible(
+        find.text(entry.value[3]),
+        scrollable,
+        const Offset(0, -250),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(entry.value[3]), findsOneWidget, reason: '${entry.key} sign-in action');
+      expect(tester.takeException(), isNull);
+    }
+    controller.dispose();
+  });
+
 }

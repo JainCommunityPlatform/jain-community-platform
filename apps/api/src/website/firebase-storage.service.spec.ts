@@ -1,3 +1,5 @@
+import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
+
 jest.mock('firebase-admin/storage', () => ({
   getStorage: jest.fn(),
 }));
@@ -10,6 +12,52 @@ describe('FirebaseStorageService', () => {
   beforeEach(() => jest.clearAllMocks());
 
   const validJpeg = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
+
+  it('rejects invalid media before checking Firebase Storage configuration', async () => {
+    const service = new FirebaseStorageService(
+      { getFirebaseApp: jest.fn() } as never,
+      { get: jest.fn().mockReturnValue(undefined) } as never,
+    );
+
+    await expect(service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'empty.jpg',
+      contentType: 'image/jpeg',
+      buffer: Buffer.alloc(0),
+    })).rejects.toBeInstanceOf(BadRequestException);
+
+    await expect(service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'oversized.jpg',
+      contentType: 'image/jpeg',
+      buffer: Buffer.alloc(10 * 1024 * 1024 + 1),
+    })).rejects.toBeInstanceOf(BadRequestException);
+
+    await expect(service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'disguised.jpg',
+      contentType: 'image/jpeg',
+      buffer: Buffer.from('not an image'),
+    })).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(getStorage).not.toHaveBeenCalled();
+  });
+
+  it('reports missing storage configuration for valid media after validation', async () => {
+    const service = new FirebaseStorageService(
+      { getFirebaseApp: jest.fn() } as never,
+      { get: jest.fn().mockReturnValue(undefined) } as never,
+    );
+
+    await expect(service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'valid.jpg',
+      contentType: 'image/jpeg',
+      buffer: validJpeg,
+    })).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+    expect(getStorage).not.toHaveBeenCalled();
+  });
 
   it('uses the Firebase project default bucket when no explicit bucket is configured', async () => {
     const file = {
@@ -206,6 +254,13 @@ describe('FirebaseStorageService', () => {
       filename: 'hero.jpg',
       contentType: 'image/jpeg',
       buffer: Buffer.alloc(10 * 1024 * 1024 + 1),
+    })).rejects.toBeInstanceOf(BadRequestException);
+
+    await expect(service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'hero.jpg',
+      contentType: 'image/jpeg',
+      buffer: Buffer.alloc(10 * 1024 * 1024 + 1),
     })).rejects.toThrow('10 MB limit');
   });
 
@@ -265,6 +320,13 @@ describe('FirebaseStorageService', () => {
       filename: 'empty.jpg',
       contentType: 'image/jpeg',
       buffer: Buffer.alloc(0),
+    })).rejects.toBeInstanceOf(BadRequestException);
+
+    await expect(service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'empty.jpg',
+      contentType: 'image/jpeg',
+      buffer: Buffer.alloc(0),
     })).rejects.toThrow('The uploaded image is empty');
 
     expect(getStorage).not.toHaveBeenCalled();
@@ -276,6 +338,13 @@ describe('FirebaseStorageService', () => {
       { getFirebaseApp: jest.fn() } as never,
       { get: jest.fn().mockReturnValue('bucket') } as never,
     );
+
+    await expect(service.uploadTenantImage({
+      tenantId: 't1',
+      filename: 'disguised.jpg',
+      contentType: 'image/jpeg',
+      buffer: Buffer.from('this is not an image'),
+    })).rejects.toBeInstanceOf(BadRequestException);
 
     await expect(service.uploadTenantImage({
       tenantId: 't1',

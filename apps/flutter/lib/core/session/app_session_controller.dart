@@ -37,6 +37,7 @@ class AppSessionController extends ChangeNotifier {
   AppSession _session = AppSession.signedOut;
   Object? _error;
   StreamSubscription<FirebaseAuthUser?>? _subscription;
+  int _sessionGeneration = 0;
 
   AppSessionStatus get status => _status;
   AppSession get session => _session;
@@ -48,18 +49,23 @@ class AppSessionController extends ChangeNotifier {
       _status == AppSessionStatus.error;
 
   Future<void> initialize() async {
+    // Invalidate work started by a previous subscription before replacing it.
+    _sessionGeneration++;
     await _subscription?.cancel();
     _subscription = _auth.authStateChanges().listen(
       (user) {
         unawaited(_handleAuthState(user));
       },
       onError: (Object error, StackTrace stackTrace) {
+        _sessionGeneration++;
         _setError(error);
       },
     );
   }
 
   Future<void> _handleAuthState(FirebaseAuthUser? user) async {
+    // Every auth-state event supersedes any older asynchronous session load.
+    final generation = ++_sessionGeneration;
     if (user == null) {
       _session = AppSession.signedOut;
       _error = null;
@@ -73,22 +79,28 @@ class AppSessionController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _session = await _sessionService
+      final session = await _sessionService
           .loadCurrentSession()
           .timeout(sessionLoadTimeout);
+      if (generation != _sessionGeneration) return;
+
+      _session = session;
       if (!_session.isAuthenticated) {
         await _auth.signOut();
+        if (generation != _sessionGeneration) return;
         _session = AppSession.signedOut;
         _status = AppSessionStatus.signedOut;
       } else {
         _status = AppSessionStatus.authenticated;
       }
     } catch (error) {
+      if (generation != _sessionGeneration) return;
       _session = AppSession.signedOut;
       if (error is ApiException && error.statusCode == 401) {
         // Firebase can restore a locally cached user before the backend
         // rejects a revoked ID token. Clear that local credential too.
         await _auth.signOut();
+        if (generation != _sessionGeneration) return;
         _error = null;
         _status = AppSessionStatus.signedOut;
       } else {
@@ -99,36 +111,46 @@ class AppSessionController extends ChangeNotifier {
       }
     }
 
+    if (generation != _sessionGeneration) return;
     notifyListeners();
   }
 
   Future<void> refreshCurrentSession() async {
     if (!_auth.isSignedIn) return;
+    final generation = ++_sessionGeneration;
     _status = AppSessionStatus.initializing;
     _error = null;
     notifyListeners();
     try {
-      _session = await _sessionService.loadCurrentSession().timeout(sessionLoadTimeout);
+      final session = await _sessionService
+          .loadCurrentSession()
+          .timeout(sessionLoadTimeout);
+      if (generation != _sessionGeneration) return;
+      _session = session;
       _status = _session.isAuthenticated
           ? AppSessionStatus.authenticated
           : AppSessionStatus.signedOut;
     } catch (error) {
+      if (generation != _sessionGeneration) return;
       // A 401 means the backend no longer accepts this Firebase identity
       // (for example, the ID token was revoked). Clear the local Firebase
       // session as well; transient failures must not force a sign-out.
       if (error is ApiException && error.statusCode == 401) {
         await _auth.signOut();
+        if (generation != _sessionGeneration) return;
         _session = AppSession.signedOut;
         _error = null;
         _status = AppSessionStatus.signedOut;
       } else {
         _setError(error);
+        return;
       }
     }
-    notifyListeners();
+    if (generation == _sessionGeneration) notifyListeners();
   }
 
   Future<void> signInWithGoogle() async {
+    final generation = ++_sessionGeneration;
     _status = AppSessionStatus.initializing;
     _error = null;
     notifyListeners();
@@ -136,6 +158,7 @@ class AppSessionController extends ChangeNotifier {
     try {
       await _auth.signInWithGoogle().timeout(googleSignInTimeout);
     } catch (error) {
+      if (generation != _sessionGeneration) return;
       _setError(
         error is TimeoutException
             ? error
@@ -145,20 +168,29 @@ class AppSessionController extends ChangeNotifier {
   }
 
   Future<void> linkContact(String value) async {
+    final generation = ++_sessionGeneration;
     _status = AppSessionStatus.initializing;
     _error = null;
     notifyListeners();
     try {
       await _sessionService.linkContact(value);
-      _session = await _sessionService.loadCurrentSession();
+      if (generation != _sessionGeneration) return;
+      final session = await _sessionService.loadCurrentSession();
+      if (generation != _sessionGeneration) return;
+      _session = session;
       _status = AppSessionStatus.authenticated;
     } catch (error) {
+      if (generation != _sessionGeneration) return;
       _setError(error);
+      return;
     }
-    notifyListeners();
+    if (generation == _sessionGeneration) notifyListeners();
   }
 
   Future<void> signOut() async {
+    // A pending restore/refresh must not be able to re-authenticate after this
+    // sign-out request. The auth-state event will publish the signed-out state.
+    _sessionGeneration++;
     await _auth.signOut();
   }
 
@@ -171,6 +203,7 @@ class AppSessionController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _sessionGeneration++;
     unawaited(_subscription?.cancel());
     super.dispose();
   }

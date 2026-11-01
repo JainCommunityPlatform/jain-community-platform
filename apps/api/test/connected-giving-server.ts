@@ -1,6 +1,7 @@
 import { ExecutionContext, INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { deleteApp, getApps } from 'firebase-admin/app';
+import { writeFileSync } from 'node:fs';
 import request from 'supertest';
 
 import { AppModule } from '../src/app.module';
@@ -24,8 +25,10 @@ async function main() {
   const donorSubject = 'connected-donor';
   const operatorSubject = `operator-${suffix}`;
   const approverSubject = `approver-${suffix}`;
+  const contentManagerSubject = `content-manager-${suffix}`;
   let operatorId = '';
   let approverId = '';
+  let contentManagerId = '';
 
   const moduleFixture = await Test.createTestingModule({ imports: [AppModule] })
     .overrideGuard(AuthenticationGuard)
@@ -47,6 +50,7 @@ async function main() {
         if (requestedTenantId !== tenantId) return null;
         if (userId === operatorId) return { userId, tenantId, role: 'FINANCE_OPERATOR', roles: ['FINANCE_OPERATOR'] };
         if (userId === approverId) return { userId, tenantId, role: 'FINANCE_APPROVER', roles: ['FINANCE_APPROVER'] };
+        if (userId === contentManagerId) return { userId, tenantId, role: 'CONTENT_MANAGER', roles: ['CONTENT_MANAGER'] };
         return null;
       },
     })
@@ -61,9 +65,11 @@ async function main() {
     const identity = app.get(UserIdentityService);
     const operator = await identity.resolve({ subject: operatorSubject, email: `${operatorSubject}@example.test` } as AuthenticatedUser);
     const approver = await identity.resolve({ subject: approverSubject, email: `${approverSubject}@example.test` } as AuthenticatedUser);
+    const contentManager = await identity.resolve({ subject: contentManagerSubject, email: `${contentManagerSubject}@example.test` } as AuthenticatedUser);
     await identity.resolve({ subject: donorSubject, email: `${donorSubject}@example.test` } as AuthenticatedUser);
     operatorId = operator.id;
     approverId = approver.id;
+    contentManagerId = contentManager.id;
 
     const host = 'connected-giving.jcp.test';
     const campaign = await request(app.getHttpServer()).post('/api/giving/campaigns')
@@ -82,7 +88,9 @@ async function main() {
 
     const port = Number(process.env.JCP_CONNECTED_TEST_PORT ?? 4317);
     await app.listen(port, '0.0.0.0');
-    process.stdout.write(JSON.stringify({ ready: true, port, donorSubject, operatorSubject, approverSubject, tenantId }) + '\n');
+    const metadataPath = process.env.JCP_CONNECTED_METADATA_FILE ?? '/tmp/jcp-connected-metadata.json';
+    writeFileSync(metadataPath, JSON.stringify({ donorSubject, operatorSubject, approverSubject, contentManagerSubject, tenantId }), { mode: 0o600 });
+    process.stdout.write(JSON.stringify({ ready: true, port }) + '\n');
 
     const shutdown = async () => {
       await app.close();

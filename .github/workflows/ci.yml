@@ -21,6 +21,7 @@ on:
           - frontend
           - backend
           - repository
+          - web
           - android
 
 permissions:
@@ -100,7 +101,7 @@ jobs:
           npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-jcp '
             set -euo pipefail
             cd apps/api
-            NODE_ENV=test FIREBASE_PROJECT_ID=demo-jcp FIRESTORE_DATABASE_ID="(default)" JCP_CONNECTED_TEST_PORT=4317 ./node_modules/.bin/ts-node test/connected-giving-server.ts > /tmp/jcp-connected-api.log 2>&1 &
+            NODE_ENV=test FIREBASE_PROJECT_ID=demo-jcp FIRESTORE_DATABASE_ID="(default)" JCP_CONNECTED_TEST_PORT=4317 JCP_CONNECTED_METADATA_FILE=/tmp/jcp-connected-metadata.json ./node_modules/.bin/ts-node test/connected-giving-server.ts > /tmp/jcp-connected-api.log 2>&1 &
             server_pid=$!
             trap "kill \\$server_pid 2>/dev/null || true" EXIT
             server_ready=false
@@ -120,15 +121,16 @@ jobs:
               echo "Connected giving API did not become ready"
               exit 1
             fi
-            tenant_id=$(node -e '\''const fs=require("fs"); const lines=fs.readFileSync("/tmp/jcp-connected-api.log","utf8").split(/\r?\n/); const ready=lines.map(line=>{try{return JSON.parse(line)}catch{return null}}).find(value=>value && value.ready===true && value.tenantId); if(!ready) process.exit(2); process.stdout.write(ready.tenantId);'\'')
-            operator_id=$(node -e '\''const fs=require("fs"); const lines=fs.readFileSync("/tmp/jcp-connected-api.log","utf8").split(/\r?\n/); const ready=lines.map(line=>{try{return JSON.parse(line)}catch{return null}}).find(value=>value && value.ready===true && value.operatorSubject); if(!ready) process.exit(2); process.stdout.write(ready.operatorSubject);'\'')
-            approver_id=$(node -e '\''const fs=require("fs"); const lines=fs.readFileSync("/tmp/jcp-connected-api.log","utf8").split(/\r?\n/); const ready=lines.map(line=>{try{return JSON.parse(line)}catch{return null}}).find(value=>value && value.ready===true && value.approverSubject); if(!ready) process.exit(2); process.stdout.write(ready.approverSubject);'\'')
+            tenant_id=$(node -e '\''const fs=require("fs"); const meta=JSON.parse(fs.readFileSync("/tmp/jcp-connected-metadata.json","utf8")); if(!meta.tenantId) process.exit(2); process.stdout.write(meta.tenantId);'\'')
+            operator_id=$(node -e '\''const fs=require("fs"); const meta=JSON.parse(fs.readFileSync("/tmp/jcp-connected-metadata.json","utf8")); if(!meta.operatorSubject) process.exit(2); process.stdout.write(meta.operatorSubject);'\'')
+            approver_id=$(node -e '\''const fs=require("fs"); const meta=JSON.parse(fs.readFileSync("/tmp/jcp-connected-metadata.json","utf8")); if(!meta.approverSubject) process.exit(2); process.stdout.write(meta.approverSubject);'\'')
+            content_manager_id=$(node -e '\''const fs=require("fs"); const meta=JSON.parse(fs.readFileSync("/tmp/jcp-connected-metadata.json","utf8")); if(!meta.contentManagerSubject) process.exit(2); process.stdout.write(meta.contentManagerSubject);'\'')
             curl --silent --show-error --fail -H "Authorization: Bearer connected-donor" -H "X-JCP-Tenant-ID: $tenant_id" http://127.0.0.1:4317/api/giving/my-receipts > /tmp/jcp-connected-receipts.json
             curl --silent --show-error --fail -H "Authorization: Bearer connected-donor" -H "X-JCP-Tenant-ID: $tenant_id" http://127.0.0.1:4317/api/giving/campaigns > /tmp/jcp-connected-campaigns.json
             grep -q "receiptNumber" /tmp/jcp-connected-receipts.json
             grep -q "Connected API receipt journey" /tmp/jcp-connected-campaigns.json
             cd ../flutter
-            flutter test --dart-define=JCP_CONNECTED_API_URL=http://127.0.0.1:4317/ --dart-define=JCP_CONNECTED_TENANT_ID="$tenant_id" --dart-define=JCP_CONNECTED_OPERATOR_ID="$operator_id" --dart-define=JCP_CONNECTED_APPROVER_ID="$approver_id" test/integration/connected_giving_api_test.dart
+            flutter test --dart-define=JCP_CONNECTED_API_URL=http://127.0.0.1:4317/ --dart-define=JCP_CONNECTED_TENANT_ID="$tenant_id" --dart-define=JCP_CONNECTED_OPERATOR_ID="$operator_id" --dart-define=JCP_CONNECTED_APPROVER_ID="$approver_id" --dart-define=JCP_CONNECTED_CONTENT_MANAGER_ID="$content_manager_id" test/integration/connected_giving_api_test.dart
           '
 
   backend:
@@ -178,6 +180,26 @@ jobs:
         working-directory: apps/api
         run: npm run build --if-present
 
+  web:
+    name: Public website - Next.js lint and build
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.scope == 'full' || inputs.scope == 'web' }}
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Install website dependencies
+        working-directory: apps/web
+        run: npm install --no-audit --no-fund
+      - name: Lint and type-check website
+        working-directory: apps/web
+        run: npm run lint
+      - name: Build standalone website
+        working-directory: apps/web
+        run: npm run build
   android:
     name: Android - Build and Verify AAB
     if: ${{ github.event_name == 'workflow_dispatch' && (inputs.scope == 'full' || inputs.scope == 'android') }}
@@ -310,7 +332,7 @@ jobs:
   merge-gate:
     name: Merge gate
     if: ${{ always() }}
-    needs: [repository, frontend, backend, android]
+    needs: [repository, frontend, backend, web, android]
     runs-on: ubuntu-26.04
     steps:
       - name: Verify required validation jobs
@@ -320,10 +342,12 @@ jobs:
           echo "Repository: ${{ needs.repository.result }}"
           echo "Frontend: ${{ needs.frontend.result }}"
           echo "Backend: ${{ needs.backend.result }}"
+          echo "Website: ${{ needs.web.result }}"
           echo "Android: ${{ needs.android.result }}"
           if [[ "${{ needs.repository.result }}" == "failure" || "${{ needs.repository.result }}" == "cancelled" ||
                 "${{ needs.frontend.result }}" == "failure" || "${{ needs.frontend.result }}" == "cancelled" ||
                 "${{ needs.backend.result }}" == "failure" || "${{ needs.backend.result }}" == "cancelled" ||
+                "${{ needs.web.result }}" == "failure" || "${{ needs.web.result }}" == "cancelled" ||
                 "${{ needs.android.result }}" == "failure" || "${{ needs.android.result }}" == "cancelled" ]]; then
             echo "One or more validation jobs failed or were cancelled."
             exit 1

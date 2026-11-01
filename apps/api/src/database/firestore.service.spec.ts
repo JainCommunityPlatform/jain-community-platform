@@ -357,6 +357,49 @@ describe('FirestoreService identity/profile persistence', () => {
     expect((await instance.getMembership('u2', 'existing'))?.role).toBe('TENANT_ADMIN');
   });
 
+  it('returns only public directory fields and excludes inactive tenants and private tenant metadata', async () => {
+    const { instance, db } = service();
+    db.set('tenants', 'public-tenant', {
+      slug: 'public-temple',
+      name: 'Public Temple',
+      primaryHostname: 'public.example.test',
+      status: 'ACTIVE',
+      city: 'Pune',
+      state: 'Maharashtra',
+      address: 'Public address',
+      postalCode: '411001',
+      admins: ['secret-admin@example.test'],
+      platformRoles: ['PLATFORM_ADMIN'],
+      financeBalancePaise: 999999,
+      domainVerificationToken: 'secret-token',
+      privateNotes: 'not for public display',
+    });
+    db.set('tenants', 'inactive-tenant', {
+      slug: 'inactive-temple',
+      name: 'Inactive Temple',
+      primaryHostname: 'inactive.example.test',
+      status: 'INACTIVE',
+      admins: ['secret-admin@example.test'],
+      financeBalancePaise: 999999,
+    });
+    db.set('tenantSiteConfigs', 'public-tenant', {
+      tenantId: 'public-tenant',
+      hero: { title: 'Public Temple', imageUrl: 'https://cdn.example.test/public.jpg' },
+      privateMetadata: 'not public',
+    });
+
+    await expect(instance.listPublicTenants()).resolves.toEqual([{
+      id: 'public-tenant',
+      slug: 'public-temple',
+      name: 'Public Temple',
+      hostname: 'public.example.test',
+      city: 'Pune',
+      state: 'Maharashtra',
+      address: 'Public address',
+      primaryImageUrl: 'https://cdn.example.test/public.jpg',
+    }]);
+  });
+
   it('supports reusable tenant website onboarding, directory and media configuration records', async () => {
     const { instance, db } = service();
 

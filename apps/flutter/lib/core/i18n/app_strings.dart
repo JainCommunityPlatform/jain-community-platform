@@ -58,6 +58,22 @@ class AppStrings {
       'linking': 'Linking…',
       'linkMobile': 'Link mobile number',
       'linkFailed': 'Unable to link this number. Please try again.',
+      'publicHeroTitle': 'Your Jain Temple Community',
+      'publicHeroSubtitle': 'Discover temples and community activities',
+      'publicHeroDescription': 'Explore temple information, events, seva, registrations and community updates in one place.',
+      'publicActionsHeading': 'What would you like to do?',
+      'publicCommunityHeading': 'Community',
+      'publicEventsTitle': 'Events & registrations',
+      'publicEventsDescription': 'Join temple and community events. Your JCP identity keeps your registrations connected across activities.',
+      'publicSevaTitle': 'Seva & giving',
+      'publicSevaDescription': 'Support temple initiatives and keep your participation connected to your JCP account.',
+      'publicStayConnectedTitle': 'Stay connected',
+      'publicStayConnectedDescription': 'Get important temple updates through the communication channels configured by the temple.',
+      'publicActionEvents': 'Events',
+      'publicActionRegister': 'Register',
+      'publicActionSeva': 'Seva',
+      'publicActionTemple': 'Temple',
+      'signInContinue': 'Sign in to continue',
     },
     'hi': {
       'signIn': 'साइन इन',
@@ -102,6 +118,22 @@ class AppStrings {
       'linking': 'जोड़ा जा रहा है…',
       'linkMobile': 'मोबाइल नंबर जोड़ें',
       'linkFailed': 'नंबर जोड़ा नहीं जा सका। कृपया फिर प्रयास करें।',
+      'publicHeroTitle': 'आपका जैन मंदिर समुदाय',
+      'publicHeroSubtitle': 'जैन मंदिरों और सामुदायिक गतिविधियों को जानें',
+      'publicHeroDescription': 'मंदिर की जानकारी, कार्यक्रम, सेवा, पंजीकरण और सामुदायिक अपडेट एक ही जगह देखें।',
+      'publicActionsHeading': 'आप क्या करना चाहेंगे?',
+      'publicCommunityHeading': 'समुदाय',
+      'publicEventsTitle': 'कार्यक्रम और पंजीकरण',
+      'publicEventsDescription': 'मंदिर और समुदाय के कार्यक्रमों में शामिल हों। आपकी JCP पहचान सभी गतिविधियों के पंजीकरण को आपस में जोड़ती है।',
+      'publicSevaTitle': 'सेवा और दान',
+      'publicSevaDescription': 'मंदिर की पहलों में सहयोग करें और अपनी भागीदारी को अपने JCP खाते से जोड़ें।',
+      'publicStayConnectedTitle': 'जुड़े रहें',
+      'publicStayConnectedDescription': 'मंदिर द्वारा चुने गए संचार माध्यमों से महत्वपूर्ण अपडेट प्राप्त करें।',
+      'publicActionEvents': 'कार्यक्रम',
+      'publicActionRegister': 'पंजीकरण',
+      'publicActionSeva': 'सेवा',
+      'publicActionTemple': 'मंदिर',
+      'signInContinue': 'जारी रखने के लिए साइन इन करें',
     },
     'mr': {
       'signIn': 'साइन इन',
@@ -146,6 +178,22 @@ class AppStrings {
       'linking': 'जोडले जात आहे…',
       'linkMobile': 'मोबाइल नंबर जोडा',
       'linkFailed': 'नंबर जोडता आला नाही. पुन्हा प्रयत्न करा.',
+      'publicHeroTitle': 'तुमचा जैन मंदिर समुदाय',
+      'publicHeroSubtitle': 'जैन मंदिरे आणि सामुदायिक उपक्रम जाणून घ्या',
+      'publicHeroDescription': 'मंदिराची माहिती, कार्यक्रम, सेवा, नोंदणी आणि समुदायातील अपडेट्स एकाच ठिकाणी पाहा.',
+      'publicActionsHeading': 'तुम्हाला काय करायचे आहे?',
+      'publicCommunityHeading': 'समुदाय',
+      'publicEventsTitle': 'कार्यक्रम आणि नोंदणी',
+      'publicEventsDescription': 'मंदिर आणि समुदायाच्या कार्यक्रमांमध्ये सहभागी व्हा. तुमची JCP ओळख सर्व उपक्रमांतील नोंदणी जोडून ठेवते.',
+      'publicSevaTitle': 'सेवा आणि देणगी',
+      'publicSevaDescription': 'मंदिराच्या उपक्रमांना सहकार्य करा आणि तुमचा सहभाग JCP खात्याशी जोडून ठेवा.',
+      'publicStayConnectedTitle': 'संपर्कात राहा',
+      'publicStayConnectedDescription': 'मंदिराने निवडलेल्या संपर्क माध्यमांद्वारे महत्त्वाचे अपडेट्स मिळवा.',
+      'publicActionEvents': 'कार्यक्रम',
+      'publicActionRegister': 'नोंदणी',
+      'publicActionSeva': 'सेवा',
+      'publicActionTemple': 'मंदिर',
+      'signInContinue': 'पुढे जाण्यासाठी साइन इन करा',
     },
     'gu': {
       'signIn': 'સાઇન ઇન',
@@ -190,6 +238,22 @@ class AppStrings {
       'linking': 'જોડાઈ રહ્યું છે…',
       'linkMobile': 'મોબાઇલ નંબર જોડો',
       'linkFailed': 'નંબર જોડી શકાયો નથી. કૃપા કરીને ફરી પ્રયાસ કરો.',
+      'publicHeroTitle': 'તમારો જૈન મંદિર સમુદાય',
+      'publicHeroSubtitle': 'જૈન મંદિરો અને સામુદાયિક પ્રવૃત્તિઓ જાણો',
+      'publicHeroDescription': 'મંદિરની માહિતી, કાર્યક્રમો, સેવા, નોંધણી અને સમુદાયના અપડેટ્સ એક જ જગ્યાએ જુઓ.',
+      'publicActionsHeading': 'તમે શું કરવા માંગો છો?',
+      'publicCommunityHeading': 'સમુદાય',
+      'publicEventsTitle': 'કાર્યક્રમો અને નોંધણી',
+      'publicEventsDescription': 'મંદિર અને સમુદાયના કાર્યક્રમોમાં જોડાઓ. તમારી JCP ઓળખ વિવિધ પ્રવૃત્તિઓની નોંધણીને જોડેલી રાખે છે.',
+      'publicSevaTitle': 'સેવા અને દાન',
+      'publicSevaDescription': 'મંદિરની પહેલને સહયોગ આપો અને તમારી ભાગીદારીને તમારા JCP ખાતા સાથે જોડેલી રાખો.',
+      'publicStayConnectedTitle': 'સંપર્કમાં રહો',
+      'publicStayConnectedDescription': 'મંદિર દ્વારા પસંદ કરાયેલા સંચાર માધ્યમોથી મહત્વપૂર્ણ અપડેટ્સ મેળવો.',
+      'publicActionEvents': 'કાર્યક્રમો',
+      'publicActionRegister': 'નોંધણી',
+      'publicActionSeva': 'સેવા',
+      'publicActionTemple': 'મંદિર',
+      'signInContinue': 'આગળ વધવા સાઇન ઇન કરો',
     },
   };
 
@@ -236,6 +300,22 @@ class AppStrings {
   String get linking => get('linking');
   String get linkMobile => get('linkMobile');
   String get linkFailed => get('linkFailed');
+  String get publicHeroTitle => get('publicHeroTitle');
+  String get publicHeroSubtitle => get('publicHeroSubtitle');
+  String get publicHeroDescription => get('publicHeroDescription');
+  String get publicActionsHeading => get('publicActionsHeading');
+  String get publicCommunityHeading => get('publicCommunityHeading');
+  String get publicEventsTitle => get('publicEventsTitle');
+  String get publicEventsDescription => get('publicEventsDescription');
+  String get publicSevaTitle => get('publicSevaTitle');
+  String get publicSevaDescription => get('publicSevaDescription');
+  String get publicStayConnectedTitle => get('publicStayConnectedTitle');
+  String get publicStayConnectedDescription => get('publicStayConnectedDescription');
+  String get publicActionEvents => get('publicActionEvents');
+  String get publicActionRegister => get('publicActionRegister');
+  String get publicActionSeva => get('publicActionSeva');
+  String get publicActionTemple => get('publicActionTemple');
+  String get signInContinue => get('signInContinue');
 
   String languageName(String code) => switch (code) {
         'hi' => hindi,

@@ -669,3 +669,121 @@ Do not count a documentation row as a completed test. The inventory and roadmap 
 - PR #269 merged at `c2b6ac853c63910ec59b229456a88ca1f3b26deb`; exact-head [CI #39307326991](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39307326991) passed all required checks. Post-merge [CI #39307890603](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39307890603) was running at last poll.
 - Branch `qa/p1-connected-profile-ui-api-persistence-batch` extends the existing connected Flutter/NestJS/Firestore emulator run with a profile widget journey: seed editable profile via HTTP, load through the Flutter profile page, update name and city through the UI, then verify the new values and preserved email through a fresh live API read.
 - This closes the current gap between fake-repository profile widget tests and emulator-backed API tests. Physical-device and production identity checks remain separate acceptance gates.
+
+## Next grouped P1 — connected website editor publish and persisted reload (20 October 2026)
+
+- PR #270 merged at `36fc2e371fd82ccb35ea528a21626aa009f77b0b`; exact-head CI #39308626401 and post-merge CI #39309084778 passed all applicable checks. Android AAB skipped by design.
+- Branch qa/p1-connected-website-publish-persistence-batch adds the connected website editor workflow using a content-manager identity against the real NestJS HTTP API and Firestore Emulator.
+- The batch covers UI save/publish and read-after-write, version increment, unrelated contact-field preservation, rejected blank hero title without version/config mutation, and reopening the editor to confirm the saved title.
+- Evidence boundary: no production Firebase/tenant-hostname or physical-device claim; real Storage/public media URL reachability remains open.
+
+
+## PR #271 CI failure and correction — 20 October 2026
+
+- Exact-head [CI #39349173873](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39349173873) failed the connected Flutter → NestJS → Firestore Emulator job; backend checks and repository validation passed.
+- Root cause from the Flutter test log: the connected website publish test looked for the hero title TextField while `Hero / मुख्य भाग` was collapsed. The test never reached the publish or persistence assertions.
+- Fix: explicitly expand the hero section before editing and after reopening the editor. All substantive assertions remain in place; no test is skipped and no checks are weakened.
+- Fresh exact-head CI is required before merge. Android AAB remains manual/on-demand.
+
+
+## PR #271 — connected website editor async-load timing correction (20 October 2026)
+
+- Exact-head CI #39350905898 failed in the connected Flutter → NestJS → Firestore job because the test attempted to tap the hero section before async editor load exposed it.
+- The latest branch revision waits for the hero section on both initial load and editor reopen, asserting it exists before tapping. The substantive save/publish/version/preservation/HTTP 400/no-mutation/reload assertions are retained.
+- Fresh exact-head CI is required before merge; Android AAB remains manual/on-demand.
+
+
+## PR #271 connected editor viewport correction — 20 October 2026
+
+- Exact-head CI #39351766590 failed the connected Flutter → NestJS → Firestore website test because it could not find the hero section while it was outside the lazy ListView viewport.
+- Corrected the test to wait for the editor scaffold and use `dragUntilVisible` before expanding the hero section, both before publishing and after reopening. All persistence and rejection assertions remain.
+- Run fresh exact-head CI; do not merge until all required checks pass. Android AAB remains manual/on-demand.
+
+
+## Next grouped P1 — HTTP DTO validation and failure mapping (20 October 2026)
+
+- PR #271 is merged as `80f2cdb72f2ba12aa3a447dcc8d18b886500a572`; exact-head [CI #39355422215](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39355422215) passed Flutter analysis/tests (including connected website publish), backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Default-branch post-merge CI #39355751162 is running and must be verified separately.
+- Current branch `qa/p1-http-dto-validation-platform-website-profile-batch` extends the existing HTTP DTO matrix across website config, authenticated profile updates, tenant member create/update, and platform tenant create/update/admin. Each invalid payload must return 400 before the relevant service or audit is called.
+- Group these related routes into one MR; do not split by DTO. Run exact-head CI, fix actual failures without weakening assertions, merge only when all required checks pass, verify post-merge CI, then continue the highest-priority inventory gap. Android AAB remains manual/on-demand.
+
+
+## Website publish E2E closure and next DTO batch — 20 October 2026
+
+- PR #271 merged as `80f2cdb72f2ba12aa3a447dcc8d18b886500a572`. Exact-head CI #39355422215 and default-branch post-merge CI #39355751162 both passed all applicable checks, including connected Flutter → NestJS → Firestore website publish/reload and the merge gate. Android AAB skipped by design.
+- QA-003 / QA-016 updated with PR #266 connected donation lifecycle evidence: exact-head #39304067428 and post-merge #39305120442 passed.
+- Current grouped MR [PR #272](https://github.com/JainCommunityPlatform/jain-community-platform/pull/272) extends HTTP DTO validation across website config, profile, tenant membership, and platform tenant/admin endpoints. Require HTTP 400 before service/audit side effects for malformed or caller-controlled fields.
+- Do not merge PR #272 until exact-head CI and merge gate pass; verify post-merge CI separately. Continue to state staging/device, production Firebase/Storage, and external settlement as open environment gates. Android AAB remains manual/on-demand.
+
+
+## Next grouped P0 — stale asynchronous session restoration and refresh races (20 October 2026)
+
+- PR #272 merged as `bbf3495c2f431139255c91360f45b577447094ae`; exact-head CI #39356281196 passed and default-branch post-merge CI #39356659872 passed all applicable checks including merge gate. Android AAB skipped by design.
+- Current branch `qa/p0-session-stale-async-resurrection-batch` adds four race regressions: Firebase signs out while initial backend session load is pending; a newer auth event overtakes an older load; sign-out overtakes a session refresh; and an older overlapping refresh cannot overwrite the latest session.
+- The controller uses a monotonically increasing generation to ignore stale async completions. Keep all race cases together in one MR; do not split one test per race. Require exact-head CI and merge gate, then independently verify post-merge CI.
+- Real Firebase credential revocation, device restart, offline UI and live role propagation remain environment gates. Android AAB remains manual/on-demand.
+
+
+## Grouped public directory and tenant-routing security batch — 20 October 2026
+
+- Branch `qa/p1-public-directory-tenant-routing-security-batch` groups resolver precedence/fallback tests, middleware tenant-header propagation, public directory field allowlisting/inactive tenant filtering, and anonymous HTTP reads for the directory and resolved tenant website.
+- Security invariant: a known hostname is authoritative. If it maps to an inactive or unverified tenant, a caller-supplied `x-jcp-tenant-id` must not redirect that request to a different tenant. Explicit tenant-ID fallback remains supported only when the hostname has no tenant mapping (mobile API host case).
+- Exact-head CI and post-merge CI are required. Unit/HTTP tests do not replace real Firestore/staging hostname and device verification. Android AAB remains manual/on-demand.
+
+
+## Verified execution — public directory and tenant-routing security (20 October 2026)
+
+- PR #274 merged as `1ccc6812746dfa6a62202250e1931a0a4a40d0f7`; exact-head CI #39371802595 and post-merge CI #39372227655 passed all applicable checks. Android AAB skipped by design.
+- The resolver now treats a mapped hostname as authoritative. Inactive/unverified mappings fail closed instead of falling back to a caller-supplied tenant ID; explicit-ID fallback remains available for hostnames with no tenant mapping.
+- Initial CI failure was a test expectation mismatch around middleware header trimming. The test was corrected to assert the trimmed tenant ID; product behavior and security assertions were preserved.
+- **Current grouped batch:** `qa/p1-localization-accessibility-responsive-audit-batch` localizes the public tenant landing page in all four supported locales and tests live language changes, semantic headings, accessible touch targets and 200% text scaling at 320px.
+- Require exact-head CI and post-merge CI. Physical screen-reader/keyboard/contrast/device checks remain environment gates; Android AAB remains manual/on-demand.
+
+
+## QA-013 — grouped public landing localization and accessibility
+
+- PR #275 groups public landing copy translations for English/Hindi/Marathi/Gujarati, dynamic language switching, semantic heading roles, decorative icon exclusion, 320px layout and 200% text scaling/touch-target assertions.
+- Code/test head `fcceee666320c3ebffe6509ef40b731e3a66b248` passed [CI #39373383651](https://github.com/JainCommunityPlatform/jain-community-platform/actions/runs/39373383651): Flutter analyze/tests and connected journeys, backend lint/unit/integration/Firestore-emulator/build, repository validation and merge gate. Android AAB skipped by design.
+- Repair history: changed unsupported `Icon.excludeFromSemantics` to `ExcludeSemantics`; scrolled lazy-list items into view for locale assertions; removed a leaked test semantics handle. Assertions were retained.
+- The QA checkpoint, inventory and roadmap are included in this batch; inspect and pass CI on the final documentation-updated head before merge.
+- Physical screen-reader/keyboard focus order, contrast and real-device verification remain open environment gates. Android AAB remains manual/on-demand.
+
+
+## Next grouped P1 — website media failure mapping (29 October 2026)
+
+- Branch `qa/p1-website-media-failure-batch` adds an HTTP integration regression for Firebase Storage outage/configuration failure on `POST /api/website/media`.
+- The test requires HTTP 503, tenant-scoped upload arguments, and no successful media-upload audit. It complements existing empty-file, size-limit, non-image signature, successful upload and storage-service unit coverage.
+- Require exact-head CI and merge gate; fix failures without weakening assertions, then verify default-branch post-merge CI. Live Firebase Storage bucket/IAM/public URL and physical-device checks remain separate environment gates. Android AAB remains manual/on-demand.
+
+
+## Next grouped P1 — unsupported website media failure mapping (29 October 2026)
+
+- Added explicit client-error mapping for unsupported image bytes and an HTTP integration regression requiring 400 rather than 500, with no success audit.
+- Gate: exact-head backend lint/unit/integration/Firestore-emulator/build and all other required CI jobs must pass; fix genuine failures without weakening assertions, merge only when green/mergeable, then verify default-branch CI separately.
+- Evidence boundary: mocked storage rejection exercises HTTP mapping; signature recognition is implemented in the storage service, while live bucket/IAM/public URL/device behavior remains an environment gate. Android AAB stays manual/on-demand.
+
+
+## P1 follow-up — assert storage validation HTTP exception type (29 October 2026)
+
+- Follow-up to PR #279: strengthen the direct storage-service regression so disguised non-image bytes must throw NestJS `BadRequestException` rather than an arbitrary exception. Keep the existing message and no-Firebase-call assertions.
+- Merge gate: exact-head backend lint/unit/integration/Firestore-emulator/build and other required checks green; verify default-branch CI independently after merge. Android AAB remains manual/on-demand.
+
+
+## Next P1 — storage empty/oversize validation contract (29 October 2026)
+
+- Follow-up to the invalid-signature exception contract: empty buffers and service-level payloads over 10 MB must produce NestJS `BadRequestException`, not generic exceptions that may be mapped to HTTP 500.
+- Tests preserve the actionable message and assert rejection before Firebase Storage is called. The multipart interceptor's HTTP size-limit behavior remains a separate endpoint boundary.
+- Merge only after exact-head required CI passes; verify default-branch CI independently. Android AAB remains manual/on-demand.
+
+
+## Next P1 — validate media before storage configuration (29 October 2026)
+
+- Validation errors must win over infrastructure configuration errors: empty, oversized, and unsupported media should be classified as client errors even when Firebase Storage is not configured.
+- Regression uses an unconfigured storage service and asserts all invalid payload classes raise `BadRequestException` without touching Firebase Storage; valid uploads continue to require configuration.
+- Require exact-head CI and merge gate; verify default-branch CI separately. Android AAB remains manual/on-demand.
+
+
+## Next P1 — preserve valid-media storage configuration failure (29 October 2026)
+
+- Complement PR #283's invalid-payload precedence test with the positive validation boundary: a valid supported image and absent Firebase Storage configuration must still raise `ServiceUnavailableException`.
+- Assert Firebase Storage is not initialized without configuration. Keep the invalid-payload BadRequest assertions unchanged.
+- Require exact-head backend lint/unit/integration/Firestore-emulator/build and all other required checks; merge only when green, then verify default-branch CI independently. Android AAB remains manual/on-demand.

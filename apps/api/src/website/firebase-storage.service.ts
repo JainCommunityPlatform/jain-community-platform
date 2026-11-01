@@ -1,4 +1,4 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import { getStorage } from 'firebase-admin/storage';
@@ -36,18 +36,12 @@ export class FirebaseStorageService {
         Boolean(value) && values.indexOf(value) === index,
       );
 
-    if (bucketNames.length === 0) {
-      throw new ServiceUnavailableException(
-        'Firebase Storage is not configured. Set FIREBASE_PROJECT_ID or FIREBASE_STORAGE_BUCKET.',
-      );
-    }
-
     if (input.buffer.length === 0) {
-      throw new Error('The uploaded image is empty');
+      throw new BadRequestException('The uploaded image is empty');
     }
 
     if (input.buffer.length > 10 * 1024 * 1024) {
-      throw new Error('Image upload exceeds the 10 MB limit');
+      throw new BadRequestException('Image upload exceeds the 10 MB limit');
     }
 
     // Mobile/browser file pickers sometimes label valid image bytes as
@@ -59,7 +53,13 @@ export class FirebaseStorageService {
     const contentType = detectedContentType;
 
     if (!contentType) {
-      throw new Error('Only image uploads are supported');
+      throw new BadRequestException('Only image uploads are supported');
+    }
+
+    if (bucketNames.length === 0) {
+      throw new ServiceUnavailableException(
+        'Firebase Storage is not configured. Set FIREBASE_PROJECT_ID or FIREBASE_STORAGE_BUCKET.',
+      );
     }
 
     const safeName = input.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
