@@ -246,8 +246,16 @@ jobs:
 
           MAJOR_VERSION=$(printf '%s' "$BASE_VERSION" | cut -d. -f1)
           MINOR_VERSION=$(printf '%s' "$BASE_VERSION" | cut -d. -f2)
-          RELEASE_VERSION="$BASE_VERSION.$GITHUB_RUN_NUMBER.$(printf '%02d' "$GITHUB_RUN_ATTEMPT")"
-          PLAY_VERSION_CODE=$((10#$MAJOR_VERSION * 10000000 + 10#$MINOR_VERSION * 1000000 + GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))
+          # Reusable workflows inherit the caller's run number, which restarted at 1
+          # when Release Control was introduced. Use a time-based monotonic version code
+          # instead so manual releases cannot regress to an old Play version code.
+          RELEASE_EPOCH=$(date -u +%s)
+          PLAY_VERSION_CODE=$(( (RELEASE_EPOCH / 10) * 10 + GITHUB_RUN_ATTEMPT ))
+          RELEASE_VERSION="$BASE_VERSION.$(date -u +%Y%m%d%H%M).$GITHUB_RUN_ATTEMPT"
+          if [ "$PLAY_VERSION_CODE" -gt 2100000000 ]; then
+            echo "::error::Generated Android versionCode exceeds Google Play's limit."
+            exit 1
+          fi
 
           echo "release_version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
           echo "play_version_code=$PLAY_VERSION_CODE" >> "$GITHUB_OUTPUT"
