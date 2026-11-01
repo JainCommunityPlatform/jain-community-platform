@@ -269,39 +269,3 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  publish:
-    name: Android - Publish to Google Play
-    needs: build
-    if: ${{ (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_run') && vars.GOOGLE_PLAY_PUBLISH == 'true' }}
-    runs-on: ubuntu-26.04
-
-    steps:
-      - name: Download Android release artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: myjinalay-release-aab
-          path: release
-
-      - name: Validate Google Play publishing configuration
-        env:
-          PLAY_STORE_SERVICE_ACCOUNT_JSON: ${{secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON}}
-        run: |
-          set -euo pipefail
-          test -n "$PLAY_STORE_SERVICE_ACCOUNT_JSON"
-
-      - name: Validate Google Play track configuration
-        run: |
-          set -euo pipefail
-          echo "Google Play tracks: internal + closed testing (alpha)"
-          test "internal,alpha" = "internal,alpha"
-
-      - name: Publish to Google Play internal and closed testing
-        uses: r0adkll/upload-google-play@v1
-        with:
-          serviceAccountJsonPlainText: ${{secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON}}
-          packageName: ${{vars.ANDROID_APPLICATION_ID}}
-          releaseFiles: release/app-release.aab
-          tracks: internal,alpha
-          status: completed
-          changesNotSentForReview: false
-          releaseName: CI build ${{needs.build.outputs.play_version_code}}
