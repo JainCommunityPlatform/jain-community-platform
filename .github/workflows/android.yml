@@ -11,6 +11,13 @@ on:
         options:
           - full
           - fast
+  workflow_call:
+    inputs:
+      validation:
+        description: Validation level when called by the release controller
+        required: false
+        default: full
+        type: string
 
 permissions:
   contents: read
@@ -20,7 +27,7 @@ concurrency:
   cancel-in-progress: ${{github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')}}
 
 env:
-  RELEASE_VALIDATION: ${{github.event.inputs.validation || 'full'}}
+  RELEASE_VALIDATION: ${{inputs.validation || github.event.inputs.validation || 'full'}}
 
 jobs:
   validate:
