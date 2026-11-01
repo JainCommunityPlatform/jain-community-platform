@@ -1419,4 +1419,138 @@ describe('Giving HTTP journey against the Firestore emulator', () => {
     }
   });
 
+
+  it('links a valid mobile through HTTP, persists the phone index, and makes retries idempotent', async () => {
+    const host = 'giving-isolation-emulator.jcp.test';
+    const subject = 'contact-link-valid-' + Date.now();
+    const user = await identity.resolve({
+      subject,
+      email: subject + '@example.test',
+    } as AuthenticatedUser);
+    const phone = '9' + Date.now().toString().slice(-9);
+
+    const linked = await request(app.getHttpServer())
+      .post('/api/profile/contact')
+      .set('Host', host)
+      .set('x-test-user', subject)
+      .send({ value: phone })
+      .expect(201);
+
+    expect(linked.body).toMatchObject({
+      id: user.id,
+      primaryPhone: phone,
+      phoneNumbers: [phone],
+      needsPhoneLink: false,
+    });
+    expect(await firestore.findUserByPhone(phone)).toMatchObject({
+      id: user.id,
+      primaryPhone: phone,
+      phoneNumbers: [phone],
+    });
+
+    const reloadedProfile = await request(app.getHttpServer())
+      .get('/api/profile')
+      .set('Host', host)
+      .set('x-test-user', subject)
+      .expect(200);
+    expect(reloadedProfile.body).toMatchObject({
+      id: user.id,
+      primaryPhone: phone,
+      phoneNumbers: [phone],
+      needsPhoneLink: false,
+    });
+
+    const retried = await request(app.getHttpServer())
+      .post('/api/profile/contact')
+      .set('Host', host)
+      .set('x-test-user', subject)
+      .send({ value: phone })
+      .expect(201);
+    expect(retried.body.primaryPhone).toBe(phone);
+    expect(retried.body.phoneNumbers).toEqual([phone]);
+    expect((await firestore.getUser(user.id))?.phoneNumbers).toEqual([phone]);
+  });
+
+  it('rejects invalid contact numbers without changing profile data or creating phone indexes', async () => {
+    const host = 'giving-isolation-emulator.jcp.test';
+    const subject = 'contact-link-invalid-' + Date.now();
+    const user = await identity.resolve({
+      subject,
+      email: subject + '@example.test',
+    } as AuthenticatedUser);
+    const before = await firestore.getUser(user.id);
+    const invalidValues = ['123', '5123456789', '987654321', ''];
+
+    for (const value of invalidValues) {
+      await request(app.getHttpServer())
+        .post('/api/profile/contact')
+        .set('Host', host)
+        .set('x-test-user', subject)
+        .send({ value })
+        .expect(409);
+      expect(await firestore.findUserByPhone(value)).toBeNull();
+      expect(await firestore.getUser(user.id)).toMatchObject({
+        id: user.id,
+        primaryPhone: before?.primaryPhone,
+        phoneNumbers: before?.phoneNumbers,
+      });
+    }
+  });
+
+  it('merges a duplicate linked mobile into its canonical profile without duplicate phone entries', async () => {
+    const host = 'giving-isolation-emulator.jcp.test';
+    const suffix = Date.now().toString();
+    const targetSubject = 'contact-link-canonical-' + suffix;
+    const sourceSubject = 'contact-link-merged-' + suffix;
+    const target = await identity.resolve({
+      subject: targetSubject,
+      email: targetSubject + '@example.test',
+      displayName: 'Canonical Contact Owner',
+    } as AuthenticatedUser);
+    const source = await identity.resolve({
+      subject: sourceSubject,
+      email: sourceSubject + '@example.test',
+      displayName: 'Profile To Merge',
+    } as AuthenticatedUser);
+    const phone = '8' + Date.now().toString().slice(-9);
+
+    await request(app.getHttpServer())
+      .post('/api/profile/contact')
+      .set('Host', host)
+      .set('x-test-user', targetSubject)
+      .send({ value: phone })
+      .expect(201);
+
+    const mergedResponse = await request(app.getHttpServer())
+      .post('/api/profile/contact')
+      .set('Host', host)
+      .set('x-test-user', sourceSubject)
+      .send({ value: phone })
+      .expect(201);
+
+    expect(mergedResponse.body).toMatchObject({
+      id: target.id,
+      displayName: 'Canonical Contact Owner',
+      email: targetSubject + '@example.test',
+      primaryPhone: phone,
+      phoneNumbers: [phone],
+    });
+    expect(await firestore.findUserByPhone(phone)).toMatchObject({
+      id: target.id,
+      primaryPhone: phone,
+      phoneNumbers: [phone],
+    });
+    expect(await firestore.getUser(source.id)).toMatchObject({
+      id: source.id,
+      mergedInto: target.id,
+    });
+    expect(await firestore.getUser(target.id)).toMatchObject({
+      id: target.id,
+      displayName: 'Canonical Contact Owner',
+      email: targetSubject + '@example.test',
+      primaryPhone: phone,
+      phoneNumbers: [phone],
+    });
+  });
+
 });
