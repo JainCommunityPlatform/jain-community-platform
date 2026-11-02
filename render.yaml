@@ -1,3 +1,6 @@
+# JCP API — Render Blueprint and environment-variable inventory.
+# Never commit credentials here. sync:false entries must be supplied securely in Render.
+# FIREBASE_PROJECT_ID / FIRESTORE_DATABASE_ID are deliberately pinned to the production project/database.
 services:
   - type: web
     name: jcp-api
@@ -14,10 +17,15 @@ services:
         value: jain-community-platform
       - key: FIRESTORE_DATABASE_ID
         value: jcp-firestore-db-001
+
+      # Required Firebase Admin service-account credentials.
       - key: FIREBASE_CLIENT_EMAIL
         sync: false
       - key: FIREBASE_PRIVATE_KEY_BASE64
         sync: false
+
+      # Bootstrap is disabled by default. Only supply the following bootstrap
+      # values if an explicitly reviewed one-time bootstrap is enabled.
       - key: FIREBASE_BOOTSTRAP_ENABLED
         value: "false"
       - key: FIREBASE_BOOTSTRAP_TENANT_ID
@@ -34,11 +42,15 @@ services:
         sync: false
       - key: FIREBASE_BOOTSTRAP_ADMIN_NAME
         sync: false
+
+      # Firebase ID-token verification configuration.
       - key: AUTH_ISSUER
         value: https://securetoken.google.com/jain-community-platform
       - key: AUTH_AUDIENCE
         value: jain-community-platform
       - key: AUTH_JWKS_URL
         value: https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com
+
+      # Required if the API's Redis-backed features are used in this deployment.
       - key: REDIS_URL
         sync: false
