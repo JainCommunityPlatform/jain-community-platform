@@ -22,7 +22,8 @@ void main() {
 
     expect(find.text('MyJinalay'), findsOneWidget);
     expect(find.text('Temples'), findsWidgets);
-    expect(find.text('Sign in'), findsOneWidget);
+    // The app's default locale is Hindi; assert the actual localized label.
+    expect(find.text('साइन इन'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
