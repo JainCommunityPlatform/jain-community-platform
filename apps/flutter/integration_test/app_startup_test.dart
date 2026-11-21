@@ -14,11 +14,11 @@ void main() {
     // The workflow points the API client at an unavailable local port, so
     // this smoke test performs no production sign-in or backend writes.
     await app.main();
-    await tester.pumpAndSettle(
-      const Duration(milliseconds: 100),
-      EnginePhase.sendSemanticsUpdate,
-      const Duration(seconds: 30),
-    );
+    // Advance startup with bounded pumps; the live app may retain animated
+    // loading indicators, so pumpAndSettle is not a reliable completion gate.
+    await tester.pump(const Duration(seconds: 10));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
 
     expect(find.text('MyJinalay'), findsOneWidget);
     expect(find.text('Temples'), findsWidgets);
