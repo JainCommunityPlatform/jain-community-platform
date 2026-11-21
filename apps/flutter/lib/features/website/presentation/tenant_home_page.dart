@@ -147,10 +147,16 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
           if (widget.showSignIn)
             Padding(
               padding: const EdgeInsets.only(right: 12),
-              child: FilledButton.tonalIcon(
-                onPressed: () => context.go(AppRoutes.login),
-                icon: const Icon(Icons.login, size: 18),
-                label: Text(strings.signIn),
+              child: ConstrainedBox(
+                // AppBar action slots can provide an unbounded horizontal
+                // constraint. Bound the labelled button so its internal Row
+                // can calculate a finite layout on narrow Android screens.
+                constraints: const BoxConstraints(maxWidth: 124),
+                child: FilledButton.tonalIcon(
+                  onPressed: () => context.go(AppRoutes.login),
+                  icon: const Icon(Icons.login, size: 18),
+                  label: Text(strings.signIn),
+                ),
               ),
             ),
         ],
