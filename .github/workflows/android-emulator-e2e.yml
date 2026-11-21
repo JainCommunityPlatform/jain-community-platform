@@ -28,7 +28,7 @@ jobs:
   android-emulator:
     name: Install, launch and test MyJinalay
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: apps/flutter
@@ -93,24 +93,20 @@ jobs:
 
       - name: Run on Android emulator with Firebase Auth Emulator
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          ANDROID_I_WANT_MY_TCG: "yes"
         with:
-          api-level: 35
+          api-level: 34
           target: google_apis
           arch: x86_64
           profile: pixel_2
+          emulator-boot-timeout: 900
           disable-animations: true
           script: |
             set -euo pipefail
             cd apps/flutter
             mkdir -p artifacts
-            cat > /tmp/firebase-e2e.json <<'JSON'
-            {
-              "emulators": {
-                "auth": { "port": 9099 },
-                "ui": { "enabled": false }
-              }
-            }
-            JSON
+            printf '%s\n' '{"emulators":{"auth":{"port":9099},"ui":{"enabled":false}}}' > /tmp/firebase-e2e.json
             npx --yes firebase-tools@14 emulators:start --only auth --project demo-jcp --config /tmp/firebase-e2e.json > artifacts/firebase-auth-emulator.log 2>&1 &
             firebase_pid=$!
             cleanup() {
@@ -131,11 +127,11 @@ jobs:
               fi
               sleep 2
             done
-            test "$ready" = true || {
+            if [ "$ready" != true ]; then
               cat artifacts/firebase-auth-emulator.log
               echo "Firebase Auth Emulator did not become ready."
               exit 1
-            }
+            fi
             adb install -r build/app/outputs/flutter-apk/app-debug.apk
             adb shell monkey -p com.nipun.jcp 1
             sleep 6
