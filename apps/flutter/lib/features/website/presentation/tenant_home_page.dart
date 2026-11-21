@@ -1171,11 +1171,12 @@ class _ErrorPage extends StatelessWidget {
   final VoidCallback onRetry;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: Center(child: Column(
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(24),
+    child: Center(child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(message),
+        Text(message, textAlign: TextAlign.center),
         const SizedBox(height: 12),
         FilledButton(onPressed: onRetry, child: const Text('पुनः प्रयास करें')),
       ],
