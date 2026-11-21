@@ -147,10 +147,16 @@ class _TempleDirectoryPageState extends State<TempleDirectoryPage> {
           if (widget.showSignIn)
             Padding(
               padding: const EdgeInsets.only(right: 12),
-              child: FilledButton.tonalIcon(
-                onPressed: () => context.go(AppRoutes.login),
-                icon: const Icon(Icons.login, size: 18),
-                label: Text(strings.signIn),
+              child: ConstrainedBox(
+                // AppBar action slots can provide an unbounded horizontal
+                // constraint. Bound the labelled button so its internal Row
+                // can calculate a finite layout on narrow Android screens.
+                constraints: const BoxConstraints(maxWidth: 124),
+                child: FilledButton.tonalIcon(
+                  onPressed: () => context.go(AppRoutes.login),
+                  icon: const Icon(Icons.login, size: 18),
+                  label: Text(strings.signIn),
+                ),
               ),
             ),
         ],
@@ -1165,11 +1171,12 @@ class _ErrorPage extends StatelessWidget {
   final VoidCallback onRetry;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: Center(child: Column(
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(24),
+    child: Center(child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(message),
+        Text(message, textAlign: TextAlign.center),
         const SizedBox(height: 12),
         FilledButton(onPressed: onRetry, child: const Text('पुनः प्रयास करें')),
       ],

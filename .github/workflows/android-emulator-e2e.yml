@@ -1,0 +1,122 @@
+name: Android Emulator E2E - MyJinalay
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - "apps/flutter/**"
+      - ".github/workflows/android-emulator-e2e.yml"
+  push:
+    branches:
+      - master
+    paths:
+      - "apps/flutter/**"
+      - ".github/workflows/android-emulator-e2e.yml"
+  schedule:
+    - cron: "45 20 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-emulator-e2e-jcp-v2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-emulator:
+    name: Install, launch and test MyJinalay
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: apps/flutter
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Node.js for Firebase Auth Emulator
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.0"
+          channel: stable
+          cache: true
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Restore Firebase Android configuration
+        env:
+          FIREBASE_GOOGLE_SERVICES_JSON: ${{ vars.FIREBASE_GOOGLE_SERVICES_JSON }}
+        run: |
+          set -euo pipefail
+          test -n "$FIREBASE_GOOGLE_SERVICES_JSON" || {
+            echo "::error::Missing repository variable FIREBASE_GOOGLE_SERVICES_JSON."
+            exit 1
+          }
+          printf '%s' "$FIREBASE_GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          test -s android/app/google-services.json
+
+      - name: Validate Firebase project and Android package
+        run: |
+          python3 - <<'PY'
+          import json
+          with open("android/app/google-services.json", encoding="utf-8") as handle:
+              config = json.load(handle)
+          assert config["project_info"]["project_id"] == "jain-community-platform"
+          package_names = {
+              client["client_info"]["android_client_info"]["package_name"]
+              for client in config.get("client", [])
+          }
+          assert "com.nipun.jcp" in package_names, package_names
+          print("Firebase project and Android application ID validated.")
+          PY
+
+      - name: Build debug APK
+        run: |
+          flutter build apk --debug \
+            --dart-define=JCP_E2E_TEST_MODE=true \
+            --dart-define=JCP_API_BASE_URL=http://10.0.2.2:9
+
+      - name: Run on Android emulator with Firebase Auth Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          ANDROID_I_WANT_MY_TCG: "yes"
+        with:
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          api-level: 34
+          target: default
+          arch: x86_64
+          profile: pixel_2
+          emulator-boot-timeout: 900
+          disable-animations: true
+          script: >-
+            bash -euo pipefail -c 'cd apps/flutter; mkdir -p artifacts; echo eyJlbXVsYXRvcnMiOnsiYXV0aCI6eyJwb3J0Ijo5MDk5fSwidWkiOnsiZW5hYmxlZCI6ZmFsc2V9fX0= | base64 -d > /tmp/firebase-e2e.json; npx --yes firebase-tools@14 emulators:start --only auth --project demo-jcp --config /tmp/firebase-e2e.json > artifacts/firebase-auth-emulator.log 2>&1 & firebase_pid=$!; cleanup(){ timeout 15s adb logcat -d > artifacts/logcat.txt 2>&1 || true; timeout 15s adb exec-out screencap -p > artifacts/final-screen.png 2>&1 || true; kill "$firebase_pid" 2>/dev/null || true; }; trap cleanup EXIT; ready=false; for attempt in $(seq 1 60); do if curl --silent --output /dev/null http://127.0.0.1:9099/; then ready=true; break; fi; if ! kill -0 "$firebase_pid" 2>/dev/null; then cat artifacts/firebase-auth-emulator.log; exit 1; fi; sleep 2; done; if [ "$ready" != true ]; then cat artifacts/firebase-auth-emulator.log; echo "Firebase Auth Emulator did not become ready."; exit 1; fi; adb uninstall com.nipun.jcp >/dev/null 2>&1 || true; adb install build/app/outputs/flutter-apk/app-debug.apk; adb shell monkey -p com.nipun.jcp 1; sleep 6; adb exec-out screencap -p > artifacts/installed-app-launch.png; flutter test integration_test -d emulator-5554 --reporter expanded --dart-define=JCP_E2E_TEST_MODE=true --dart-define=JCP_API_BASE_URL=http://10.0.2.2:9'
+      - name: Capture emulator diagnostics
+        if: always()
+        working-directory: .
+        run: |
+          mkdir -p apps/flutter/artifacts
+          timeout 20s adb logcat -d > apps/flutter/artifacts/logcat-after-run.txt 2>&1 || echo "ADB logcat unavailable after emulator failure."
+
+      - name: Upload emulator diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: myjinalay-android-e2e-${{ github.run_id }}
+          path: apps/flutter/artifacts/
+          if-no-files-found: warn
+          retention-days: 7
